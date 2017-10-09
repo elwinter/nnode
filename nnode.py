@@ -34,7 +34,7 @@ parser.add_argument('--eta', type = float, default = 0.01,
 parser.add_argument('--maxepochs', type = int, default = 1000,
                     help = 'Maximum number of training epochs')
 parser.add_argument('--nhid', type = int, default = 10,
-                    help = 'Number of hidden-layer to use')
+                    help = 'Number of hidden-layer nodes to use')
 parser.add_argument('--ntrain', type = int, default = 10,
                     help = 'Number of evenly-spaced training points to use')
 parser.add_argument('--ode', type = str, default = 'ode00',
