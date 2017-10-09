@@ -1,5 +1,9 @@
 from math import cos, exp, sin
 
+# x-value for boundary condition A (b = 0 means an IVP)
+b = 0
+A = 0
+
 # Define the analytical solution.
 def yanal(x):
     return exp(-x / 5) * sin(x)
@@ -22,9 +26,8 @@ def d2F_dy2(x, y):
 # Define the trial solution for this differential equation.
 # Ref: Lagaris eq. (12), my equation (2)
 def ytrial(x, N):
-    A = 0
-    return A + x * N
+    return A + (x - b) * N
 
 # Define the first trial derivative.
 def dytrial_dx(x, N, Ng):
-    return x * Ng + N
+    return (x - b) * Ng + N

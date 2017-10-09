@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# Use a neural network to solve a 1st-order ODE.
+
 #********************************************************************************
 
 # Import external modules, using standard shorthand.
@@ -70,6 +72,7 @@ xmax = args.xmax
 if verbose:
     print("Importing ODE module '%s'." % ode)
 odemod = importlib.import_module(ode)
+b = odemod.b
 yanal = odemod.yanal
 F = odemod.F
 dF_dy = odemod.dF_dy
@@ -363,9 +366,9 @@ for epoch in range(maxepochs):
     d2yt_dwdx = np.zeros((ntrain, nhid))
     for i in range(ntrain):
         for j in range(nhid):
-            d2yt_dvdx[i][j] = x[i] * dNg_dv[i][j] + dN_dv[i][j]
-            d2yt_dudx[i][j] = x[i] * dNg_du[i][j] + dN_du[i][j]
-            d2yt_dwdx[i][j] = x[i] * dNg_dw[i][j] + dN_dw[i][j]
+            d2yt_dvdx[i][j] = (x[i] - b) * dNg_dv[i][j] + dN_dv[i][j]
+            d2yt_dudx[i][j] = (x[i] - b) * dNg_du[i][j] + dN_du[i][j]
+            d2yt_dwdx[i][j] = (x[i] - b) * dNg_dw[i][j] + dN_dw[i][j]
     if debug: print('d2yt_dvdx =', d2yt_dvdx)
     if debug: print('d2yt_dudx =', d2yt_dudx)
     if debug: print('d2yt_dwdx =', d2yt_dwdx)
@@ -376,9 +379,9 @@ for epoch in range(maxepochs):
     d3yt_dw2dx = np.zeros((ntrain, nhid))
     for i in range(ntrain):
         for j in range(nhid):
-            d3yt_dv2dx[i][j] = x[i] * d2Ng_dv2[i][j] + d2N_dv2[i][j]
-            d3yt_du2dx[i][j] = x[i] * d2Ng_du2[i][j] + d2N_du2[i][j]
-            d3yt_dw2dx[i][j] = x[i] * d2Ng_dw2[i][j] + d2N_dw2[i][j]
+            d3yt_dv2dx[i][j] = (x[i] - b) * d2Ng_dv2[i][j] + d2N_dv2[i][j]
+            d3yt_du2dx[i][j] = (x[i] - b) * d2Ng_du2[i][j] + d2N_du2[i][j]
+            d3yt_dw2dx[i][j] = (x[i] - b) * d2Ng_dw2[i][j] + d2N_dw2[i][j]
     if debug: print('d3yt_dv2dx =', d3yt_dv2dx)
     if debug: print('d3yt_du2dx =', d3yt_du2dx)
     if debug: print('d3yt_dw2dx =', d3yt_dw2dx)
