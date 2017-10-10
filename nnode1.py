@@ -334,9 +334,9 @@ for epoch in range(maxepochs):
     df_dw = np.zeros((ntrain, nhid))
     for i in range(ntrain):
         for j in range(nhid):
-            df_dv[i][j] = x[i] * df_dyt[i] * dN_dv[i][j]
-            df_du[i][j] = x[i] * df_dyt[i] * dN_du[i][j]
-            df_dw[i][j] = x[i] * df_dyt[i] * dN_dw[i][j]
+            df_dv[i][j] = (x[i] - b) * df_dyt[i] * dN_dv[i][j]
+            df_du[i][j] = (x[i] - b) * df_dyt[i] * dN_du[i][j]
+            df_dw[i][j] = (x[i] - b) * df_dyt[i] * dN_dw[i][j]
     if debug: print('df_dv =', df_dv)
     if debug: print('df_du =', df_du)
     if debug: print('df_dw =', df_dw)
@@ -347,13 +347,13 @@ for epoch in range(maxepochs):
     d2f_dw2 = np.zeros((ntrain, nhid))
     for i in range(ntrain):
         for j in range(nhid):
-            d2f_dv2[i][j] = x[i] * (
+            d2f_dv2[i][j] = (x[i] - b) * (
                 df_dyt[i] * d2N_dv2[i][j] + d2f_dvdyt[i][j] * dN_dv[i][j]
             )
-            d2f_du2[i][j] = x[i] * (
+            d2f_du2[i][j] = (x[i] - b) * (
                 df_dyt[i] * d2N_du2[i][j] + d2f_dudyt[i][j] * dN_du[i][j]
             )
-            d2f_dw2[i][j] = x[i] * (
+            d2f_dw2[i][j] = (x[i] - b) * (
                 df_dyt[i] * d2N_dw2[i][j] + d2f_dwdyt[i][j] * dN_dw[i][j]
             )
     if debug: print('d2f_dv2 =', d2f_dv2)
