@@ -329,9 +329,14 @@ def nnode1(x, F, dF_dy, d2F_dy2, b, A,
         for i in range(ntrain):
             for j in range(nhid):
                 d2f_dv2[i][j] = (
-                    df_dyt[i] * d2yt_dv2[i][j]
+                    df_dyt[i] * d2yt_dv2[i][j] + d2f_dyt2[i] * dyt_dv[i][j]**2
                 )
-
+                d2f_du2[i][j] = (
+                    df_dyt[i] * d2yt_du2[i][j] + d2f_dyt2[i] * dyt_du[i][j]**2
+                )
+                d2f_dw2[i][j] = (
+                    df_dyt[i] * d2yt_dw2[i][j] + d2f_dyt2[i] * dyt_dw[i][j]**2
+                )
         if debug: print('d2f_dv2 =', d2f_dv2)
         if debug: print('d2f_du2 =', d2f_du2)
         if debug: print('d2f_dw2 =', d2f_dw2)
