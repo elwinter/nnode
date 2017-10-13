@@ -1,6 +1,6 @@
 from math import cos, exp, sin
 
-# x-value for boundary condition A (b = 0 means an IVP)
+# Boundary condition: y(b) = A
 b = 0
 A = 0
 
@@ -22,12 +22,3 @@ def dF_dy(x, y):
 # Define the 2nd y-partial derivative of the differential equation.
 def d2F_dy2(x, y):
     return 0
-
-# Define the trial solution for this differential equation.
-# Ref: Lagaris eq. (12), my equation (2)
-def ytrial(x, N):
-    return A + (x - b) * N
-
-# Define the first trial derivative.
-def dytrial_dx(x, N, Ng):
-    return (x - b) * Ng + N
