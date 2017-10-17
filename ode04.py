@@ -1,24 +1,24 @@
-from math import e, exp, sqrt
+from math import sin, cos, pi
 
 # Define the analytical solution.
 def ya(x):
-    return 1 + exp(-x**2 / 2)
+    return sin(x)
 
 # Define the 1st analytical derivative.
 def dya_dx(x):
-    return -x * exp(-x**2 / 2)
+    return cos(x)
 
 # Define the 2nd analytical derivative.
 def d2ya_dx2(x):
-    return (x**2 - 1) * exp(-x**2 / 2)
+    return -sin(x)
 
 # Define the differential equation.
 def F(x, y):
-    return x * (1 - y)
+    return -y
 
 # Define the y-partial derivative of the differential equation.
 def dF_dy(x, y):
-    return -x
+    return -1
 
 # Define the 2nd y-partial derivative of the differential equation.
 def d2F_dy2(x, y):
@@ -26,6 +26,6 @@ def d2F_dy2(x, y):
 
 # Boundary conditions
 xmin = 0
-xmax = 1
+xmax = 2
 ymin = ya(xmin)
 ymax = ya(xmax)
