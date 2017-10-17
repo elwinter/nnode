@@ -18,3 +18,11 @@ def d3sigma_dz3(z):
         - 6 * exp(-2 * z) / (1 + exp(-z))**3
         + exp(-z) / (1 + exp(-z))**2
     )
+
+def d4sigma_dz4(z):
+    return (
+        24 * exp(-4 * z) / (1 + exp(-z))**5 -
+        36 * exp(-3 * z) / (1 + exp(-z))**4 +
+        14 * exp(-2 * z) / (1 + exp(-z))**3 -
+             exp(    -z) / (1 + exp(-z))**2
+    )

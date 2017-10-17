@@ -24,8 +24,6 @@ default_ntrain = 10
 default_ode = 'ode00'
 default_seed = 0
 default_verbose = False
-default_xmin = 0
-default_xmax = 1
 
 # Default ranges for weights and biases
 v_min = -1
@@ -507,14 +505,10 @@ if __name__ == '__main__':
     dF_dy = odemod.dF_dy
     assert dF_dy
 
-    # dF_dy(x,y) is the analytical form of the second ODE derivative:
+    # d2F_dy2(x,y) is the analytical form of the second ODE derivative:
     # d3y/dx3 = d2F(x,y)/dy2.
     d2F_dy2 = odemod.d2F_dy2
     assert d2F_dy2
-
-    # F(x,y) is the analytical form of the ODE: dy/dx = F(x,y).
-    F = odemod.F
-    assert F
 
     # Fetch the boundary conditions, which must be at one end of the
     # range [xmin,xmax].
@@ -538,7 +532,7 @@ if __name__ == '__main__':
     # Create the training data.
 
     # Create the array of training points, excluding the boundary point.
-    if verbose: print('Computing training points and analytical values.')
+    if verbose: print('Computing training points.')
     dx = (xmax - xmin) / ntrain
     if debug: print('dx =', dx)
     x = np.arange(xmin, xmax, dx)
