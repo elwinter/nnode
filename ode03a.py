@@ -27,5 +27,5 @@ def d2F_dy2(x, y):
 # Boundary conditions
 xmin = 0
 xmax = 1
-ymin = ya(xmin)   # 2
-ymax = ya(xmax)   # 1 + 1/sqrt(e) = 1.60653...
+ymin = ya(xmin)
+dy_dx_min = dya_dx(xmin)
