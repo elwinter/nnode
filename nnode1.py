@@ -37,7 +37,7 @@ w_max = 1
 
 #********************************************************************************
 
-# The range of the trial solution is assumed to be [0, a].
+# The range of the trial solution is assumed to be [0, b].
 
 # Define the trial solution for a 1st-order ODE IVP.
 def ytrial(A, x, N):
@@ -181,7 +181,8 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
 
         #------------------------------------------------------------------------
 
-        # Compute the value of the trial solution, for each training point.
+        # Compute the value of the trial solution and its derivatives,
+        # for each training point.
         yt = np.zeros(ntrain)
         dyt_dx = np.zeros(ntrain)
         dyt_dv = np.zeros((ntrain, nhid))
@@ -227,7 +228,7 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
         if debug: print('d3yt_du2dx =', d3yt_du2dx)
         if debug: print('d3yt_dw2dx =', d3yt_dw2dx)
 
-        # Compute the value of the original 2nd derivative function
+        # Compute the value of the original 1st derivative function
         # for each training point, and its derivatives.
         f = np.zeros(ntrain)
         df_dyt = np.zeros(ntrain)
@@ -242,18 +243,19 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
             f[i] = F(x[i], yt[i])
             df_dyt[i] = dF_dy(x[i], yt[i])
             d2f_dyt2[i] = d2F_dy2(x[i], yt[i])
-            df_dv[i][j] = df_dyt[i] * dyt_dv[i][j]
-            df_du[i][j] = df_dyt[i] * dyt_du[i][j]
-            df_dw[i][j] = df_dyt[i] * dyt_dw[i][j]
-            d2f_dv2[i][j] = (
-                df_dyt[i] * d2yt_dv2[i][j] + d2f_dyt2[i] * dyt_dv[i][j]**2
-            )
-            d2f_du2[i][j] = (
-                df_dyt[i] * d2yt_du2[i][j] + d2f_dyt2[i] * dyt_du[i][j]**2
-            )
-            d2f_dw2[i][j] = (
-                df_dyt[i] * d2yt_dw2[i][j] + d2f_dyt2[i] * dyt_dw[i][j]**2
-            )
+            for j in range(nhid):
+                df_dv[i][j] = df_dyt[i] * dyt_dv[i][j]
+                df_du[i][j] = df_dyt[i] * dyt_du[i][j]
+                df_dw[i][j] = df_dyt[i] * dyt_dw[i][j]
+                d2f_dv2[i][j] = (
+                    df_dyt[i] * d2yt_dv2[i][j] + d2f_dyt2[i] * dyt_dv[i][j]**2
+                )
+                d2f_du2[i][j] = (
+                    df_dyt[i] * d2yt_du2[i][j] + d2f_dyt2[i] * dyt_du[i][j]**2
+                )
+                d2f_dw2[i][j] = (
+                    df_dyt[i] * d2yt_dw2[i][j] + d2f_dyt2[i] * dyt_dw[i][j]**2
+                )
         if debug: print('f =', f)
         if debug: print('df_dyt =', df_dyt)
         if debug: print('df_dv =', df_dv)
@@ -274,6 +276,9 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
         dE_dv = np.zeros(nhid)
         dE_du = np.zeros(nhid)
         dE_dw = np.zeros(nhid)
+        d2E_dv2 = np.zeros(nhid)
+        d2E_du2 = np.zeros(nhid)
+        d2E_dw2 = np.zeros(nhid)
         for j in range(nhid):
             for i in range(ntrain):
                 dE_dv[j] += (
@@ -285,17 +290,6 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
                 dE_dw[j] += (
                     2 * (dyt_dx[i] - f[i]) * (d2yt_dwdx[i][j] - df_dw[i][j])
                 )
-        if debug: print('dE_dv =', dE_dv)
-        if debug: print('dE_du =', dE_du)
-        if debug: print('dE_dw =', dE_dw)
-
-        # Compute the 2nd partial derivatives of the error with respect to the
-        # network parameters.
-        d2E_dv2 = np.zeros(nhid)
-        d2E_du2 = np.zeros(nhid)
-        d2E_dw2 = np.zeros(nhid)
-        for j in range(nhid):
-            for i in range(ntrain):
                 d2E_dv2[j] += 2 * (
                     (dyt_dx[i] - f[i]) * (d3yt_dv2dx[i][j] - d2f_dv2[i][j])
                     + (d2yt_dvdx[i][j] - df_dv[i][j])**2
@@ -308,6 +302,9 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
                     (dyt_dx[i] - f[i]) * (d3yt_dw2dx[i][j] - d2f_dw2[i][j])
                     + (d2yt_dwdx[i][j] - df_dw[i][j])**2
                 )
+        if debug: print('dE_dv =', dE_dv)
+        if debug: print('dE_du =', dE_du)
+        if debug: print('dE_dw =', dE_dw)
         if debug: print('d2E_dv2 =', d2E_dv2)
         if debug: print('d2E_du2 =', d2E_du2)
         if debug: print('d2E_dw2 =', d2E_dw2)
@@ -374,8 +371,7 @@ if __name__ == '__main__':
 
     # Fetch and process the arguments from the command line.
     args = parser.parse_args()
-    if args.debug:
-        print('args =', args)
+    if args.debug: print('args =', args)
 
     # Extract the processed options.
     debug = args.debug
@@ -401,8 +397,7 @@ if __name__ == '__main__':
     if verbose: print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
 
-    # Import the specified ODE module, and map its functions nd
-    # parameters to local names for convenience.
+    # Import the specified ODE module.
     odemod = importlib.import_module(ode)
     assert odemod.F
     assert odemod.dF_dy
