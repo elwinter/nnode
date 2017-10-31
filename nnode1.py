@@ -37,7 +37,7 @@ w_max = 1
 
 #********************************************************************************
 
-# The range of the trial solution is assumed to be [0, b].
+# The range of the trial solution is assumed to be [0, 1].
 
 # Define the trial solution for a 1st-order ODE IVP.
 def ytrial(A, x, N):
@@ -258,6 +258,7 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
                 )
         if debug: print('f =', f)
         if debug: print('df_dyt =', df_dyt)
+        if debug: print('d2f_dyt2 =', d2f_dyt2)
         if debug: print('df_dv =', df_dv)
         if debug: print('df_du =', df_du)
         if debug: print('df_dw =', df_dw)
@@ -343,7 +344,7 @@ if __name__ == '__main__':
 
     # Create the argument parser.
     parser = argparse.ArgumentParser(
-        description = 'Solve a 1st-order ODE with a neural net',
+        description = 'Solve a 1st-order ODE IVP with a neural net',
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
         epilog = 'Experiment with the settings to find what works.'
     )
@@ -394,11 +395,13 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Initialize the random number generator to ensure repeatable results.
-    if verbose: print('Seeding random number generator with value %d.' % seed)
+    # if verbose: print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
 
     # Import the specified ODE module.
     odemod = importlib.import_module(ode)
+    assert odemod.ya
+    assert odemod.dya_dx
     assert odemod.F
     assert odemod.dF_dy
     assert odemod.d2F_dy2
@@ -447,7 +450,7 @@ if __name__ == '__main__':
     if debug: print('mse_dy_dx =', mse_dy_dx)
 
     # Print the report.
-    print('   yt       ya      dyt_dx    dya_dx')
+    print('    x       yt       ya      dyt_dx    dya_dx')
     for i in range(ntrain):
-        print('%f %f %f %f' % (yt[i], ya[i], dyt_dx[i], dya_dx[i]))
-    print('MSE      %f            %f' % (mse_y, mse_dy_dx))
+        print('%f %f %f %f %f' % (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i]))
+    print('MSE      %f          %f' % (mse_y, mse_dy_dx))

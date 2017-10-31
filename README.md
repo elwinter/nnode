@@ -8,33 +8,35 @@ for using neural networks to solve differential equations.
 Reference: Lagaris et al, IEEE Transactions on Neural Networks 8(5),
 p. 987 (1998
 
-The main code is in nnode.py. Run 'nnode.py --help' for a description
-of usage.
+Help for all programs is available using the ih command-line option.
 
-The files named 'analytical*' are the Mathematica (.nb) and Jupyter
-(.ipynb) notebooks used for exploring the specified ODE, and to ensure
-that Python code gives the same results as Mathematica code.
+The program nnode1.py is used to solve 1st-order ODE IVP. This program
+can process ode00.py, lagaris01.py, and lagaris02.py.
 
-The files 'ode*.py' are the python modules which implement the code
-required for the respective ODEs.
+The program nnode2.py is used to solve 2nd-order ODE BVP. This program
+can process lagaris03bvp.py.
 
-The files ending in '00' are for the simple ODE used during
-development.
+The program nnode3.py is used to solve 2nd-order ODE IVP. This program
+can process lagaris03ivp.py.
 
-The files ending in '01' are for the first ODE in Lagaris et al
-(equation (27)).
-
-The files ending in '02' are for the second ODE in Lagaris et al
-(equation (28)).  )
+The files lagaris01.py, lagaris02.py define the code needed for
+problems 1 and 2 in the Lagaris et al paper. The files lagaris03bvp.py
+and lagaris03ivp.py define the BVP and IVP versions of Problem 3 in
+Lagaris et al. The file ode00.py is a simple 1st order ODE problem for
+testing nnode1.py.
 
 The file sigma.py provides code for the sigmoid transfer function and
-its derivatives. The corresponding .nb and .ipynb files are Jupter and
-Mathematica notebooks for examination of the sigmoid function, and to
-ensure the Python code gives the same results as Mathematica.
+its derivatives. The corresponding .nb and .ipynb files are Jupyter
+and Mathematica notebooks for examination of the sigmoid function, and
+to ensure the Python code gives the same results as Mathematica.
 
-The files scratch.* are for temporary work and testing (.nb for
-Mathematica, .ipynb for Jupyter).
+The file nnode1.ipynb is a detailed walkthrough of nnode1.py,
+explaining the algorithm and program options using several examples.
+
+The remaining iPython (*.ipynb) and Mathematica (*.nb) files are
+notebooks used for ensuring the Python and Mathematica code gives the
+same results.
 
 Eric Winter
 ewinter@stsci.edu
-2017-10-09
+2017-10-31

@@ -1,4 +1,6 @@
-# This ODE is the first example from the Lagaris paper.
+# This ODE is Problem 1 in Lagaris et al.
+
+# A reasonable solution can be found using nhid=40.
 
 # BC are set so that xmin is always 0, and ymin is f(0).
 
@@ -6,13 +8,12 @@ from math import exp
 
 # Define the analytical solution (verified in Mathematica).
 def ya(x):
-    return exp(-x**2 / 2) / (1 + x + x**3) + x**2
+    return x**2 + exp(-x**2 / 2) / (1 + x + x**3)
 
 # Define the 1st analytical derivative (verified in Mathematica).
 def dya_dx(x):
     return (
-        2 * x - exp(-x**2 / 2) * (1 + 3 * x**2) / (1 + x + x**3)**2
-        - exp(-x**2 / 2) * x / (1 + x + x**3)
+        2 * x - exp(-x**2 / 2) * (1 + x + 4 * x**2 + x**4) / (1 + x + x**3)**2
     )
 
 # Define the original differential equation (Lagaris eq (27)).

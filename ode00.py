@@ -1,5 +1,7 @@
 # Sample 1st-order ODE IVP
 
+# A reasonable solution can be found using default settings.
+
 # BC are set so that xmin is always 0, and ymin is f(0).
 
 from math import exp

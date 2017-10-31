@@ -1,4 +1,6 @@
-# This ODE is the second example from the Lagaris paper.
+# This ODE is Problem 2 in Lagaris et al.
+
+# A reasonable solution can be found using nhid=40.
 
 # BC are set so that xmin is always 0, and ymin is f(0).
 
