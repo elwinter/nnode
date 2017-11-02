@@ -10,9 +10,13 @@ from math import exp
 def ya(x):
     return 1 + exp(-x**2 / 2)
 
-# Define the 1st analytical derivative.
+# Define the 2nd analytical derivative.
 def dya_dx(x):
     return -x * exp(-x**2 / 2)
+
+# Define the 1st analytical derivative.
+def d2ya_dx2(x):
+    return exp(-x**2 / 2) * (x**2 - 1)
 
 # Define the original differential equation:
 def F(x, y):

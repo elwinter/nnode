@@ -16,6 +16,13 @@ def dya_dx(x):
         2 * x - exp(-x**2 / 2) * (1 + x + 4 * x**2 + x**4) / (1 + x + x**3)**2
     )
 
+def d2ya_dx2(x):
+    return (
+        2 + exp(-x**2 / 2) *
+        (1 + x * (-6 + x * (8 + x * (6 + x * (19 + x * (2 + 7 * x + x**3))))))
+        / (1 + x + x**3)**3
+    )
+
 # Define the original differential equation (Lagaris eq (27)).
 def F(x, y):
     return (

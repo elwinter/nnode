@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-# Use a neural network to solve a 2nd-order ODE IVP, with Dirichlet
-# and Neumann boundary conditions at x = 0.
+# Use a neural network to solve a 2nd-order ODE BVP, with 2 Dirichlet
+# BC, i.e. the value of the solution is specified at both ends of the
+# solution region [0,1].
 
 #********************************************************************************
 
@@ -21,8 +22,8 @@ default_debug = False
 default_eta = 0.01
 default_maxepochs = 1000
 default_nhid = 10
-default_ntrain = 10
-default_ode = 'lagaris03ivp'
+default_ntrain = 9
+default_ode = 'lagaris03bvp'
 default_seed = 0
 default_verbose = False
 
@@ -36,54 +37,52 @@ w_max = 1
 
 #********************************************************************************
 
+# The range of the trial solution is assumed to be [0, 1].
+
 # Define the trial solution for a 2nd-order ODE BVP.
-def ytrial(A, Ap, x, N):
-    return (
-        A + x * Ap + x**2 * N
-    )
+def ytrial(A, B, x, N):
+    return A * (1 - x) + B * x + x * (1 - x) * N
 
 # Define the 1st trial derivative.
-def dytrial_dx(A, Ap, x, N, dN_dx):
+def dytrial_dx(A, B, x, N, dN_dx):
     return (
-        Ap + x**2 * dN_dx + 2 * x * N
+        (B - A) + x * (1 - x) * dN_dx + (1 - 2 * x) * N
     )
 
 # Define the 2nd trial derivative.
-def d2ytrial_dx2(A, Ap, x, N, dN_dx, d2N_dx2):
+def d2ytrial_dx2(A, B, x, N, dN_dx, d2N_dx2):
     return (
-        x**2 * d2N_dx2 + 4 * x * dN_dx + 2 * N
+        x * (1 - x) * d2N_dx2 + 2 * (1 - 2 * x) * dN_dx - 2 * N
     )
 
 #********************************************************************************
 
-# Function to solve a 2nd-order ODE IVP using a single-hidden-layer
+# Function to solve a 2nd-order ODE BVP using a single-hidden-layer
 # feedforward neural network.
-def nnode3(x, F, dF_dy, d2F_dy2,
-           a, A, Ap,
-           maxepochs = default_maxepochs, eta = default_eta, nhid = default_nhid,
-           debug = default_debug, verbose = default_verbose):
+def nnode2bvp(x, F, dF_dy, d2F_dy2, A, B,
+              maxepochs = default_maxepochs, eta = default_eta,
+              nhid = default_nhid,
+              debug = default_debug, verbose = default_verbose):
 
-    print('x =', x)
-    print('F =', F)
-    print('dF_dy =', dF_dy)
-    print('d2F_dy2 =', d2F_dy2)
-    print('a =', a)
-    print('A =', A)
-    print('Ap =', Ap)
-    print('maxepochs =', maxepochs)
-    print('eta =', eta)
-    print('nhid =', nhid)
-    print('debug =', debug)
-    print('verbose =', verbose)
+    # print('x =', x)
+    # print('F =', F)
+    # print('dF_dy =', dF_dy)
+    # print('d2F_dy2 =', d2F_dy2)
+    # print('A =', A)
+    # print('B =', B)
+    # print('maxepochs =', maxepochs)
+    # print('eta =', eta)
+    # print('nhid =', nhid)
+    # print('debug =', debug)
+    # print('verbose =', verbose)
 
     # Sanity-check arguments.
     assert len(x) > 0
     assert F
     assert dF_dy
     assert d2F_dy2
-    assert a != None
     assert A != None
-    assert Ap != None
+    assert B != None
     assert maxepochs > 0
     assert eta > 0
     assert nhid > 0
@@ -201,8 +200,8 @@ def nnode3(x, F, dF_dy, d2F_dy2,
                     ) + 2 * v[j] * (x[i] * w[j] * s3[i][j] + s2[i][j])
                 )
         if debug: print('N =', N)
-        if debug: print('dN_dx =', d2N_dx2)
-        if debug: print('dN_dx =', d2N_dx2)
+        if debug: print('dN_dx =', dN_dx)
+        if debug: print('d2N_dx2 =', d2N_dx2)
         if debug: print('dN_dv =', dN_dv)
         if debug: print('dN_du =', dN_du)
         if debug: print('dN_dw =', dN_dw)
@@ -224,7 +223,7 @@ def nnode3(x, F, dF_dy, d2F_dy2,
 
         #------------------------------------------------------------------------
 
-        # Compute the value of the trial solution and its derivatives
+        # Compute the value of the trial solution and its derivatives,
         # for each training point.
         yt = np.zeros(ntrain)
         dyt_dx = np.zeros(ntrain)
@@ -248,57 +247,66 @@ def nnode3(x, F, dF_dy, d2F_dy2,
         d4yt_du2dx2 = np.zeros((ntrain, nhid))
         d4yt_dw2dx2 = np.zeros((ntrain, nhid))
         for i in range(ntrain):
-            yt[i] = ytrial(A, Ap, x[i], N[i])
-            dyt_dx[i] = dytrial_dx(A, Ap, x[i], N[i], dN_dx[i])
-            d2yt_dx2[i] = d2ytrial_dx2(A, Ap, x[i], N[i], dN_dx[i], d2N_dx2[i])
+            yt[i] = ytrial(A, B, x[i], N[i])
+            dyt_dx[i] = dytrial_dx(A, B, x[i], N[i], dN_dx[i])
+            d2yt_dx2[i] = d2ytrial_dx2(A, B, x[i], N[i], dN_dx[i], d2N_dx2[i])
             for j in range(nhid):
-                dyt_dv[i][j] = x[i]**2 * dN_dv[i][j]
-                dyt_du[i][j] = x[i]**2 * dN_du[i][j]
-                dyt_dw[i][j] = x[i]**2 * dN_dw[i][j]
-                d2yt_dv2[i][j] = x[i]**2 * d2N_dv2[i][j]
-                d2yt_du2[i][j] = x[i]**2 * d2N_du2[i][j]
-                d2yt_dw2[i][j] = x[i]**2 * d2N_dw2[i][j]
+                dyt_dv[i][j] = x[i] * (1 - x[i]) * dN_dv[i][j]
+                dyt_du[i][j] = x[i] * (1 - x[i]) * dN_du[i][j]
+                dyt_dw[i][j] = x[i] * (1 - x[i]) * dN_dw[i][j]
+                d2yt_dv2[i][j] = x[i]  * (1 - x[i]) * d2N_dv2[i][j]
+                d2yt_du2[i][j] = x[i]  * (1 - x[i]) * d2N_du2[i][j]
+                d2yt_dw2[i][j] = x[i]  * (1 - x[i]) * d2N_dw2[i][j]
                 d2yt_dvdx[i][j] = (
-                    x[i]**2 * d2N_dvdx[i][j] + 2 * x[i] * dN_dv[i][j]
+                    x[i] * (1 - x[i]) * d2N_dvdx[i][j]
+                    + (1 - 2 * x[i]) * dN_dv[i][j]
                 )
                 d2yt_dudx[i][j] = (
-                    x[i]**2 * d2N_dudx[i][j] + 2 * x[i] * dN_du[i][j]
+                    x[i] * (1 - x[i]) * d2N_dudx[i][j]
+                    + (1 - 2 * x[i]) * dN_du[i][j]
                 )
                 d2yt_dwdx[i][j] = (
-                    x[i]**2 * d2N_dwdx[i][j] + 2 * x[i] * dN_dw[i][j]
+                    x[i] * (1 - x[i]) * d2N_dwdx[i][j]
+                    + (1 - 2 * x[i]) * dN_dw[i][j]
                 )
                 d3yt_dv2dx[i][j] = (
-                    x[i]**2 * d3N_dv2dx[i][j] + 2 * x[i] * d2N_dv2[i][j]
+                    x[i] * (1 - x[i]) * d3N_dv2dx[i][j]
+                    + (1 - 2 * x[i]) * d2N_dv2[i][j]
                 )
                 d3yt_du2dx[i][j] = (
-                    x[i]**2 * d3N_du2dx[i][j] + 2 * x[i] * d2N_du2[i][j]
+                    x[i] * (1 - x[i]) * d3N_du2dx[i][j]
+                    + (1 - 2 * x[i]) * d2N_du2[i][j]
                 )
                 d3yt_dw2dx[i][j] = (
-                    x[i]**2 * d3N_dw2dx[i][j] + 2 * x[i] * d2N_dw2[i][j]
+                    x[i] * (1 - x[i]) * d3N_dw2dx[i][j]
+                    + (1 - 2 * x[i]) * d2N_dw2[i][j]
                 )
                 d3yt_dvdx2[i][j] = (
-                    x[i]**2 * d3N_dvdx2[i][j] + 4 * x[i] * d2N_dvdx[i][j] +
-                    2  * dN_dv[i][j]
+                    x[i] * (1 - x[i]) * d3N_dvdx2[i][j] +
+                    2 * (1  - 2 * x[i]) * d2N_dvdx[i][j] - 2 * dN_dv[i][j]
                 )
                 d3yt_dudx2[i][j] = (
-                    x[i]**2 * d3N_dudx2[i][j] + 4 * x[i] * d2N_dudx[i][j] +
-                    2 * dN_du[i][j]
+                    x[i] * (1 - x[i]) * d3N_dudx2[i][j] +
+                    2 * (1  - 2 * x[i]) * d2N_dudx[i][j] - 2 * dN_du[i][j]
                 )
                 d3yt_dwdx2[i][j] = (
-                    x[i]**2 * d3N_dwdx2[i][j] + 4 * x[i] * d2N_dwdx[i][j] +
-                    2 * dN_dw[i][j]
+                    x[i] * (1 - x[i]) * d3N_dwdx2[i][j] +
+                    2 * (1  - 2 * x[i]) * d2N_dwdx[i][j] - 2 * dN_dw[i][j]
                 )
                 d4yt_dv2dx2[i][j] = (
-                    x[i]**2 * d4N_dv2dx2[i][j] + 4 * x[i] * d3N_dv2dx[i][j] +
-                    2 * d2N_dv2[i][j]
+                    x[i] * (1 - x[i]) * d4N_dv2dx2[i][j]
+                    + 2 * (1 - x[i]) * d3N_dv2dx[i][j]
+                    - 2 * d2N_dv2[i][j]
                 )
                 d4yt_du2dx2[i][j] = (
-                    x[i]**2 * d4N_du2dx2[i][j] + 4 * x[i] * d3N_du2dx[i][j] +
-                    2 * d2N_du2[i][j]
+                    x[i] * (1 - x[i]) * d4N_du2dx2[i][j]
+                    + 2 * (1 - x[i]) * d3N_du2dx[i][j]
+                    - 2 * d2N_du2[i][j]
                 )
                 d4yt_dw2dx2[i][j] = (
-                    x[i]**2 * d4N_dw2dx2[i][j] + 4 * x[i] * d3N_dw2dx[i][j] +
-                    2 * d2N_dw2[i][j]
+                    x[i] * (1 - x[i]) * d4N_dw2dx2[i][j]
+                    + 2 * (1 - x[i]) * d3N_dw2dx[i][j]
+                    - 2 * d2N_dw2[i][j]
                 )
         if debug: print('yt =', yt)
         if debug: print('dyt_dx =', dyt_dx)
@@ -366,8 +374,8 @@ def nnode3(x, F, dF_dy, d2F_dy2,
             E += (d2yt_dx2[i] - f[i])**2
         if debug: print('E =', E)
 
-        # Compute the 1st and 2nd partial derivatives of the error
-        # with respect to the network parameters.
+        # Compute the partial derivatives of the error with respect to
+        # the network parameters.
         dE_dv = np.zeros(nhid)
         dE_du = np.zeros(nhid)
         dE_dw = np.zeros(nhid)
@@ -439,7 +447,7 @@ if __name__ == '__main__':
     # Create the argument parser.
     parser = argparse.ArgumentParser(
         description =
-        'Solve a 2nd-order ODE IVP with a neural net',
+        'Solve a 2nd-order ODE with Dirichlet BC with a neural net',
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
         epilog = 'Experiment with the settings to find what works.'
     )
@@ -490,62 +498,57 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Initialize the random number generator to ensure repeatable results.
-    # if verbose: print('Seeding random number generator with value %d.' % seed)
+    if verbose: print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
-
-    #----------------------------------------------------------------------------
 
     # Import the specified ODE module.
     odemod = importlib.import_module(ode)
+    assert odemod.ya
+    assert odemod.dya_dx
+    assert odemod.d2ya_dx2
     assert odemod.F
     assert odemod.dF_dy
     assert odemod.d2F_dy2
-
-    # Fetch the boundary conditions, which must be valid at both ends
-    # of the domain [xmin,xmax].
-    assert odemod.xmin < odemod.xmax
-
-    #----------------------------------------------------------------------------
+    assert odemod.xmax > 0
+    assert odemod.ymin != None
+    assert odemod.ymax != None
 
     # Create the array of evenly-spaced training points, excluding the
-    # boundary point.
+    # boundary points.
     if verbose: print('Computing training points.')
-    dx = (odemod.xmax - odemod.xmin) / ntrain
+    dx = (odemod.xmax - odemod.xmin) / (ntrain + 1)
     if debug: print('dx =', dx)
-    x = np.arange(odemod.xmin + dx, odemod.xmax + dx, dx)
-    if debug: print('x =', x)
+    xt = np.arange(odemod.xmin + dx, odemod.xmax, dx)
+    if debug: print('xt =', xt)
 
     #----------------------------------------------------------------------------
 
-    # Compute the solution using the neural network.
+    # Compute the 2nd-order ODE solution using the neural network.
     (yt, dyt_dx, d2yt_dx2) = (
-        nnode3(x, odemod.F, odemod.dF_dy, odemod.d2F_dy2,
-               odemod.xmin, odemod.ymin, odemod.dy_dx_min,
-               maxepochs = maxepochs, eta = eta, nhid = nhid,
-               debug = debug, verbose = verbose)
+        nnode2bvp(xt, odemod.F, odemod.dF_dy, odemod.d2F_dy2,
+                  odemod.ymin, odemod.ymax,
+                  maxepochs = maxepochs, eta = eta, nhid = nhid,
+                  debug = debug, verbose = verbose)
     )
 
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    assert odemod.ya
     ya = np.zeros(ntrain)
     for i in range(ntrain):
-        ya[i] = odemod.ya(x[i])
+        ya[i] = odemod.ya(xt[i])
     if debug: print('ya =', ya)
 
     # Compute the 1st analytical derivative at the training points.
-    assert odemod.dya_dx
     dya_dx = np.zeros(ntrain)
     for i in range(ntrain):
-        dya_dx[i] = odemod.dya_dx(x[i])
+        dya_dx[i] = odemod.dya_dx(xt[i])
     if debug: print('dya_dx =', dya_dx)
 
     # Compute the 2nd analytical derivative at the training points.
-    assert odemod.d2ya_dx2
     d2ya_dx2 = np.zeros(ntrain)
     for i in range(ntrain):
-        d2ya_dx2[i] = odemod.d2ya_dx2(x[i])
+        d2ya_dx2[i] = odemod.d2ya_dx2(xt[i])
     if debug: print('d2ya_dx2 =', d2ya_dx2)
 
     # Compute the MSE of the trial solution.
@@ -570,7 +573,7 @@ if __name__ == '__main__':
     print('    x       yt       ya      dyt_dx    dya_dx   d2yt_dx2  d2ya_dx2')
     for i in range(ntrain):
         print('%f %f %f %f %f %f %f' %
-              (x[i], yt[i], ya[i], dyt_dx[i], dya_dx[i],
+              (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i],
                d2ya_dx2[i], d2yt_dx2[i])
         )
     print('MSE      %f           %f            %f' %

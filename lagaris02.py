@@ -14,6 +14,12 @@ def ya(x):
 def dya_dx(x):
     return 1 / 5 * exp(-x / 5) * (5 * cos(x) - sin(x))
 
+# Define the 2nd analytical derivative.
+def d2ya_dx2(x):
+    return (
+        -2 / 25 * exp(-x / 5) * (5 * cos(x) + 12 * sin(x))
+    )
+
 # Define the original differential equation (Lagaris eq (28)).
 def F(x, y):
     return exp(-x / 5) * cos(x) - y / 5
