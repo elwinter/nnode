@@ -407,12 +407,11 @@ if __name__ == '__main__':
     assert odemod.d2F_dy2
     assert odemod.ymin != None
 
-    # Create the array of evenly-spaced training points, excluding the
-    # initial point.
+    # Create the array of evenly-spaced training points.
     if verbose: print('Computing training points.')
-    dx = (odemod.xmax - odemod.xmin) / ntrain
+    dx = (odemod.xmax - odemod.xmin) / (ntrain - 1)
     if debug: print('dx =', dx)
-    xt = np.arange(odemod.xmin, odemod.xmax, dx) + dx
+    xt = [odemod.xmin + i * dx for i in range(ntrain)]
     if debug: print('xt =', xt)
 
     #----------------------------------------------------------------------------
@@ -450,7 +449,7 @@ if __name__ == '__main__':
     if debug: print('mse_dy_dx =', mse_dy_dx)
 
     # Print the report.
-    print('    x       yt       ya      dyt_dx    dya_dx')
+    print('    xt       yt       ya      dyt_dx    dya_dx')
     for i in range(ntrain):
         print('%f %f %f %f %f' % (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i]))
     print('MSE      %f          %f' % (mse_y, mse_dy_dx))

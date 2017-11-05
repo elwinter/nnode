@@ -508,16 +508,16 @@ if __name__ == '__main__':
     # Create the array of evenly-spaced training points, excluding the
     # boundary point.
     if verbose: print('Computing training points.')
-    dx = (odemod.xmax - odemod.xmin) / ntrain
+    dx = (odemod.xmax - odemod.xmin) / (ntrain - 1)
     if debug: print('dx =', dx)
-    x = np.arange(odemod.xmin + dx, odemod.xmax + dx, dx)
-    if debug: print('x =', x)
+    xt = [odemod.xmin + i * dx for i in range(ntrain)]
+    if debug: print('xt =', xt)
 
     #----------------------------------------------------------------------------
 
     # Compute the solution using the neural network.
     (yt, dyt_dx, d2yt_dx2) = (
-        nnode2ivp(x, odemod.F, odemod.dF_dy, odemod.d2F_dy2,
+        nnode2ivp(xt, odemod.F, odemod.dF_dy, odemod.d2F_dy2,
                   odemod.ymin, odemod.dy_dx_min,
                   maxepochs = maxepochs, eta = eta, nhid = nhid,
                   debug = debug, verbose = verbose)
@@ -529,21 +529,21 @@ if __name__ == '__main__':
     assert odemod.ya
     ya = np.zeros(ntrain)
     for i in range(ntrain):
-        ya[i] = odemod.ya(x[i])
+        ya[i] = odemod.ya(xt[i])
     if debug: print('ya =', ya)
 
     # Compute the 1st analytical derivative at the training points.
     assert odemod.dya_dx
     dya_dx = np.zeros(ntrain)
     for i in range(ntrain):
-        dya_dx[i] = odemod.dya_dx(x[i])
+        dya_dx[i] = odemod.dya_dx(xt[i])
     if debug: print('dya_dx =', dya_dx)
 
     # Compute the 2nd analytical derivative at the training points.
     assert odemod.d2ya_dx2
     d2ya_dx2 = np.zeros(ntrain)
     for i in range(ntrain):
-        d2ya_dx2[i] = odemod.d2ya_dx2(x[i])
+        d2ya_dx2[i] = odemod.d2ya_dx2(xt[i])
     if debug: print('d2ya_dx2 =', d2ya_dx2)
 
     # Compute the MSE of the trial solution.
@@ -565,10 +565,10 @@ if __name__ == '__main__':
     if debug: print('mse_d2y_dx2 =', mse_d2y_dx2)
 
     # Print the report.
-    print('    x       yt       ya      dyt_dx    dya_dx   d2yt_dx2  d2ya_dx2')
+    print('    xt       yt       ya      dyt_dx    dya_dx   d2yt_dx2  d2ya_dx2')
     for i in range(ntrain):
         print('%f %f %f %f %f %f %f' %
-              (x[i], yt[i], ya[i], dyt_dx[i], dya_dx[i],
+              (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i],
                d2ya_dx2[i], d2yt_dx2[i])
         )
     print('MSE      %f           %f            %f' %

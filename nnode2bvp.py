@@ -22,7 +22,7 @@ default_debug = False
 default_eta = 0.01
 default_maxepochs = 1000
 default_nhid = 10
-default_ntrain = 9
+default_ntrain = 10
 default_ode = 'lagaris03bvp'
 default_seed = 0
 default_verbose = False
@@ -516,9 +516,9 @@ if __name__ == '__main__':
     # Create the array of evenly-spaced training points, excluding the
     # boundary points.
     if verbose: print('Computing training points.')
-    dx = (odemod.xmax - odemod.xmin) / (ntrain + 1)
+    dx = (odemod.xmax - odemod.xmin) / (ntrain - 1)
     if debug: print('dx =', dx)
-    xt = np.arange(odemod.xmin + dx, odemod.xmax, dx)
+    xt = [odemod.xmin + i * dx for i in range(ntrain)]
     if debug: print('xt =', xt)
 
     #----------------------------------------------------------------------------
@@ -570,7 +570,7 @@ if __name__ == '__main__':
     if debug: print('mse_d2y_dx2 =', mse_d2y_dx2)
 
     # Print the report.
-    print('    x       yt       ya      dyt_dx    dya_dx   d2yt_dx2  d2ya_dx2')
+    print('    xt       yt       ya      dyt_dx    dya_dx   d2yt_dx2  d2ya_dx2')
     for i in range(ntrain):
         print('%f %f %f %f %f %f %f' %
               (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i],
