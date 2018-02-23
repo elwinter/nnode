@@ -194,171 +194,171 @@ def nnpde1(x,
 
         # Compute the input, the sigmoid function and its derivatives,
         # for each hidden node.
-        z = np.zeros((ntrain, nhid))
-        s = np.zeros((ntrain, nhid))
-        s1 = np.zeros((ntrain, nhid))
-        s2 = np.zeros((ntrain, nhid))
-        s3 = np.zeros((ntrain, nhid))
-        for i in range(ntrain):
-            for k in range(nhid):
-                z[i][k] = u[k]
-                for j in range(ndim):
-                    z[i][k] += w[j][k] * x[i][j]
-                    s[i][k] = sigma(z[i][k])
-                    s1[i][k] = dsigma_dz(z[i][k])
-                    s2[i][k] = d2sigma_dz2(z[i][k])
-                    s3[i][k] = d3sigma_dz3(z[i][k])
-        if debug: print('z =', z)
-        if debug: print('s =', s)
-        if debug: print('s1 =', s1)
-        if debug: print('s2 =', s2)
-        if debug: print('s3 =', s3)
+        # z = np.zeros((ntrain, nhid))
+        # s = np.zeros((ntrain, nhid))
+        # s1 = np.zeros((ntrain, nhid))
+        # s2 = np.zeros((ntrain, nhid))
+        # s3 = np.zeros((ntrain, nhid))
+        # for i in range(ntrain):
+        #     for k in range(nhid):
+        #         z[i][k] = u[k]
+        #         for j in range(ndim):
+        #             z[i][k] += w[j][k] * x[i][j]
+        #             s[i][k] = sigma(z[i][k])
+        #             s1[i][k] = dsigma_dz(z[i][k])
+        #             s2[i][k] = d2sigma_dz2(z[i][k])
+        #             s3[i][k] = d3sigma_dz3(z[i][k])
+        # if debug: print('z =', z)
+        # if debug: print('s =', s)
+        # if debug: print('s1 =', s1)
+        # if debug: print('s2 =', s2)
+        # if debug: print('s3 =', s3)
 
         # Compute the network output and its derivatives, for each
         # training point.
-        N = np.zeros(ntrain)
-        dN_dx = np.zeros((ntrain, ndim))
-        d2N_dx2 = np.zeros((ntrain, ndim))
-        dN_dv = np.zeros((ntrain, nhid))
-        dN_du = np.zeros((ntrain, nhid))
-        dN_dw = np.zeros((ntrain, ndim, nhid))
-        d2N_dv2 = np.zeros((ntrain, nhid))
-        d2N_du2 = np.zeros((ntrain, nhid))
-        d2N_dw2 = np.zeros((ntrain, ndim, nhid))
-        d2N_dvdx = np.zeros((ntrain, ndim, nhid))
-        d2N_dudx = np.zeros((ntrain, ndim, nhid))
-        d2N_dwdx = np.zeros((ntrain, ndim, nhid))
-        d3N_dv2dx = np.zeros((ntrain, ndim, nhid))
-        d3N_du2dx = np.zeros((ntrain, ndim, nhid))
-        d3N_dw2dx = np.zeros((ntrain, ndim, nhid))
-        for i in range(ntrain):
-            for k in range(nhid):
-                N[i] += v[k] * s[i][k]
-                dN_dv[i][k] = s[i][k]
-                dN_du[i][k] = v[k] * s1[i][k]
-                # d2N_dv2[i][k] = 0
-                d2N_du2[i][k] = v[k] * s2[i][k]
-                for j in range(ndim):
-                    dN_dx[i][j] += v[k] * s1[i][k] * w[j][k]
-                    d2N_dx2[i][j] += v[k] * s2[i][k] * w[j][k]**2
-                    dN_dw[i][j][k] = v[k] * s1[i][k] * x[i][j]
-                    d2N_dw2[i][j][k] = v[k] * s2[i][k] * x[i][j]**2
-                    d2N_dvdx[i][j][k] = s1[i][k] * w[j][k]
-                    d2N_dudx[i][j][k] = v[k] * s2[i][k] * w[j][k]
-                    d2N_dwdx[i][j][k] = (
-                        v[k] * s1[i][k] + v[k] * s2[i][k] * w[j][k] * x[i][j]
-                    )
-                    # d3N_dv2dx[i][j][k] = 0
-                    d3N_du2dx[i][j][k] = v[k] * s3[i][k] * w[j][k]
-                    d3N_dw2dx[i][j][k] = (
-                        2 * v[k] * s2[i][k] * x[i][j] +
-                        v[k] * s3[i][k] * w[j][k] * x[i][j]**2
-                    )
-        if debug: print('N =', N)
-        if debug: print('dN_dx =', dN_dx)
-        if debug: print('d2N_dx2 =', d2N_dx2)
-        if debug: print('dN_dv =', dN_dv)
-        if debug: print('dN_du =', dN_du)
-        if debug: print('dN_dw =', dN_dw)
-        if debug: print('d2N_dv2 =', d2N_dv2)
-        if debug: print('d2N_du2 =', d2N_du2)
-        if debug: print('d2N_dw2 =', d2N_dw2)
-        if debug: print('d2N_dvdx =', d2N_dvdx)
-        if debug: print('d2N_dudx =', d2N_dudx)
-        if debug: print('d2N_dwdx =', d2N_dwdx)
-        if debug: print('d3N_dv2dx =', d3N_dv2dx)
-        if debug: print('d3N_du2dx =', d3N_du2dx)
-        if debug: print('d3N_dw2dx =', d3N_dw2dx)
+        # N = np.zeros(ntrain)
+        # dN_dx = np.zeros((ntrain, ndim))
+        # d2N_dx2 = np.zeros((ntrain, ndim))
+        # dN_dv = np.zeros((ntrain, nhid))
+        # dN_du = np.zeros((ntrain, nhid))
+        # dN_dw = np.zeros((ntrain, ndim, nhid))
+        # d2N_dv2 = np.zeros((ntrain, nhid))
+        # d2N_du2 = np.zeros((ntrain, nhid))
+        # d2N_dw2 = np.zeros((ntrain, ndim, nhid))
+        # d2N_dvdx = np.zeros((ntrain, ndim, nhid))
+        # d2N_dudx = np.zeros((ntrain, ndim, nhid))
+        # d2N_dwdx = np.zeros((ntrain, ndim, nhid))
+        # d3N_dv2dx = np.zeros((ntrain, ndim, nhid))
+        # d3N_du2dx = np.zeros((ntrain, ndim, nhid))
+        # d3N_dw2dx = np.zeros((ntrain, ndim, nhid))
+        # for i in range(ntrain):
+        #     for k in range(nhid):
+        #         N[i] += v[k] * s[i][k]
+        #         dN_dv[i][k] = s[i][k]
+        #         dN_du[i][k] = v[k] * s1[i][k]
+        #         # d2N_dv2[i][k] = 0
+        #         d2N_du2[i][k] = v[k] * s2[i][k]
+        #         for j in range(ndim):
+        #             dN_dx[i][j] += v[k] * s1[i][k] * w[j][k]
+        #             d2N_dx2[i][j] += v[k] * s2[i][k] * w[j][k]**2
+        #             dN_dw[i][j][k] = v[k] * s1[i][k] * x[i][j]
+        #             d2N_dw2[i][j][k] = v[k] * s2[i][k] * x[i][j]**2
+        #             d2N_dvdx[i][j][k] = s1[i][k] * w[j][k]
+        #             d2N_dudx[i][j][k] = v[k] * s2[i][k] * w[j][k]
+        #             d2N_dwdx[i][j][k] = (
+        #                 v[k] * (s1[i][k] + s2[i][k] * w[j][k] * x[i][j])
+        #             )
+        #             # d3N_dv2dx[i][j][k] = 0
+        #             d3N_du2dx[i][j][k] = v[k] * s3[i][k] * w[j][k]
+        #             d3N_dw2dx[i][j][k] = (
+        #                 2 * v[k] * s2[i][k] * x[i][j] +
+        #                 v[k] * s3[i][k] * w[j][k] * x[i][j]**2
+        #             )
+        # if debug: print('N =', N)
+        # if debug: print('dN_dx =', dN_dx)
+        # if debug: print('d2N_dx2 =', d2N_dx2)
+        # if debug: print('dN_dv =', dN_dv)
+        # if debug: print('dN_du =', dN_du)
+        # if debug: print('dN_dw =', dN_dw)
+        # if debug: print('d2N_dv2 =', d2N_dv2)
+        # if debug: print('d2N_du2 =', d2N_du2)
+        # if debug: print('d2N_dw2 =', d2N_dw2)
+        # if debug: print('d2N_dvdx =', d2N_dvdx)
+        # if debug: print('d2N_dudx =', d2N_dudx)
+        # if debug: print('d2N_dwdx =', d2N_dwdx)
+        # if debug: print('d3N_dv2dx =', d3N_dv2dx)
+        # if debug: print('d3N_du2dx =', d3N_du2dx)
+        # if debug: print('d3N_dw2dx =', d3N_dw2dx)
 
         #------------------------------------------------------------------------
 
         # Compute the value of the trial solution and its derivatives,
         # for each training point.
-        A = np.zeros(ntrain)
-        dA_dx = np.zeros((ntrain, ndim))
-        d2A_dx2 = np.zeros((ntrain, ndim))
-        P = np.zeros(ntrain)
-        dP_dx = np.zeros((ntrain, ndim))
-        d2P_dx2 = np.zeros((ntrain, ndim))
-        psit = np.zeros(ntrain)
-        dpsit_dx = np.zeros((ntrain, ndim))
-        d2psit_dx2 = np.zeros((ntrain, ndim))
-        dpsit_dv = np.zeros((ntrain, nhid))
-        dpsit_du = np.zeros((ntrain, nhid))
-        dpsit_dw = np.zeros((ntrain, ndim, nhid))
-        d2psit_dv2 = np.zeros((ntrain, nhid))
-        d2psit_du2 = np.zeros((ntrain, nhid))
-        d2psit_dw2 = np.zeros((ntrain, ndim, nhid))
-        d2psit_dvdx = np.zeros((ntrain, ndim, nhid))
-        d2psit_dudx = np.zeros((ntrain, ndim, nhid))
-        d2psit_dwdx = np.zeros((ntrain, ndim, nhid))
-        d3psit_dv2dx = np.zeros((ntrain, ndim, nhid))
-        d3psit_du2dx = np.zeros((ntrain, ndim, nhid))
-        d3psit_dw2dx = np.zeros((ntrain, ndim, nhid))
-        for i in range(ntrain):
-            A[i] = fA(x[i], bc)
-            P[i] = fP(x[i])
-            psit[i] = psitrial(A[i], P[i], N[i])
-            for j in range(ndim):
-                dA_dx[i][j] = dfA_dx[j](x[i], bc, bcd)
-                d2A_dx2[i][j] = d2fA_dx2[j](x[i], bc, bcd, bcdd)
-                dP_dx[i][j] = dfP_dx[j](x[i])
-                d2P_dx2[i][j] = d2fP_dx2[j](x[i])
-                dpsit_dx[i][j] = (
-                    dA_dx[i][j] + P[i] * dN_dx[i][j] + dP_dx[i][j] * N[i]
-                )
-                d2psit_dx2[i][j] = (
-                    d2A_dx2[i][j] + P[i] * d2N_dx2[i][j] +
-                    2 * dP_dx[i][j] * dN_dx[i][j] + d2P_dx2[i][j] * N[i]
-                )
-            for k in range(nhid):
-                dpsit_dv[i][k] = P[i] * dN_dv[i][k]
-                dpsit_du[i][k] = P[i] * dN_du[i][k]
-                d2psit_dv2[i][k] = P[i] * d2N_dv2[i][k]
-                d2psit_du2[i][k] = P[i] * d2N_du2[i][k]
-                for j in range(ndim):
-                    dpsit_dw[i][j][k] = P[i] * dN_dw[i][j][k]
-                    d2psit_dw2[i][j][k] = P[i] * d2N_dw2[i][j][k]
-                    d2psit_dvdx[i][j][k] = (
-                        P[i] * d2N_dvdx[i][j][k] + dP_dx[i][j] * dN_dv[i][k]
-                    )
-                    d2psit_dudx[i][j][k] = (
-                        P[i] * d2N_dudx[i][j][k] + dP_dx[i][j] * dN_du[i][k]
-                    )
-                    d2psit_dwdx[i][j][k] = (
-                        P[i] * d2N_dwdx[i][j][k] + dP_dx[i][j] * dN_dw[i][j][k]
-                    )
-                    d3psit_dv2dx[i][j][k] = (
-                        P[i] * d3N_dv2dx[i][j][k] + dP_dx[i][j] * d2N_dv2[i][k]
-                    )
-                    d3psit_du2dx[i][j][k] = (
-                        P[i] * d3N_du2dx[i][j][k] + dP_dx[i][j] * d2N_du2[i][k]
-                    )
-                    d3psit_dw2dx[i][j][k] = (
-                        P[i] * d3N_dw2dx[i][j][k] +
-                        dP_dx[i][j] * d2N_dw2[i][j][k]
-                    )
-        if debug: print('A =', A)
-        if debug: print('dA_dx =', dA_dx)
-        if debug: print('d2A_dx2 =', d2A_dx2)
-        if debug: print('P =', P)
-        if debug: print('dP_dx =', dP_dx)
-        if debug: print('d2P_dx2 =', d2P_dx2)
-        if debug: print('psit =', psit)
-        if debug: print('dpsit_dx =', dpsit_dx)
-        if debug: print('d2psit_dx2 =', d2psit_dx2)
-        if debug: print('dpsit_dv =', dpsit_dv)
-        if debug: print('dpsit_du =', dpsit_du)
-        if debug: print('dpsit_dw =', dpsit_dw)
-        if debug: print('d2psit_dv2 =', d2psit_dv2)
-        if debug: print('d2psit_du2 =', d2psit_du2)
-        if debug: print('d2psit_dw2 =', d2psit_dw2)
-        if debug: print('d2psit_dvdx =', d2psit_dvdx)
-        if debug: print('d2psit_dudx =', d2psit_dudx)
-        if debug: print('d2psit_dwdx =', d2psit_dwdx)
-        if debug: print('d3psit_dv2dx =', d3psit_dv2dx)
-        if debug: print('d3psit_du2dx =', d3psit_du2dx)
-        if debug: print('d3psit_dw2dx =', d3psit_dw2dx)
+        # A = np.zeros(ntrain)
+        # dA_dx = np.zeros((ntrain, ndim))
+        # d2A_dx2 = np.zeros((ntrain, ndim))
+        # P = np.zeros(ntrain)
+        # dP_dx = np.zeros((ntrain, ndim))
+        # d2P_dx2 = np.zeros((ntrain, ndim))
+        # psit = np.zeros(ntrain)
+        # dpsit_dx = np.zeros((ntrain, ndim))
+        # d2psit_dx2 = np.zeros((ntrain, ndim))
+        # dpsit_dv = np.zeros((ntrain, nhid))
+        # dpsit_du = np.zeros((ntrain, nhid))
+        # dpsit_dw = np.zeros((ntrain, ndim, nhid))
+        # d2psit_dv2 = np.zeros((ntrain, nhid))
+        # d2psit_du2 = np.zeros((ntrain, nhid))
+        # d2psit_dw2 = np.zeros((ntrain, ndim, nhid))
+        # d2psit_dvdx = np.zeros((ntrain, ndim, nhid))
+        # d2psit_dudx = np.zeros((ntrain, ndim, nhid))
+        # d2psit_dwdx = np.zeros((ntrain, ndim, nhid))
+        # d3psit_dv2dx = np.zeros((ntrain, ndim, nhid))
+        # d3psit_du2dx = np.zeros((ntrain, ndim, nhid))
+        # d3psit_dw2dx = np.zeros((ntrain, ndim, nhid))
+        # for i in range(ntrain):
+        #     A[i] = fA(x[i], bc)
+        #     P[i] = fP(x[i])
+        #     psit[i] = psitrial(A[i], P[i], N[i])
+        #     for j in range(ndim):
+        #         dA_dx[i][j] = dfA_dx[j](x[i], bc, bcd)
+        #         d2A_dx2[i][j] = d2fA_dx2[j](x[i], bc, bcd, bcdd)
+        #         dP_dx[i][j] = dfP_dx[j](x[i])
+        #         d2P_dx2[i][j] = d2fP_dx2[j](x[i])
+        #         dpsit_dx[i][j] = (
+        #             dA_dx[i][j] + P[i] * dN_dx[i][j] + dP_dx[i][j] * N[i]
+        #         )
+        #         d2psit_dx2[i][j] = (
+        #             d2A_dx2[i][j] + P[i] * d2N_dx2[i][j] +
+        #             2 * dP_dx[i][j] * dN_dx[i][j] + d2P_dx2[i][j] * N[i]
+        #         )
+        #     for k in range(nhid):
+        #         dpsit_dv[i][k] = P[i] * dN_dv[i][k]
+        #         dpsit_du[i][k] = P[i] * dN_du[i][k]
+        #         d2psit_dv2[i][k] = P[i] * d2N_dv2[i][k]
+        #         d2psit_du2[i][k] = P[i] * d2N_du2[i][k]
+        #         for j in range(ndim):
+        #             dpsit_dw[i][j][k] = P[i] * dN_dw[i][j][k]
+        #             d2psit_dw2[i][j][k] = P[i] * d2N_dw2[i][j][k]
+        #             d2psit_dvdx[i][j][k] = (
+        #                 P[i] * d2N_dvdx[i][j][k] + dP_dx[i][j] * dN_dv[i][k]
+        #             )
+        #             d2psit_dudx[i][j][k] = (
+        #                 P[i] * d2N_dudx[i][j][k] + dP_dx[i][j] * dN_du[i][k]
+        #             )
+        #             d2psit_dwdx[i][j][k] = (
+        #                 P[i] * d2N_dwdx[i][j][k] + dP_dx[i][j] * dN_dw[i][j][k]
+        #             )
+        #             d3psit_dv2dx[i][j][k] = (
+        #                 P[i] * d3N_dv2dx[i][j][k] + dP_dx[i][j] * d2N_dv2[i][k]
+        #             )
+        #             d3psit_du2dx[i][j][k] = (
+        #                 P[i] * d3N_du2dx[i][j][k] + dP_dx[i][j] * d2N_du2[i][k]
+        #             )
+        #             d3psit_dw2dx[i][j][k] = (
+        #                 P[i] * d3N_dw2dx[i][j][k] +
+        #                 dP_dx[i][j] * d2N_dw2[i][j][k]
+        #             )
+        # if debug: print('A =', A)
+        # if debug: print('dA_dx =', dA_dx)
+        # if debug: print('d2A_dx2 =', d2A_dx2)
+        # if debug: print('P =', P)
+        # if debug: print('dP_dx =', dP_dx)
+        # if debug: print('d2P_dx2 =', d2P_dx2)
+        # if debug: print('psit =', psit)
+        # if debug: print('dpsit_dx =', dpsit_dx)
+        # if debug: print('d2psit_dx2 =', d2psit_dx2)
+        # if debug: print('dpsit_dv =', dpsit_dv)
+        # if debug: print('dpsit_du =', dpsit_du)
+        # if debug: print('dpsit_dw =', dpsit_dw)
+        # if debug: print('d2psit_dv2 =', d2psit_dv2)
+        # if debug: print('d2psit_du2 =', d2psit_du2)
+        # if debug: print('d2psit_dw2 =', d2psit_dw2)
+        # if debug: print('d2psit_dvdx =', d2psit_dvdx)
+        # if debug: print('d2psit_dudx =', d2psit_dudx)
+        # if debug: print('d2psit_dwdx =', d2psit_dwdx)
+        # if debug: print('d3psit_dv2dx =', d3psit_dv2dx)
+        # if debug: print('d3psit_du2dx =', d3psit_du2dx)
+        # if debug: print('d3psit_dw2dx =', d3psit_dw2dx)
         # print('A', A[23], A[34], A[57])
         # print('dA_dx', dA_dx[23], dA_dx[34], dA_dx[57])
         # print('d2A_dx2', d2A_dx2[23], d2A_dx2[34], d2A_dx2[57])
@@ -391,74 +391,74 @@ def nnpde1(x,
 
         # Compute the value of the original differential equation
         # for each training point, and its derivatives.
-        G = np.zeros(ntrain)
-        dG_dx = np.zeros((ntrain, ndim))
-        d2G_dx2 = np.zeros((ntrain, ndim))
-        dG_dpsit = np.zeros(ntrain)
-        d2G_dpsit2 = np.zeros(ntrain)
-        dG_dpsit_dx = np.zeros((ntrain, ndim))
-        d2G_dpsit_dx2 = np.zeros((ntrain, ndim))
-        dG_dv = np.zeros((ntrain, nhid))
-        dG_du = np.zeros((ntrain, nhid))
-        dG_dw = np.zeros((ntrain, ndim, nhid))
-        d2G_dv2 = np.zeros((ntrain, nhid))
-        d2G_du2 = np.zeros((ntrain, nhid))
-        d2G_dw2 = np.zeros((ntrain, ndim, nhid))
-        for i in range(ntrain):
-            G[i] = fG(x[i], psit[i], dpsit_dx[i])
-            dG_dpsit[i] = dfG_dpsi(x[i], psit[i], dpsit_dx[i])
-            d2G_dpsit2[i] = d2fG_dpsi2(x[i], psit[i], dpsit_dx[i])
-            for j in range(ndim):
-                dG_dx[i][j] = dfG_dx[j](x[i], psit[i], dpsit_dx[i])
-                d2G_dx2[i][j] = d2fG_dx2[j](x[i], psit[i], dpsit_dx[i])
-                dG_dpsit_dx[i][j] = dfG_dpsi_dx[j](x[i], psit[i], dpsit_dx[i])
-                d2G_dpsit_dx2[i][j] = d2fG_dpsi_dx2[j](x[i], psit[i],
-                                                       dpsit_dx[i])
-            for k in range(nhid):
-                dG_dv[i][k] = dG_dpsit[i] * dpsit_dv[i][k]
-                dG_du[i][k] = dG_dpsit[i] * dpsit_du[i][k]
-                d2G_dv2[i][k] = (
-                    dG_dpsit[i] * d2psit_dv2[i][k] +
-                    d2G_dpsit2[i] * dpsit_dv[i][k]**2
-                )
-                d2G_du2[i][k] = (
-                    dG_dpsit[i] * d2psit_du2[i][k] +
-                    d2G_dpsit2[i] * dpsit_du[i][k]**2
-                )
-                for j in range(ndim):
-                    dG_dv[i][k] += dG_dpsit_dx[i][j] * d2psit_dvdx[i][j][k]
-                    dG_du[i][k] += dG_dpsit_dx[i][j] * d2psit_dudx[i][j][k]
-                    dG_dw[i][j][k] = (
-                        dG_dpsit[i] * dpsit_dw[i][j][k] +
-                        dG_dpsit_dx[i][j] * d2psit_dwdx[i][j][k]
-                    )
-                    d2G_dv2[i][k] += (
-                        dG_dpsit_dx[i][j] * d3psit_dv2dx[i][j][k] +
-                        d2G_dpsit_dx2[i][j] * d2psit_dvdx[i][j][k]**2
-                    )
-                    d2G_du2[i][k] += (
-                        dG_dpsit_dx[i][j] * d3psit_du2dx[i][j][k] +
-                        d2G_dpsit_dx2[i][j] * d2psit_dudx[i][j][k]**2
-                    )
-                    d2G_dw2[i][j][k] = (
-                        dG_dpsit[i] * d2psit_dw2[i][j][k] +
-                        d2G_dpsit2[i] * dpsit_dw[i][j][k]**2 +
-                        dG_dpsit_dx[i][j] * d3psit_dw2dx[i][j][k] +
-                        d2G_dpsit_dx2[i][j] * d2psit_dwdx[i][j][k]**2
-                    )
-        if debug: print('G =', G)
-        if debug: print('dG_dx =', dG_dx)
-        if debug: print('d2G_dx2 =', d2G_dx2)
-        if debug: print('dG_dpsit =', dG_dpsit)
-        if debug: print('d2G_dpsit2 =', d2G_dpsit2)
-        if debug: print('dG_dpsit_dx =', dG_dpsit_dx)
-        if debug: print('d2G_dpsit_dx2 =', d2G_dpsit_dx2)
-        if debug: print('dG_dv =', dG_dv)
-        if debug: print('dG_du =', dG_du)
-        if debug: print('dG_dw =', dG_dw)
-        if debug: print('d2G_dv2 =', d2G_dv2)
-        if debug: print('d2G_du2 =', d2G_du2)
-        if debug: print('d2G_dw2 =', d2G_dw2)
+        # G = np.zeros(ntrain)
+        # dG_dx = np.zeros((ntrain, ndim))
+        # d2G_dx2 = np.zeros((ntrain, ndim))
+        # dG_dpsit = np.zeros(ntrain)
+        # d2G_dpsit2 = np.zeros(ntrain)
+        # dG_dpsit_dx = np.zeros((ntrain, ndim))
+        # d2G_dpsit_dx2 = np.zeros((ntrain, ndim))
+        # dG_dv = np.zeros((ntrain, nhid))
+        # dG_du = np.zeros((ntrain, nhid))
+        # dG_dw = np.zeros((ntrain, ndim, nhid))
+        # d2G_dv2 = np.zeros((ntrain, nhid))
+        # d2G_du2 = np.zeros((ntrain, nhid))
+        # d2G_dw2 = np.zeros((ntrain, ndim, nhid))
+        # for i in range(ntrain):
+        #     G[i] = fG(x[i], psit[i], dpsit_dx[i])
+        #     dG_dpsit[i] = dfG_dpsi(x[i], psit[i], dpsit_dx[i])
+        #     d2G_dpsit2[i] = d2fG_dpsi2(x[i], psit[i], dpsit_dx[i])
+        #     for j in range(ndim):
+        #         dG_dx[i][j] = dfG_dx[j](x[i], psit[i], dpsit_dx[i])
+        #         d2G_dx2[i][j] = d2fG_dx2[j](x[i], psit[i], dpsit_dx[i])
+        #         dG_dpsit_dx[i][j] = dfG_dpsi_dx[j](x[i], psit[i], dpsit_dx[i])
+        #         d2G_dpsit_dx2[i][j] = d2fG_dpsi_dx2[j](x[i], psit[i],
+        #                                                dpsit_dx[i])
+        #     for k in range(nhid):
+        #         dG_dv[i][k] = dG_dpsit[i] * dpsit_dv[i][k]
+        #         dG_du[i][k] = dG_dpsit[i] * dpsit_du[i][k]
+        #         d2G_dv2[i][k] = (
+        #             dG_dpsit[i] * d2psit_dv2[i][k] +
+        #             d2G_dpsit2[i] * dpsit_dv[i][k]**2
+        #         )
+        #         d2G_du2[i][k] = (
+        #             dG_dpsit[i] * d2psit_du2[i][k] +
+        #             d2G_dpsit2[i] * dpsit_du[i][k]**2
+        #         )
+        #         for j in range(ndim):
+        #             dG_dv[i][k] += dG_dpsit_dx[i][j] * d2psit_dvdx[i][j][k]
+        #             dG_du[i][k] += dG_dpsit_dx[i][j] * d2psit_dudx[i][j][k]
+        #             dG_dw[i][j][k] = (
+        #                 dG_dpsit[i] * dpsit_dw[i][j][k] +
+        #                 dG_dpsit_dx[i][j] * d2psit_dwdx[i][j][k]
+        #             )
+        #             d2G_dv2[i][k] += (
+        #                 dG_dpsit_dx[i][j] * d3psit_dv2dx[i][j][k] +
+        #                 d2G_dpsit_dx2[i][j] * d2psit_dvdx[i][j][k]**2
+        #             )
+        #             d2G_du2[i][k] += (
+        #                 dG_dpsit_dx[i][j] * d3psit_du2dx[i][j][k] +
+        #                 d2G_dpsit_dx2[i][j] * d2psit_dudx[i][j][k]**2
+        #             )
+        #             d2G_dw2[i][j][k] = (
+        #                 dG_dpsit[i] * d2psit_dw2[i][j][k] +
+        #                 d2G_dpsit2[i] * dpsit_dw[i][j][k]**2 +
+        #                 dG_dpsit_dx[i][j] * d3psit_dw2dx[i][j][k] +
+        #                 d2G_dpsit_dx2[i][j] * d2psit_dwdx[i][j][k]**2
+        #             )
+        # if debug: print('G =', G)
+        # if debug: print('dG_dx =', dG_dx)
+        # if debug: print('d2G_dx2 =', d2G_dx2)
+        # if debug: print('dG_dpsit =', dG_dpsit)
+        # if debug: print('d2G_dpsit2 =', d2G_dpsit2)
+        # if debug: print('dG_dpsit_dx =', dG_dpsit_dx)
+        # if debug: print('d2G_dpsit_dx2 =', d2G_dpsit_dx2)
+        # if debug: print('dG_dv =', dG_dv)
+        # if debug: print('dG_du =', dG_du)
+        # if debug: print('dG_dw =', dG_dw)
+        # if debug: print('d2G_dv2 =', d2G_dv2)
+        # if debug: print('d2G_du2 =', d2G_du2)
+        # if debug: print('d2G_dw2 =', d2G_dw2)
         # print('G', G[23], G[34], G[57])
         # print('dG_dx', dG_dx[23], dG_dx[34], dG_dx[57])
         # print('d2G_dx2', d2G_dx2[23], d2G_dx2[34], d2G_dx2[57])
@@ -475,37 +475,37 @@ def nnpde1(x,
         # print('d2G_dw2', d2G_dw2[23][1][3], d2G_dw2[34][0][4], d2G_dw2[57][1][7])
 
         # Compute the error function for this pass.
-        E = 0
-        for i in range(ntrain):
-            E += G[i]**2
-        if debug: print('E =', E)
+        # E = 0
+        # for i in range(ntrain):
+        #     E += G[i]**2
+        # if debug: print('E =', E)
 
         # Compute the partial derivatives of the error with respect to the
         # network parameters.
-        dE_dv = np.zeros(nhid)
-        dE_du = np.zeros(nhid)
-        dE_dw = np.zeros((ndim, nhid))
-        d2E_dv2 = np.zeros(nhid)
-        d2E_du2 = np.zeros(nhid)
-        d2E_dw2 = np.zeros((ndim, nhid))
-        for k in range(nhid):
-            for i in range(ntrain):
-                dE_dv[k] += 2 * G[i] * dG_dv[i][k]
-                dE_du[k] += 2 * G[i] * dG_du[i][k]
-                d2E_dv2[k] += 2 * (G[i] * d2G_dv2[i][k] + dG_dv[i][k]**2)
-                d2E_du2[k] += 2 * (G[i] * d2G_du2[i][k] + dG_du[i][k]**2)
-            for j in range(ndim):
-                for i in range(ntrain):
-                    dE_dw[j][k] += 2 * G[i] * dG_dw[i][j][k]
-                    d2E_dw2[j][k] += 2 * (
-                        G[i] * d2G_dw2[i][j][k] + dG_dw[i][j][k]**2
-                    )
-        if debug: print('dE_dv =', dE_dv)
-        if debug: print('dE_du =', dE_du)
-        if debug: print('dE_dw =', dE_dw)
-        if debug: print('d2E_dv2 =', d2E_dv2)
-        if debug: print('d2E_du2 =', d2E_du2)
-        if debug: print('d2E_dw2 =', d2E_dw2)
+        # dE_dv = np.zeros(nhid)
+        # dE_du = np.zeros(nhid)
+        # dE_dw = np.zeros((ndim, nhid))
+        # d2E_dv2 = np.zeros(nhid)
+        # d2E_du2 = np.zeros(nhid)
+        # d2E_dw2 = np.zeros((ndim, nhid))
+        # for k in range(nhid):
+        #     for i in range(ntrain):
+        #         dE_dv[k] += 2 * G[i] * dG_dv[i][k]
+        #         dE_du[k] += 2 * G[i] * dG_du[i][k]
+        #         d2E_dv2[k] += 2 * (G[i] * d2G_dv2[i][k] + dG_dv[i][k]**2)
+        #         d2E_du2[k] += 2 * (G[i] * d2G_du2[i][k] + dG_du[i][k]**2)
+        #     for j in range(ndim):
+        #         for i in range(ntrain):
+        #             dE_dw[j][k] += 2 * G[i] * dG_dw[i][j][k]
+        #             d2E_dw2[j][k] += 2 * (
+        #                 G[i] * d2G_dw2[i][j][k] + dG_dw[i][j][k]**2
+        #             )
+        # if debug: print('dE_dv =', dE_dv)
+        # if debug: print('dE_du =', dE_du)
+        # if debug: print('dE_dw =', dE_dw)
+        # if debug: print('d2E_dv2 =', d2E_dv2)
+        # if debug: print('d2E_du2 =', d2E_du2)
+        # if debug: print('d2E_dw2 =', d2E_dw2)
         # print('dE_dv', dE_dv[3], dE_dv[4], dE_dv[7])
         # print('dE_du', dE_du[3], dE_du[4], dE_du[7])
         # print('dE_dw', dE_dw[1][3], dE_dw[0][4], dE_dw[1][7])
@@ -518,27 +518,28 @@ def nnpde1(x,
         # Update the weights and biases.
     
         # Compute the new values of the network parameters.
-        v_new = np.zeros(nhid)
-        u_new = np.zeros(nhid)
-        w_new = np.zeros((ndim, nhid))
-        for k in range(nhid):
-            v_new[k] = v[k] - eta * dE_dv[k] / d2E_dv2[k]
-            u_new[k] = u[k] - eta * dE_du[k] / d2E_du2[k]
-            for j in range(ndim):
-                w_new[j][k] = w[j][k] - eta * dE_dw[j][k] / d2E_dw2[j][k]
-        if debug: print('v_new =', v_new)
-        if debug: print('u_new =', u_new)
-        if debug: print('w_new =', w_new)
+        # v_new = np.zeros(nhid)
+        # u_new = np.zeros(nhid)
+        # w_new = np.zeros((ndim, nhid))
+        # for k in range(nhid):
+        #     v_new[k] = v[k] - eta * dE_dv[k] / d2E_dv2[k]
+        #     u_new[k] = u[k] - eta * dE_du[k] / d2E_du2[k]
+        #     for j in range(ndim):
+        #         w_new[j][k] = w[j][k] - eta * dE_dw[j][k] / d2E_dw2[j][k]
+        # if debug: print('v_new =', v_new)
+        # if debug: print('u_new =', u_new)
+        # if debug: print('w_new =', w_new)
 
-        if verbose: print(epoch, E)
+        # if verbose: print(epoch, E)
 
         # Save the new weights and biases.
-        v = v_new
-        u = u_new
-        w = w_new
+        # v = v_new
+        # u = u_new
+        # w = w_new
 
     # Return the final solution.
-    return (psit, dpsit_dx)
+    # return (psit, dpsit_dx)
+    return None, None
 
 #--------------------------------------------------------------------------------
 

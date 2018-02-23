@@ -2,7 +2,8 @@
 
 # A reasonable solution can be found using default settings.
 
-# BC are set so that xmin is always 0, and ymin is f(0).
+# The equation is defined on the domain [0,1], with the value of ymin
+# defined as ya(0).
 
 from math import exp
 
@@ -13,10 +14,6 @@ def ya(x):
 # Define the 2nd analytical derivative.
 def dya_dx(x):
     return -x * exp(-x**2 / 2)
-
-# Define the 1st analytical derivative.
-def d2ya_dx2(x):
-    return exp(-x**2 / 2) * (x**2 - 1)
 
 # Define the original differential equation:
 def F(x, y):
@@ -31,6 +28,4 @@ def d2F_dy2(x, y):
     return 0
 
 # Boundary conditions
-xmin = 0
-xmax = 1
-ymin = ya(xmin)   # 2
+ymin = ya(0)   # 2

@@ -2,7 +2,8 @@
 
 # A reasonable solution can be found using nhid=40.
 
-# BC are set so that xmin is always 0, and ymin is f(0).
+# The equation is defined on the domain [0,1], with the boundary
+# conditions ymin = ya(0) and dy_dx_min = dya_dx(0).
 
 from math import exp, sin, cos
 
@@ -37,7 +38,5 @@ def d2F_dy2(x, y, dy_dx):
     return 0
 
 # Boundary conditions
-xmin = 0
-xmax = 1
-ymin = ya(xmin)  # 0
-dy_dx_min = dya_dx(xmin)   # 1
+ymin = ya(0)               # 0
+dy_dx_min = dya_dx(0)      # 1

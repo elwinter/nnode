@@ -9,10 +9,9 @@
 # Import external modules, using standard shorthand.
 
 import argparse
-import importlib
+from importlib import import_module
 from math import sqrt
 import numpy as np
-
 from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
 
 #********************************************************************************
@@ -28,12 +27,12 @@ default_seed = 0
 default_verbose = False
 
 # Default ranges for weights and biases
+w_min = -1
+w_max = 1
 v_min = -1
 v_max = 1
 u_min = -1
 u_max = 1
-w_min = -1
-w_max = 1
 
 #********************************************************************************
 
@@ -49,21 +48,29 @@ def dytrial_dx(x, N, dN_dx):
 
 #********************************************************************************
 
-# Function to solve a 1st-order ODE BVP using a single-hidden-layer
-# feedforward neural network.
-def nnode1(x, F, dF_dy, d2F_dy2, A,
-           maxepochs = default_maxepochs, eta = default_eta, nhid = default_nhid,
-           debug = default_debug, verbose = default_verbose):
-    # print('x =', x)
-    # print('F =', F)
-    # print('dF_dy =', dF_dy)
-    # print('d2F_dy2 =', d2F_dy2)
-    # print('A =', A)
-    # print('maxepochs =', maxepochs)
-    # print('eta =', eta)
-    # print('nhid =', nhid)
-    # print('debug =', debug)
-    # print('verbose =', verbose)
+# Function to solve a 1st-order ODE IVP using a single-hidden-layer
+# feedforward neural network with a single input node and a single
+# output node.
+def nnode1(x,                             # x-values for training points
+           F,                             # Original 1st-order ODE
+           dF_dy,                         # 1st derivative of F wrt y
+           d2F_dy2,                       # 2nd derivative of F wrt y
+           A,                             # Initial value at x=0
+           maxepochs = default_maxepochs, # Training epochs to use
+           eta = default_eta,             # Normalized learning rate
+           nhid = default_nhid,           # Nodes in hidden layer
+           debug = default_debug,
+           verbose = default_verbose):
+    if debug: print('x =', x)
+    if debug: print('F =', F)
+    if debug: print('dF_dy =', dF_dy)
+    if debug: print('d2F_dy2 =', d2F_dy2)
+    if debug: print('A =', A)
+    if debug: print('maxepochs =', maxepochs)
+    if debug: print('eta =', eta)
+    if debug: print('nhid =', nhid)
+    if debug: print('debug =', debug)
+    if debug: print('verbose =', verbose)
 
     # Sanity-check arguments.
     assert len(x) > 0
@@ -85,6 +92,12 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
 
     # Create the network.
 
+    # Create an array to hold the weights connecting the input node to the
+    # hidden nodes. The weights are initialized with a uniform random
+    # distribution.
+    w = np.random.uniform(w_min, w_max, nhid)
+    if debug: print('w =', w)
+
     # Create an array to hold the weights connecting the hidden nodes
     # to the output node. The weights are initialized with a uniform
     # random distribution.
@@ -96,12 +109,6 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
     u = np.random.uniform(u_min, u_max, nhid)
     if debug: print('u =', u)
 
-    # Create an array to hold the weights connecting the input node to the
-    # hidden nodes. The weights are initialized with a uniform random
-    # distribution.
-    w = np.random.uniform(w_min, w_max, nhid)
-    if debug: print('w =', w)
-
     #----------------------------------------------------------------------------
 
     # Run the network.
@@ -109,8 +116,13 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
 
         if debug: print('Starting epoch %d.' % epoch)
 
-        # Compute the input, the sigmoid function and its derivatives,
-        # for each hidden node.
+        # General note:
+        # i is an index into the training point array
+        # j is an index for the nodes in the hidden layer
+
+        # Compute the input to each hidden node using the weights and
+        # biases, then compute the sigmoid activation function (and
+        # its first 3 derivatives) for this input.
         z = np.zeros((ntrain, nhid))
         s = np.zeros((ntrain, nhid))
         s1 = np.zeros((ntrain, nhid))
@@ -148,21 +160,21 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
         for i in range(ntrain):
             for j in range(nhid):
                 N[i] += v[j] * s[i][j]
-                dN_dx[i] += v[j] * w[j] * s1[i][j]
+                dN_dx[i] += v[j] * s1[i][j]* w[j]
                 dN_dv[i][j] = s[i][j]
                 dN_du[i][j] = v[j] * s1[i][j]
-                dN_dw[i][j] = x[i] * v[j] * s1[i][j]
+                dN_dw[i][j] = v[j] * s1[i][j] * x[i]
                 d2N_dv2[i][j] = 0
                 d2N_du2[i][j] = v[j] * s2[i][j]
-                d2N_dw2[i][j] = x[i]**2 * v[j] * s2[i][j]
-                d2N_dvdx[i][j] = w[j] * s1[i][j]
-                d2N_dudx[i][j] = v[j] * w[j] * s2[i][j]
-                d2N_dwdx[i][j] = x[i] * v[j] * w[j] * s2[i][j] + v[j] * s1[i][j]
+                d2N_dw2[i][j] = v[j] * s2[i][j] * x[i]**2
+                d2N_dvdx[i][j] = s1[i][j] * w[j]
+                d2N_dudx[i][j] = v[j] * s2[i][j] * w[j]
+                d2N_dwdx[i][j] =  v[j] * s1[i][j] + v[j] * s2[i][j] * w[j] * x[i]
                 d3N_dv2dx[i][j] = 0
-                d3N_du2dx[i][j] = v[j] * w[j] * s3[i][j]
+                d3N_du2dx[i][j] = v[j] * s3[i][j] * w[j]
                 d3N_dw2dx[i][j] = (
-                    x[i] * v[j] * (x[i] * w[j] * s3[i][j] + s2[i][j])
-                    + x[i] * v[j] * s2[i][j]
+                    v[j] * s2[i][j] * x[i] +
+                    v[j] * x[i] * (s2[i][j] + s3[i][j] * w[j] * x[i])
                 )
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
@@ -228,8 +240,8 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
         if debug: print('d3yt_du2dx =', d3yt_du2dx)
         if debug: print('d3yt_dw2dx =', d3yt_dw2dx)
 
-        # Compute the value of the original 1st derivative function
-        # for each training point, and its derivatives.
+        # Compute the value of the original differential equation for
+        # each training point, and its derivatives.
         f = np.zeros(ntrain)
         df_dyt = np.zeros(ntrain)
         d2f_dyt2 = np.zeros(ntrain)
@@ -251,7 +263,7 @@ def nnode1(x, F, dF_dy, d2F_dy2, A,
                     df_dyt[i] * d2yt_dv2[i][j] + d2f_dyt2[i] * dyt_dv[i][j]**2
                 )
                 d2f_du2[i][j] = (
-                    df_dyt[i] * d2yt_du2[i][j] + d2f_dyt2[i] * dyt_du[i][j]**2
+                     df_dyt[i] * d2yt_du2[i][j] + d2f_dyt2[i] * dyt_du[i][j]**2
                 )
                 d2f_dw2[i][j] = (
                     df_dyt[i] * d2yt_dw2[i][j] + d2f_dyt2[i] * dyt_dw[i][j]**2
@@ -351,23 +363,34 @@ if __name__ == '__main__':
     # print('parser =', parser)
 
     # Add command-line options.
-    parser.add_argument('--debug', '-d', action = 'store_true',
+    parser.add_argument('--debug', '-d',
+                        action = 'store_true',
+                        default = default_debug,
                         help = 'Produce debugging output')
-    parser.add_argument('--eta', type = float, default = default_eta,
+    parser.add_argument('--eta', type = float,
+                        default = default_eta,
                         help = 'Learning rate for parameter adjustment')
-    parser.add_argument('--maxepochs', type = int, default = default_maxepochs,
+    parser.add_argument('--maxepochs', type = int,
+                        default = default_maxepochs,
                         help = 'Maximum number of training epochs')
-    parser.add_argument('--nhid', type = int, default = default_nhid,
+    parser.add_argument('--nhid', type = int,
+                        default = default_nhid,
                         help = 'Number of hidden-layer nodes to use')
-    parser.add_argument('--ntrain', type = int, default = default_ntrain,
+    parser.add_argument('--ntrain', type = int,
+                        default = default_ntrain,
                         help = 'Number of evenly-spaced training points to use')
-    parser.add_argument('--ode', type = str, default = default_ode,
+    parser.add_argument('--ode', type = str,
+                        default = default_ode,
                         help = 'Name of module containing ODE to solve')
-    parser.add_argument('--seed', type = int, default = default_seed,
+    parser.add_argument('--seed', type = int,
+                        default = default_seed,
                         help = 'Random number generator seed')
-    parser.add_argument('--verbose', '-v', action = 'store_true',
+    parser.add_argument('--verbose', '-v',
+                        action = 'store_true',
+                        default = default_verbose,
                         help = 'Produce verbose output')
-    parser.add_argument('--version', action = 'version',
+    parser.add_argument('--version',
+                        action = 'version',
                         version = '%(prog)s 0.0')
 
     # Fetch and process the arguments from the command line.
@@ -395,11 +418,11 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Initialize the random number generator to ensure repeatable results.
-    # if verbose: print('Seeding random number generator with value %d.' % seed)
+    if verbose: print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
 
     # Import the specified ODE module.
-    odemod = importlib.import_module(ode)
+    odemod = import_module(ode)
     assert odemod.ya
     assert odemod.dya_dx
     assert odemod.F
@@ -408,18 +431,23 @@ if __name__ == '__main__':
     assert odemod.ymin != None
 
     # Create the array of evenly-spaced training points.
-    if verbose: print('Computing training points.')
-    dx = (odemod.xmax - odemod.xmin) / (ntrain - 1)
+    if verbose: print('Computing training points in domain [0,1].')
+    dx = 1 / (ntrain - 1)
     if debug: print('dx =', dx)
-    xt = [odemod.xmin + i * dx for i in range(ntrain)]
+    xt = [i * dx for i in range(ntrain)]
     if debug: print('xt =', xt)
 
     #----------------------------------------------------------------------------
 
     # Compute the 1st-order ODE solution using the neural network.
-    (yt, dyt_dx) = nnode1(xt, odemod.F, odemod.dF_dy, odemod.d2F_dy2,
-                          odemod.ymin,
-                          maxepochs = maxepochs, eta = eta, nhid = nhid,
+    (yt, dyt_dx) = nnode1(xt,                    # x-values for training points
+                          odemod.F,              # Original 1st-order ODE
+                          odemod.dF_dy,          # 1st derivative of F wrt y
+                          odemod.d2F_dy2,        # 2nd derivative of F wrt y
+                          odemod.ymin,           # Initial value at x=0
+                          maxepochs = maxepochs, # Training epochs to use
+                          eta = eta,             # Normalized learning rate
+                          nhid = nhid,           # Nodes in hidden layer
                           debug = debug, verbose = verbose)
 
     #----------------------------------------------------------------------------
@@ -436,20 +464,20 @@ if __name__ == '__main__':
         dya_dx[i] = odemod.dya_dx(xt[i])
     if debug: print('dya_dx =', dya_dx)
 
-    # Compute the MSE of the trial solution.
+    # Compute the RMS error of the trial solution.
     y_err = yt - ya
     if debug: print('y_err =', y_err)
-    mse_y = sqrt(sum((yt - ya)**2) / ntrain)
-    if debug: print('mse_y =', mse_y)
+    rmse_y = sqrt(sum((yt - ya)**2) / ntrain)
+    if debug: print('rmse_y =', rmse_y)
 
-    # Compute the MSE of the trial derivative.
+    # Compute the RMS error of the trial derivative.
     dy_dx_err = dyt_dx - dya_dx
     if debug: print('dy_dx_err =', dy_dx_err)
-    mse_dy_dx = sqrt(sum((dyt_dx - dya_dx)**2) / ntrain)
-    if debug: print('mse_dy_dx =', mse_dy_dx)
+    rmse_dy_dx = sqrt(sum((dyt_dx - dya_dx)**2) / ntrain)
+    if debug: print('rmse_dy_dx =', rmse_dy_dx)
 
     # Print the report.
     print('    xt       yt       ya      dyt_dx    dya_dx')
     for i in range(ntrain):
         print('%f %f %f %f %f' % (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i]))
-    print('MSE      %f          %f' % (mse_y, mse_dy_dx))
+    print('RMSE     %f          %f' % (rmse_y, rmse_dy_dx))
