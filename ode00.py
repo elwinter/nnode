@@ -1,6 +1,7 @@
 # Sample 1st-order ODE IVP
 
-# A reasonable solution can be found using default settings.
+# A reasonable solution can be found using the following settings:
+# TO DO
 
 # The equation is defined on the domain [0,1], with the value of ymin
 # defined as ya(0).
@@ -11,7 +12,7 @@ from math import exp
 def ya(x):
     return 1 + exp(-x**2 / 2)
 
-# Define the 2nd analytical derivative.
+# Define the 1st analytical derivative.
 def dya_dx(x):
     return -x * exp(-x**2 / 2)
 

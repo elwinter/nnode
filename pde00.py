@@ -1,118 +1,100 @@
 # Sample 1st-order PDE IVP
 
-# Define the analytical solution and its derivatives.
-def psia(xv):
-    (x, y) = xv
-    return x * y
+# A reasonable solution can be found using the following settings:
+# TO DO
 
-def dpsia_dx0(xv):
-    (x, y) = xv
+# The equation is defined on the domain [[0,1],[0,1]], with the
+# boundary initial conditions specified at x=0 and y=0.
+
+# Define the original differential equation, assumed to be in the form
+# G(x,y,psi,dpsi/dx,dpsi/dy) = 0.
+def Gf(xy, psi, del_psi):
+    (x, y) = xy
+    (dpsi_dx, dpsi_dy) = del_psi
+    return x * y - psi
+
+# First partials of the PDE
+
+def dG_dxf(xy, psi, del_psi):
+    (x, y) = xy
+    (dpsi_dx, dpsi_dy) = del_psi
     return y
 
-def dpsia_dx1(xv):
-    (x, y) = xv
+def dG_dyf(xy, psi, del_psi):
+    (x, y) = xy
+    (dpsi_dx, dpsi_dy) = del_psi
     return x
 
-dpsia_dx = [ dpsia_dx0, dpsia_dx1 ]
+del_Gf = ( dG_dxf, dG_dyf )
 
-def d2psia_dx02(xv):
-    (x, y) = xv
+def dG_dpsif(xy, psi, del_psi):
+    return -1
+
+def dG_dpsi_dxf(xy, psi, del_psi):
     return 0
 
-def d2psia_dx12(xv):
-    (x, y) = xv
+def dG_dpsi_dyf(xy, psi, del_psi):
     return 0
 
-d2psia_dx2 = [ d2psia_dx02, d2psia_dx12 ]
+dG_ddel_psif = ( dG_dpsi_dxf, dG_dpsi_dyf )
 
-# Define the original differential equation and itss derivatives.
-def fG(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
-    return dpsi_dx * dpsi_dy - x * y
-
-def dfG_dx0(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
-    return -y
-
-def dfG_dx1(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
-    return -x
-
-dfG_dx = [ dfG_dx0, dfG_dx1 ]
-
-def d2fG_dx02(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
+# 2nd partials of the PDE
+def d2G_dpsi2f(xy, psi, del_psi):
     return 0
 
-def d2fG_dx12(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
+# Cross partials of the PDE
+def d2G_ddxdpsif(xy, psi, del_psi):
     return 0
 
-d2fG_dx2 = [ d2fG_dx02, d2fG_dx12 ]
-
-def dfG_dpsi(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
+def d2G_ddydpsif(xy, psi, del_psi):
     return 0
 
-def d2fG_dpsi2(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
+d2G_ddel_psi_dpsif = ( d2G_ddxdpsif, d2G_ddydpsif )
+
+def d2G_dpsiddx(xy, psi, del_psi):
     return 0
 
-def dfG_dpsi_dx0(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
-    return dpsi_dy
-
-def dfG_dpsi_dx1(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
-    return dpsi_dx
-
-dfG_dpsi_dx = [ dfG_dpsi_dx0, dfG_dpsi_dx1 ]
-
-def d2fG_dpsi_dx02(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
+def d2G_dpsiddy(xy, psi, del_psi):
     return 0
 
-def d2fG_dpsi_dx12(xv, psi, dpsi_dxv):
-    (x, y) = xv
-    (dpsi_dx, dpsi_dy) = dpsi_dxv
+d2G_dpsi_ddel_psif = ( d2G_dpsiddx, d2G_dpsiddy )
+
+def d2G_ddx2f(xy, psi, del_psi):
     return 0
 
-d2fG_dpsi_dx2 = [ d2fG_dpsi_dx02, d2fG_dpsi_dx12 ]
-
-# Boundary conditions
-xmin = 0
-xmax = 1
-
-def f0(y):
+def d2G_ddy2f(xy, psi, del_psi):
     return 0
 
-def g0(x):
+d2G_ddel_psi2f = ( d2G_ddx2f, d2G_ddy2f )
+
+# Boundary condition functions and derivatives
+def f0f(y):
     return 0
 
-bc = [ f0, g0 ]
-
-def df0_dy(y):
+def g0f(x):
     return 0
 
-def dg0_dx(x):
+bcf = ( f0f, g0f )
+
+def df0_dyf(y):
     return 0
 
-bcd = [ df0_dy, dg0_dx]
-
-def d2f0_dy2(y):
+def dg0_dxf(x):
     return 0
 
-def d2g0_dx2(x):
-    return 0
+bcdf = ( df0_dyf, dg0_dxf)
 
-bcdd = [ d2f0_dy2, d2g0_dx2]
+# Define the analytical solution and its derivatives.
+def psiaf(xy):
+    (x, y) = xy
+    return x * y
+
+def dpsia_dxf(xy):
+    (x, y) = xy
+    return y
+
+def dpsia_dyf(xy):
+    (x, y) = xy
+    return x
+
+del_psiaf = ( dpsia_dxf, dpsia_dyf )

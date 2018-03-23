@@ -113,7 +113,6 @@ def nnode1(x,                             # x-values for training points
 
     # Run the network.
     for epoch in range(maxepochs):
-
         if debug: print('Starting epoch %d.' % epoch)
 
         # General note:
@@ -406,6 +405,14 @@ if __name__ == '__main__':
     ode = args.ode
     seed = args.seed
     verbose = args.verbose
+    if debug: print('debug =', debug)
+    if debug: print('eta =', eta)
+    if debug: print('maxepochs =', maxepochs)
+    if debug: print('nhid =', nhid)
+    if debug: print('ntrain =', ntrain)
+    if debug: print('ode =', ode)
+    if debug: print('seed =', seed)
+    if debug: print('verbose =', verbose)
 
     # Perform basic sanity checks on the command-line options.
     assert eta > 0
@@ -422,6 +429,8 @@ if __name__ == '__main__':
     np.random.seed(seed)
 
     # Import the specified ODE module.
+    if verbose:
+        print('Importing ODE module %s.' % ode)
     odemod = import_module(ode)
     assert odemod.ya
     assert odemod.dya_dx
