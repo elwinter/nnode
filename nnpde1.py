@@ -518,7 +518,7 @@ def nnpde1(
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        if verbose: print(epoch, E)
+        if verbose: print(epoch, sqrt(E / n))
 
         # Save the new weights and biases.
         v = v_new
@@ -658,7 +658,7 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the 1st-order PDE solution using the neural network.
-    (psit, del_psi) = nnpde1(
+    (psit, del_psit) = nnpde1(
         pdemod.Gf,             # 2-variable, 1st-order PDE IVP to solve
         pdemod.bcf,            # BC functions
         pdemod.bcdf,           # BC function derivatives
@@ -672,13 +672,13 @@ if __name__ == '__main__':
         x,                     # Training points as pairs
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
-        eta = default_eta,     # Learning rate
+        eta = eta,             # Learning rate
         debug = debug,
         verbose = verbose
     )
 
     #----------------------------------------------------------------------------
-    debug = True
+
     # Compute the analytical solution at the training points.
     psia = np.zeros(len(x))
     for i in range(len(x)):
@@ -699,7 +699,7 @@ if __name__ == '__main__':
     if debug: print('rmse_psi =', rmse_psi)
 
     # Compute the MSE of the trial derivative.
-    del_psi_err = del_psi - del_psia
+    del_psi_err = del_psit - del_psia
     if debug: print('del_psi_err =', del_psi_err)
     rmse_del_psi = np.zeros(len(x[0]))
     e2sum = np.zeros(len(x[0]))
@@ -710,13 +710,14 @@ if __name__ == '__main__':
     if debug: print('rmse_del_psi =', rmse_del_psi)
 
     # Print the report.
-    print('    x        y      psia     psit   dpsia_dx dpsia_dy dpsit_dx dpsit_dy')
+    print('    x        y      psia     psit   dpsia_dx dpsit_dx dpsia_dy dpsit_dy')
     for i in range(len(psia)):
         print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
               (x[i][0], x[i][1],
                psia[i], psit[i],
-               del_psia[i][0], del_psi[i][0],
-               del_psia[i][1], del_psi[i][1])
+               del_psia[i][0], del_psit[i][0],
+               del_psia[i][1], del_psit[i][1]
+              )
         )
-    print('RMSE      %f          %f     %f' %
+    print('RMSE              %f          %f          %f' %
           (rmse_psi, rmse_del_psi[0], rmse_del_psi[1]))
