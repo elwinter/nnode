@@ -1,5 +1,9 @@
 # Sample 1st-order PDE IVP
 
+# G(x,psi,del_psi) = 2*x*y - psi = 0
+# psia(x) = 2*x*y
+# psi(0,y) = psi(x,0) = 0
+
 # A reasonable solution can be found using the following settings:
 # TO DO
 
@@ -11,19 +15,19 @@
 def Gf(xy, psi, del_psi):
     (x, y) = xy
     (dpsi_dx, dpsi_dy) = del_psi
-    return x * y - psi
+    return 2*x*y - psi
 
 # First partials of the PDE
 
 def dG_dxf(xy, psi, del_psi):
     (x, y) = xy
     (dpsi_dx, dpsi_dy) = del_psi
-    return y
+    return 2*y
 
 def dG_dyf(xy, psi, del_psi):
     (x, y) = xy
     (dpsi_dx, dpsi_dy) = del_psi
-    return x
+    return 2*x
 
 del_Gf = ( dG_dxf, dG_dyf )
 
@@ -37,6 +41,35 @@ def dG_dpsi_dyf(xy, psi, del_psi):
     return 0
 
 dG_ddel_psif = ( dG_dpsi_dxf, dG_dpsi_dyf )
+
+# 2nd partials of the PDE
+def d2G_dpsi2f(xy, psi, del_psi):
+    return 0
+
+# Cross partials of the PDE
+def d2G_ddxdpsif(xy, psi, del_psi):
+    return 0
+
+def d2G_ddydpsif(xy, psi, del_psi):
+    return 0
+
+d2G_ddel_psi_dpsif = ( d2G_ddxdpsif, d2G_ddydpsif )
+
+def d2G_dpsiddx(xy, psi, del_psi):
+    return 0
+
+def d2G_dpsiddy(xy, psi, del_psi):
+    return 0
+
+d2G_dpsi_ddel_psif = ( d2G_dpsiddx, d2G_dpsiddy )
+
+def d2G_ddx2f(xy, psi, del_psi):
+    return 0
+
+def d2G_ddy2f(xy, psi, del_psi):
+    return 0
+
+d2G_ddel_psi2f = ( d2G_ddx2f, d2G_ddy2f )
 
 # Boundary condition functions and derivatives
 def f0f(y):
@@ -58,14 +91,14 @@ bcdf = ( df0_dyf, dg0_dxf)
 # Define the analytical solution and its derivatives.
 def psiaf(xy):
     (x, y) = xy
-    return x * y
+    return 2*x*y
 
 def dpsia_dxf(xy):
     (x, y) = xy
-    return y
+    return 2*y
 
 def dpsia_dyf(xy):
     (x, y) = xy
-    return x
+    return 2*x
 
 del_psiaf = ( dpsia_dxf, dpsia_dyf )
