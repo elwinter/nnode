@@ -1,32 +1,32 @@
 # Sample 1st-order ODE IVP
 
 # A reasonable solution can be found using the following settings:
-# TO DO
+# 
 
-# The equation is defined on the domain [0,1], with the value of ymin
-# defined as ya(0).
+# The equation is defined on the domain [0,1], with the boundary
+# conditions defined at x=0.
 
-from math import exp
+# Define the original differential equation, assumed to be in the form
+# G(x,y,dy/dx) = x - y = 0
+# Solution is y(x) = x
+def Gf(x, y, dy_dx):
+    return x - y
 
-# Define the analytical solution.
-def ya(x):
-    return 1 + exp(-x**2 / 2)
+# Initial condition
+ic = 0
 
-# Define the 1st analytical derivative.
-def dya_dx(x):
-    return -x * exp(-x**2 / 2)
+# Derivatives of ODE
 
-# Define the original differential equation:
-def F(x, y):
-    return x * (1 - y)
+def dG_dyf(x, y, dy_dx):
+    return -1
 
-# Define the 1st y-partial derivative of the differential equation.
-def dF_dy(x, y):
-    return -x
-
-# Define the 2nd y-partial derivative of the differential equation.
-def d2F_dy2(x, y):
+def dG_dydxf(x, y, dy_dx):
     return 0
 
-# Boundary conditions
-ymin = ya(0)   # 2
+# Define the analytical solution.
+def yaf(x):
+    return x
+
+# Define the 1st analytical derivative.
+def dya_dxf(x):
+    return 1

@@ -1,44 +1,39 @@
 # This ODE is Problem 1 in Lagaris et al.
 
-# A reasonable solution can be found using nhid=40.
-
-# BC are set so that xmin is always 0, and ymin is f(0).
-
 from math import exp
 
-# Define the analytical solution (verified in Mathematica).
-def ya(x):
-    return x**2 + exp(-x**2 / 2) / (1 + x + x**3)
+# A reasonable solution can be found using the following settings:
+# 
 
-# Define the 1st analytical derivative (verified in Mathematica).
-def dya_dx(x):
+# The equation is defined on the domain [0,1], with the boundary
+# conditions defined at x=0.
+
+# Define the original differential equation, assumed to be in the form:
+# G(x,y,dy/dx) = dy/dx + (x + (1 + 3*x**2)/(1 + x + x**3))*y
+#                - x**3 - 2*x - x**2*(1 + 3*x**2)/(1 + x + x**3)
+#              = 0
+# Solution is y(x) = exp(-x**2/2) / (1 + x * x**3) + x**2
+def Gf(x, y, dy_dx):
     return (
-        2 * x - exp(-x**2 / 2) * (1 + x + 4 * x**2 + x**4) / (1 + x + x**3)**2
+        dy_dx + (x + (1 + 3*x**2)/(1 + x + x**3))*y
+        - x**3 - 2*x - x**2*(1 + 3*x**2)/(1 + x + x**3)
     )
 
-def d2ya_dx2(x):
-    return (
-        2 + exp(-x**2 / 2) *
-        (1 + x * (-6 + x * (8 + x * (6 + x * (19 + x * (2 + 7 * x + x**3))))))
-        / (1 + x + x**3)**3
-    )
+# Initial condition
+ic = 1
 
-# Define the original differential equation (Lagaris eq (27)).
-def F(x, y):
-    return (
-        x**3 + 2 * x + x**2 * (1 + 3 * x**2) / (1 + x + x**3)
-        - (x + (1 + 3 * x**2) / (1 + x + x**3)) * y
-    )
+# Derivatives of ODE
 
-# Define the 1st y-partial derivative of the differential equation.
-def dF_dy(x, y):
-    return -(x + (1 + 3 * x**2) / (1 + x + x**3))
+def dG_dyf(x, y, dy_dx):
+    return x + (1 + 3*x**2)/(1 + x + x**3)
 
-# Define the 2nd y-partial derivative of the differential equation.
-def d2F_dy2(x, y):
-    return 0
+def dG_dydxf(x, y, dy_dx):
+    return 1
 
-# Boundary conditions
-xmin = 0
-xmax = 1
-ymin = ya(xmin)   # 1
+# Define the analytical solution.
+def yaf(x):
+    return exp(-x**2/2)/(1 + x + x**3) + x**2
+
+# Define the 1st analytical derivative.
+def dya_dxf(x):
+    return 2*x - exp(-x**2/2)*(1 + x + 4*x**2 + x**4)/(1 + x + x**3)**2

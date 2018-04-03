@@ -119,13 +119,12 @@ def nnpde1(
         del_Gf,                        # Gradient of G
         dG_ddel_psif,                  # Partials of G wrt del psi
         x,                             # Training points as pairs
-        nhid,                          # Node count in hidden layer
+        nhid = default_nhid,           # Node count in hidden layer
         maxepochs = default_maxepochs, # Max training epochs
         eta = default_eta,             # Learning rate
         debug = default_debug,
         verbose = default_verbose
 ):
-    if debug: print('Starting nnpde1().')
     if debug: print('Gf =', Gf)
     if debug: print('bcf =', bcf)
     if debug: print('bcdf =', bcdf)
@@ -377,7 +376,6 @@ def nnpde1(
         w = w_new
 
     # Return the final solution.
-    if debug: print('Ending nnpde1().')
     return (psit, dpsit_dx)
 
 #--------------------------------------------------------------------------------
@@ -419,6 +417,7 @@ if __name__ == '__main__':
                         help = 'Random number generator seed')
     parser.add_argument('--verbose', '-v',
                         action = 'store_true',
+                        default = default_verbose,
                         help = 'Produce verbose output')
     parser.add_argument('--version', action = 'version',
                         version = '%(prog)s 0.0')
@@ -456,7 +455,7 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Initialize the random number generator to ensure repeatable results.
-    # if verbose: print('Seeding random number generator with value %d.' % seed)
+    if verbose: print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
 
     # Import the specified PDE module.
@@ -474,7 +473,7 @@ if __name__ == '__main__':
 
     # Create the array of evenly-spaced training points. Use the same
     # values of the training points for each dimension.
-    if verbose: print('Computing training points along 2 dimensions.')
+    if verbose: print('Computing training points in [0,1] along 2 dimensions.')
     dxy = 1 / (ntrain - 1)
     if debug: print('dxy =', dxy)
     xt = [i * dxy for i in range(ntrain)]
