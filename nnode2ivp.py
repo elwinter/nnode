@@ -266,7 +266,7 @@ def nnode2ivp(
         if debug: print('d3yt_dudx2 =', d3yt_dudx2)
         if debug: print('d3yt_dwdx2 =', d3yt_dwdx2)
 
-                # Compute the value of the original differential equation for
+        # Compute the value of the original differential equation for
         # each training point, and its derivatives.
         G = np.zeros(n)
         dG_dyt = np.zeros(n)
@@ -324,7 +324,7 @@ def nnode2ivp(
         #------------------------------------------------------------------------
 
         # Update the weights and biases.
-    
+
         # Compute the new values of the network parameters.
         v_new = np.zeros(H)
         u_new = np.zeros(H)
@@ -444,7 +444,7 @@ if __name__ == '__main__':
     assert odemod.d2ya_dx2f
 
     # Create the array of evenly-spaced training points.
-    if verbose: print('Computing training points in domain[0,1].')
+    if verbose: print('Computing training points in domain [0,1].')
     dx = 1 / (ntrain - 1)
     if debug: print('dx =', dx)
     xt = [i * dx for i in range(ntrain)]

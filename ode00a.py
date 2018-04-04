@@ -1,7 +1,7 @@
 # Sample 1st-order ODE IVP
 
 # A reasonable solution can be found using the following settings:
-# 
+# All defaults
 
 # The equation is defined on the domain [0,1], with the boundary
 # conditions defined at x=0.

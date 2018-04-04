@@ -3,7 +3,7 @@
 from math import sqrt, sin, cos
 
 # A reasonable solution can be found using the following settings:
-# 
+# --seed=1 (0 crashes)
 
 # The equation is defined on the domain [0,1], with the boundary
 # conditions defined at x=0.
@@ -12,7 +12,6 @@ from math import sqrt, sin, cos
 # G(x,y,dy/dx) = dy/dx - sqrt(1 - y**2) = 0, y(0) = 0
 # Solution is y(x) = sin(x)
 def Gf(x, y, dy_dx):
-    print(x, y, dy_dx)
     return dy_dx - sqrt(1 - y**2)
 
 # Initial condition
