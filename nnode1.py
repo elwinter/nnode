@@ -6,7 +6,7 @@
 
 # The general form of such equations is:
 
-# G(x[], psi, del_psi[]) = 0
+# G(x, y, dy_dx) = 0
 
 # Notation notes:
 
@@ -16,12 +16,6 @@
 
 # 2. Underscores separate the numerator and denominator in a name
 # which represents a derivative.
-
-# 3. del_psit[i,j] is the derivative of the trial solution psit[i] wrt
-# x[i][j].
-
-# 4. Names beginning with 'del_' are gradients of another function, in
-# the form of function lists.
 
 #********************************************************************************
 
@@ -46,10 +40,10 @@ default_seed = 0
 default_verbose = False
 
 # Default ranges for weights and biases
-w_min = -1
-w_max = 1
 v_min = -1
 v_max = 1
+w_min = -1
+w_max = 1
 u_min = -1
 u_max = 1
 
@@ -402,8 +396,8 @@ if __name__ == '__main__':
     (yt, dyt_dx) = nnode1(
         odemod.Gf,             # 1st-order ODE IVP to solve
         odemod.ic,             # IC for ODE
-        odemod.dG_dyf,         # Partial of G(x,y,dy/dx) wrt x
-        odemod.dG_dydxf,       # Partial of G(x,y,dy/dx) wrt x
+        odemod.dG_dyf,         # Partial of G(x,y,dy/dx) wrt y
+        odemod.dG_dydxf,       # Partial of G(x,y,dy/dx) wrt dy/dx
         xt,                    # x-values for training points
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
