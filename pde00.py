@@ -1,13 +1,14 @@
 # Sample 1st-order PDE IVP
 
 # A reasonable solution can be found using the following settings:
-# TO DO
+# All defaults
 
 # The equation is defined on the domain [[0,1],[0,1]], with the
-# boundary initial conditions specified at x=0 and y=0.
+# initial conditions specified at x=0 and y=0.
 
 # Define the original differential equation, assumed to be in the form
-# G(x,y,psi,dpsi/dx,dpsi/dy) = 0.
+# G(x,y,psi,dpsi/dx,dpsi/dy) = x*y - psi = 0.
+# The analytical solution is: psi(x,y) = x*y
 def Gf(xy, psi, del_psi):
     (x, y) = xy
     (dpsi_dx, dpsi_dy) = del_psi
