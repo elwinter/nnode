@@ -203,9 +203,9 @@ def nnpde1(
                 z[i][k] = u[k]
                 for j in range(m):
                     z[i][k] += w[j][k] * x[i][j]
-                    s[i][k] = sigma(z[i][k])
-                    s1[i][k] = dsigma_dz(z[i][k])
-                    s2[i][k] = d2sigma_dz2(z[i][k])
+                s[i][k] = sigma(z[i][k])
+                s1[i][k] = dsigma_dz(z[i][k])
+                s2[i][k] = d2sigma_dz2(z[i][k])
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
