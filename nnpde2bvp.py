@@ -670,10 +670,8 @@ if __name__ == '__main__':
         print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
               (x[i,0], x[i,1],
                Ya[i], Yt[i],
-               delYa[i,0], delYt[i,0],
-               delYa[i,1], delYt[i,1],
-               del2Ya[i,0], delYt[i,0],
-               del2Ya[i,1], delYt[i,1]
+               delYa[i,0], delYt[i,0], delYa[i,1], delYt[i,1],
+               del2Ya[i,0], del2Yt[i,0], del2Ya[i,1], del2Yt[i,1]
               )
     )
     print('RMSE                       %f          %f          %f          %f          %f' %
