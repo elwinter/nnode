@@ -13,7 +13,7 @@
 
 # * Notation is developed to mirror my derivations and notes.
 
-# * The symbol psi has been repalced by 'Y' to simplify variable names.
+# * The symbol psi has been replaced by 'Y' to simplify variable names.
 
 # * No space between differential operators and the variables they act on.
 
@@ -22,10 +22,10 @@
 # * Underscores separate the numerator and denominator in a name
 # which represents a derivative or fraction.
 
-# * delY[i,j] is the derivative of the trial solution Yt[i] wrt
-# x[i][j].
-
 # * Names beginning with 'del' are gradients of another function.
+
+# * delYt[i,j] is the derivative of the trial solution Yt[i] wrt
+# x[i][j]. Similarly for del2Yt[i,j].
 
 #********************************************************************************
 
@@ -147,19 +147,20 @@ del2Pf = (d2P_dx2f, d2P_dy2f)
 def Ytf(xy, N, bcf):
     A = Af(xy, bcf)
     P = Pf(xy)
-    psit = A + P*N
-    return psit
+    Yt = A + P*N
+    return Yt
 
 #********************************************************************************
 
-# Function to solve a 2-variable, 1st-order PDE IVP using a single-hidden-layer
-# feedforward neural network with 2 input nodes and a single output node.
+# Function to solve a 2-variable, 2nd-order PDE BVP with Dirichlet BC,
+# using a single-hidden-layer feedforward neural network with 2 input
+# nodes and a single output node.
 
 def nnpde2bvp(
-        Gf,                            # 2-variable, 1st-order PDE IVP
-        dG_dYf,                        # Partial of G wrt psi
-        dG_ddelYf,                     # Partials of G wrt del psi
-        dG_ddel2Yf,                    # Partials of G wrt del2 psi
+        Gf,                            # 2-variable, 2nd-order PDE BVP
+        dG_dYf,                        # Partial of G wrt Y
+        dG_ddelYf,                     # Partials of G wrt delY
+        dG_ddel2Yf,                    # Partials of G wrt del2Y
         bcf,                           # BC functions
         bcdf,                          # BC function derivatives
         bcd2f,                         # BC function 2nd derivatives
@@ -187,11 +188,11 @@ def nnpde2bvp(
     # Sanity-check arguments.
     assert Gf
     assert dG_dYf
-    assert len(dG_ddelYf) == len(bcf)
-    assert len(dG_ddel2Yf) == len(bcf)
-    assert len(bcf) > 0
-    assert len(bcdf) == len(bcf)
-    assert len(bcd2f) == len(bcf)
+    assert len(dG_ddelYf) == 2
+    assert len(dG_ddel2Yf) == 2
+    assert len(bcf) == 2
+    assert len(bcdf) == 2
+    assert len(bcd2f) == 2
     assert len(x) > 0
     assert nhid > 0
     assert maxepochs > 0
@@ -205,7 +206,7 @@ def nnpde2bvp(
 
     # Change notation for convenience.
     m = len(bcf)
-    if debug: print('m =', m)
+    if debug: print('m =', m)  # Will always be 2 in this code.
     H = nhid
     if debug: print('H =', H)
 
@@ -280,13 +281,11 @@ def nnpde2bvp(
                 for j in range(m):
                     dN_dx[i,j] += v[k]*s1[i,k]*w[j,k]
                     dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
-                    d2N_dvdx[i,j,k] = s1[i,k] * w[j,k]
-                    d2N_dudx[i,j,k] = v[k] * s2[i,k] * w[j,k]
-                    d2N_dwdx[i,j,k] = (
-                        v[k]*(s1[i,k] + s2[i,k]*w[j,k]*x[i,j])
-                    )
+                    d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
+                    d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
+                    d2N_dwdx[i,j,k] = v[k]*(s1[i,k] + s2[i,k]*w[j,k]*x[i,j])
                     d2N_dx2[i,j] += v[k]*s2[i,k]*w[j,k]**2
-                    d3N_dvdx2[i,j,k] = s2[i,k] * w[j,k]**2
+                    d3N_dvdx2[i,j,k] = s2[i,k]*w[j,k]**2
                     d3N_dudx2[i,j,k] = v[k]*s3[i,k]*w[j,k]**2
                     d3N_dwdx2[i,j,k] = (
                         v[k]*(2*s2[i,k]*w[j,k] + s3[i,k]*w[j,k]**2*x[i,j])
@@ -330,12 +329,10 @@ def nnpde2bvp(
             Yt[i] = Ytf(x[i], N[i], bcf)
             for j in range(m):
                 dA_dx[i,j] = delAf[j](x[i], bcf, bcdf)
-                dP_dx[i,j] = delPf[j](x[i])
                 d2A_dx2[i,j] = del2Af[j](x[i], bcf, bcdf, bcd2f)
+                dP_dx[i,j] = delPf[j](x[i])
                 d2P_dx2[i,j] = del2Pf[j](x[i])
-                dYt_dx[i,j] = (
-                    dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
-                )
+                dYt_dx[i,j] = dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
                 d2Yt_dx2[i,j] = (
                     d2A_dx2[i,j] + P[i]*d2N_dx2[i,j]
                     +  2*dP_dx[i,j]*dN_dx[i,j] + d2P_dx2[i,j]*N[i]
@@ -398,16 +395,16 @@ def nnpde2bvp(
             dG_dYt[i] = dG_dYf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
             for j in range(m):
                 dG_ddelYt[i,j] = dG_ddelYf[j](x[i], Yt[i],
-                                               dYt_dx[i], d2Yt_dx2[i])
+                                              dYt_dx[i], d2Yt_dx2[i])
                 dG_ddel2Yt[i,j] = dG_ddel2Yf[j](x[i], Yt[i],
-                                                 dYt_dx[i], d2Yt_dx2[i])
+                                                dYt_dx[i], d2Yt_dx2[i])
             for k in range(H):
-                dG_dv[i,k] = dG_dYt[i] * dYt_dv[i,k]
-                dG_du[i,k] = dG_dYt[i] * dYt_du[i,k]
+                dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
+                dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
                 for j in range(m):
-                    dG_dv[i,k] += dG_ddelYt[i,j] * d2Yt_dvdx[i,j,k]
+                    dG_dv[i,k] += dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k]
                     + dG_ddel2Yt[i,j]*d3Yt_dvdx2[i,j,k]
-                    dG_du[i,k] += dG_ddelYt[i,j] * d2Yt_dudx[i,j,k]
+                    dG_du[i,k] += dG_ddelYt[i,j]*d2Yt_dudx[i,j,k]
                     + dG_ddel2Yt[i,j]*d3Yt_dudx2[i,j,k]
                     dG_dw[i,j,k] = (
                         dG_dYt[i]*dYt_dw[i,j,k]
@@ -620,16 +617,16 @@ if __name__ == '__main__':
     Ya = np.zeros(len(x))
     for i in range(len(x)):
         Ya[i] = pdemod.Yaf(x[i])
-    if debug: print('psia =', psia)
+    if debug: print('Ya =', Ya)
 
-    # Compute the analytical derivative at the training points.
+    # Compute the analytical derivatives at the training points.
     delYa = np.zeros((len(x), len(x[1])))
     for i in range(len(x)):
         for j in range(len(x[0])):
             delYa[i,j] = pdemod.delYaf[j](x[i])
     if debug: print('delYa =', delYa)
 
-    # Compute the analytical 2nd derivative at the training points.
+    # Compute the analytical 2nd derivatives at the training points.
     del2Ya = np.zeros((len(x), len(x[1])))
     for i in range(len(x)):
         for j in range(len(x[0])):
@@ -667,7 +664,7 @@ if __name__ == '__main__':
     # Print the report.
     print('    x        y       Ya       Yt     dYa_dx   dYt_dx   dYa_dy   dYt_dy  d2Ya_dx2 d2Yt_dx2 d2Ya_dy2 d2Yt_dy2')
     for i in range(len(Ya)):
-        print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
+        print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
               (x[i,0], x[i,1],
                Ya[i], Yt[i],
                delYa[i,0], delYt[i,0], delYa[i,1], delYt[i,1],
