@@ -324,7 +324,7 @@ def nnode2bvp(
         dE_dv = np.zeros(H)
         dE_du = np.zeros(H)
         dE_dw = np.zeros(H)
-        for j in range(H):
+        for k in range(H):
             for i in range(n):
                 dE_dv[k] += 2 * G[i] * dG_dv[i][k]
                 dE_du[k] += 2 * G[i] * dG_du[i][k]
@@ -339,10 +339,10 @@ def nnode2bvp(
         v_new = np.zeros(H)
         u_new = np.zeros(H)
         w_new = np.zeros(H)
-        for j in range(H):
-            v_new[j] = v[j] - eta * dE_dv[j]
-            u_new[j] = u[j] - eta * dE_du[j]
-            w_new[j] = w[j] - eta * dE_dw[j]
+        for k in range(H):
+            v_new[k] = v[k] - eta * dE_dv[k]
+            u_new[k] = u[k] - eta * dE_du[k]
+            w_new[k] = w[k] - eta * dE_dw[k]
         if debug: print('v_new =', v_new)
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
