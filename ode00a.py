@@ -3,12 +3,12 @@
 # A reasonable solution can be found using the following settings:
 # All defaults
 
-# The equation is defined on the domain [0,1], with the boundary
-# conditions defined at x=0.
+# The equation is defined on the domain [0,1], with the initial
+# condition defined at x=0.
 
 # Define the original differential equation, assumed to be in the form
 # G(x,y,dy/dx) = dy/dx - x = 0
-# Solution is y(x) = x
+# Solution is y(x) = x**2/2
 def Gf(x, y, dy_dx):
     return dy_dx - x
 

@@ -5,8 +5,8 @@ from math import sqrt, sin, cos
 # A reasonable solution can be found using the following settings:
 # --seed=1 (0 crashes)
 
-# The equation is defined on the domain [0,1], with the boundary
-# conditions defined at x=0.
+# The equation is defined on the domain [0,1], with the initial
+# condition defined at x=0.
 
 # Define the original differential equation, assumed to be in the form
 # G(x,y,dy/dx) = dy/dx - sqrt(1 - y**2) = 0, y(0) = 0
