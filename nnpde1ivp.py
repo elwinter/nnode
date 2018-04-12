@@ -7,21 +7,16 @@
 
 # The general form of such equations is:
 
-# G(x[], psi, del_psi[]) = 0
+# G(x[], Y, delY[]) = 0
 
 # Notation notes:
-
-# 0. Notation is developed to mirror my derivations and notes.
 
 # 1. Names that end in 'f' are usually functions, or containers of functions.
 
 # 2. Underscores separate the numerator and denominator in a name
 # which represents a derivative.
 
-# 3. del_psit[i,j] is the derivative of the trial solution psit[i] wrt
-# x[i][j].
-
-# 4. Names beginning with 'del_' are gradients of another function, in
+# 3. Names beginning with 'del' are gradients of another function, in
 # the form of function lists.
 
 #********************************************************************************
@@ -56,35 +51,34 @@ v_max = 1
 
 #********************************************************************************
 
-# The range of the trial solution is assumed to be [0, 1].
-# N.B. ASSUMES ONLY 2 DIMENSIONS!
+# The domain of the trial solution is assumed to be [[0, 1], [0, 1]].
 
 # Define the coefficient functions for the trial solution, and their derivatives.
 def Af(xy, bcf):
     (x, y) = xy
     (f0f, g0f) = bcf
-    A = (1 - x) * f0f(y) + (1 - y) * (g0f(x) - (1 - x) * g0f(0))
+    A = (1 - x)*f0f(y) + (1 - y)*(g0f(x) - (1 - x)*g0f(0))
     return A
 
 def dA_dxf(xy, bcf, bcdf):
     (x, y) = xy
     (f0f, g0f) = bcf
     (df0_dyf, dg0_dxf) = bcdf
-    dA_dx = -f0f(y) + (1 - y) * (dg0_dxf(x) + g0f(0))
+    dA_dx = -f0f(y) + (1 - y)*(dg0_dxf(x) + g0f(0))
     return dA_dx
 
 def dA_dyf(xy, bcf, bcdf):
     (x, y) = xy
     (f0f, g0f) = bcf
     (df0_dyf, dg0_dxf) = bcdf
-    dA_dy = (1 - x) * df0_dyf(y) - g0f(x) + (1 - x) * g0f(0)
+    dA_dy = (1 - x)*df0_dyf(y) - g0f(x) + (1 - x)*g0f(0)
     return dA_dy
 
-del_Af = (dA_dxf, dA_dyf)
+delAf = (dA_dxf, dA_dyf)
 
 def Pf(xy):
     (x, y) = xy
-    P = x * y
+    P = x*y
     return P
 
 def dP_dxf(xy):
@@ -97,27 +91,26 @@ def dP_dyf(xy):
     dP_dy = x
     return dP_dy
 
-del_Pf = ( dP_dxf, dP_dyf )
+delPf = (dP_dxf, dP_dyf)
 
-# Define the trial solution and its derivatives.
-def psitf(xy, N, bcf):
+# Define the trial solution.
+def Ytf(xy, N, bcf):
     A = Af(xy, bcf)
     P = Pf(xy)
-    psit = A + P * N
-    return psit
+    Yt = A + P*N
+    return Yt
 
 #********************************************************************************
 
 # Function to solve a 2-variable, 1st-order PDE IVP using a single-hidden-layer
-# feedforward neural network with 2 input nodes and a single output node.
+# feedforward neural network.
 
 def nnpde1(
-        Gf,                            # 2-variable, 1st-order PDE IVP
+        Gf,                            # 2-variable, 1st-order PDE IVP to solve
+        dG_dYf,                        # Partial of G wrt Y
+        dG_ddelYf,                     # Partials of G wrt del Y
         bcf,                           # BC functions
         bcdf,                          # BC function derivatives
-        dG_dpsif,                      # Partial of G wrt psi
-        del_Gf,                        # Gradient of G
-        dG_ddel_psif,                  # Partials of G wrt del psi
         x,                             # Training points as pairs
         nhid = default_nhid,           # Node count in hidden layer
         maxepochs = default_maxepochs, # Max training epochs
@@ -126,11 +119,10 @@ def nnpde1(
         verbose = default_verbose
 ):
     if debug: print('Gf =', Gf)
+    if debug: print('dG_dYf =', dG_dYf)
+    if debug: print('dG_ddelYf =', dG_ddelYf)
     if debug: print('bcf =', bcf)
     if debug: print('bcdf =', bcdf)
-    if debug: print('dG_dpsif =', dG_dpsif)
-    if debug: print('del_Gf =', del_Gf)
-    if debug: print('dG_ddel_psif =', dG_ddel_psif)
     if debug: print('x =', x)
     if debug: print('nhid =', nhid)
     if debug: print('maxepochs =', maxepochs)
@@ -140,11 +132,10 @@ def nnpde1(
 
     # Sanity-check arguments.
     assert Gf
-    assert len(bcf) > 0
-    assert len(bcdf) == len(bcf)
-    assert dG_dpsif
-    assert len(del_Gf) == len(bcf)
-    assert len(dG_ddel_psif) == len(bcf)
+    assert dG_dYf
+    assert len(dG_ddelYf) == 2
+    assert len(bcf) == 2
+    assert len(bcdf) == 2
     assert len(x) > 0
     assert nhid > 0
     assert maxepochs > 0
@@ -153,8 +144,14 @@ def nnpde1(
     #----------------------------------------------------------------------------
 
     # Determine the number of training points.
-    ntrain = len(x)
-    if debug: print('ntrain =', ntrain)
+    n = len(x)
+    if debug: print('n =', n)
+
+    # Change notation for convenience.
+    m = len(bcf)
+    if debug: print('m =', m)  # Will always be 2 in this code.
+    H = nhid
+    if debug: print('H =', H)
 
     #----------------------------------------------------------------------------
 
@@ -163,27 +160,19 @@ def nnpde1(
     # Create an array to hold the weights connecting the input nodes to the
     # hidden nodes. The weights are initialized with a uniform random
     # distribution.
-    w = np.random.uniform(w_min, w_max, (2, nhid))
+    w = np.random.uniform(w_min, w_max, (2, H))
     if debug: print('w =', w)
 
     # Create an array to hold the biases for the hidden nodes. The
     # biases are initialized with a uniform random distribution.
-    u = np.random.uniform(u_min, u_max, nhid)
+    u = np.random.uniform(u_min, u_max, H)
     if debug: print('u =', u)
 
     # Create an array to hold the weights connecting the hidden nodes
     # to the output node. The weights are initialized with a uniform
     # random distribution.
-    v = np.random.uniform(v_min, v_max, nhid)
+    v = np.random.uniform(v_min, v_max, H)
     if debug: print('v =', v)
-
-    # Change notation for convenience.
-    n = ntrain
-    if debug: print('n =', n)
-    m = len(bcf)
-    if debug: print('m =', m)
-    H = nhid
-    if debug: print('H =', H)
 
     #----------------------------------------------------------------------------
 
@@ -197,15 +186,14 @@ def nnpde1(
         s = np.zeros((n, H))
         s1 = np.zeros((n, H))
         s2 = np.zeros((n, H))
-        # s3 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                z[i][k] = u[k]
+                z[i,k] = u[k]
                 for j in range(m):
-                    z[i][k] += w[j][k] * x[i][j]
-                s[i][k] = sigma(z[i][k])
-                s1[i][k] = dsigma_dz(z[i][k])
-                s2[i][k] = d2sigma_dz2(z[i][k])
+                    z[i,k] += w[j,k]*x[i,j]
+                s[i,k] = sigma(z[i,k])
+                s1[i,k] = dsigma_dz(z[i,k])
+                s2[i,k] = d2sigma_dz2(z[i,k])
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -223,16 +211,16 @@ def nnpde1(
         d2N_dwdx = np.zeros((n, m, H))
         for i in range(n):
             for k in range(H):
-                N[i] += v[k] * s[i][k]
-                dN_dv[i][k] = s[i][k]
-                dN_du[i][k] = v[k] * s1[i][k]
+                N[i] += v[k]*s[i,k]
+                dN_dv[i,k] = s[i,k]
+                dN_du[i,k] = v[k]*s1[i,k]
                 for j in range(m):
-                    dN_dx[i][j] += v[k] * s1[i][k] * w[j][k]
-                    dN_dw[i][j][k] = v[k] * s1[i][k] * x[i][j]
-                    d2N_dvdx[i][j][k] = s1[i][k] * w[j][k]
-                    d2N_dudx[i][j][k] = v[k] * s2[i][k] * w[j][k]
-                    d2N_dwdx[i][j][k] = (
-                        v[k] * s1[i][k] + v[k] * s2[i][k] * w[j][k] * x[i][j]
+                    dN_dx[i,j] += v[k]*s1[i,k]*w[j,k]
+                    dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
+                    d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
+                    d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
+                    d2N_dwdx[i,j,k] = (
+                        v[k]*s1[i,k] + v[k]*s2[i,k]*w[j,k]*x[i,j]
                     )
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
@@ -247,92 +235,84 @@ def nnpde1(
 
         # Compute the value of the trial solution and its derivatives,
         # for each training point.
-        A = np.zeros(n)
         dA_dx = np.zeros((n, m))
         P = np.zeros(n)
         dP_dx = np.zeros((n, m))
-        psit = np.zeros(n)
-        dpsit_dx = np.zeros((n, m))
-        dpsit_dv = np.zeros((n, H))
-        dpsit_du = np.zeros((n, H))
-        dpsit_dw = np.zeros((n, m, H))
-        d2psit_dvdx = np.zeros((n, m, H))
-        d2psit_dudx = np.zeros((n, m, H))
-        d2psit_dwdx = np.zeros((n, m, H))
+        Yt = np.zeros(n)
+        dYt_dx = np.zeros((n, m))
+        dYt_dv = np.zeros((n, H))
+        dYt_du = np.zeros((n, H))
+        dYt_dw = np.zeros((n, m, H))
+        d2Yt_dvdx = np.zeros((n, m, H))
+        d2Yt_dudx = np.zeros((n, m, H))
+        d2Yt_dwdx = np.zeros((n, m, H))
         for i in range(n):
-            A[i] = Af(x[i], bcf)
             P[i] = Pf(x[i])
-            psit[i] = psitf(x[i], N[i], bcf)
+            Yt[i] = Ytf(x[i], N[i], bcf)
             for j in range(m):
-                dA_dx[i][j] = del_Af[j](x[i], bcf, bcdf)
-                dP_dx[i][j] = del_Pf[j](x[i])
-                dpsit_dx[i][j] = (
-                    dA_dx[i][j] + P[i] * dN_dx[i][j] + dP_dx[i][j] * N[i]
+                dA_dx[i,j] = delAf[j](x[i], bcf, bcdf)
+                dP_dx[i,j] = delPf[j](x[i])
+                dYt_dx[i,j] = (
+                    dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
                 )
             for k in range(H):
-                dpsit_dv[i][k] = P[i] * dN_dv[i][k]
-                dpsit_du[i][k] = P[i] * dN_du[i][k]
+                dYt_dv[i,k] = P[i]*dN_dv[i,k]
+                dYt_du[i,k] = P[i]*dN_du[i,k]
                 for j in range(m):
-                    dpsit_dw[i][j][k] = P[i] * dN_dw[i][j][k]
-                    d2psit_dvdx[i][j][k] = (
-                        P[i] * d2N_dvdx[i][j][k] + dP_dx[i][j] * dN_dv[i][k]
+                    dYt_dw[i,j,k] = P[i]*dN_dw[i,j,k]
+                    d2Yt_dvdx[i,j,k] = (
+                        P[i]*d2N_dvdx[i,j,k] + dP_dx[i,j]*dN_dv[i,k]
                     )
-                    d2psit_dudx[i][j][k] = (
-                        P[i] * d2N_dudx[i][j][k] + dP_dx[i][j] * dN_du[i][k]
+                    d2Yt_dudx[i,j,k] = (
+                        P[i]*d2N_dudx[i,j,k] + dP_dx[i,j]*dN_du[i,k]
                     )
-                    d2psit_dwdx[i][j][k] = (
-                        P[i] * d2N_dwdx[i][j][k] + dP_dx[i][j] * dN_dw[i][j][k]
+                    d2Yt_dwdx[i,j,k] = (
+                        P[i]*d2N_dwdx[i,j,k] + dP_dx[i,j]*dN_dw[i,j,k]
                     )
-        if debug: print('A =', A)
         if debug: print('dA_dx =', dA_dx)
         if debug: print('P =', P)
         if debug: print('dP_dx =', dP_dx)
-        if debug: print('psit =', psit)
-        if debug: print('dpsit_dx =', dpsit_dx)
-        if debug: print('dpsit_dv =', dpsit_dv)
-        if debug: print('dpsit_du =', dpsit_du)
-        if debug: print('dpsit_dw =', dpsit_dw)
-        if debug: print('d2psit_dvdx =', d2psit_dvdx)
-        if debug: print('d2psit_dudx =', d2psit_dudx)
-        if debug: print('d2psit_dwdx =', d2psit_dwdx)
+        if debug: print('Yt =', Yt)
+        if debug: print('dYt_dx =', dYt_dx)
+        if debug: print('dYt_dv =', dYt_dv)
+        if debug: print('dYt_du =', dYt_du)
+        if debug: print('dYt_dw =', dYt_dw)
+        if debug: print('d2Yt_dvdx =', d2Yt_dvdx)
+        if debug: print('d2Yt_dudx =', d2Yt_dudx)
+        if debug: print('d2Yt_dwdx =', d2Yt_dwdx)
 
         # Compute the value of the original differential equation
         # for each training point, and its derivatives.
         G = np.zeros(n)
-        dG_dx = np.zeros((n, m))
-        dG_dpsit = np.zeros(n)
-        dG_ddel_psit = np.zeros((n, m))
+        dG_dYt = np.zeros(n)
+        dG_ddelYt = np.zeros((n, m))
         dG_dv = np.zeros((n, H))
         dG_du = np.zeros((n, H))
         dG_dw = np.zeros((n, m, H))
         for i in range(n):
-            G[i] = Gf(x[i], psit[i], dpsit_dx[i])
-            dG_dpsit[i] = dG_dpsif(x[i], psit[i], dpsit_dx[i])
+            G[i] = Gf(x[i], Yt[i], dYt_dx[i])
+            dG_dYt[i] = dG_dYf(x[i], Yt[i], dYt_dx[i])
             for j in range(m):
-                dG_dx[i][j] = del_Gf[j](x[i], psit[i], dpsit_dx[i])
-                dG_ddel_psit[i][j] = dG_ddel_psif[j](x[i], psit[i], dpsit_dx[i])
+                dG_ddelYt[i,j] = dG_ddelYf[j](x[i], Yt[i], dYt_dx[i])
             for k in range(H):
-                dG_dv[i][k] = dG_dpsit[i] * dpsit_dv[i][k]
-                dG_du[i][k] = dG_dpsit[i] * dpsit_du[i][k]
+                dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
+                dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
                 for j in range(m):
-                    dG_dv[i][k] += dG_ddel_psit[i][j] * d2psit_dvdx[i][j][k]
-                    dG_du[i][k] += dG_ddel_psit[i][j] * d2psit_dudx[i][j][k]
-                    dG_dw[i][j][k] = (
-                        dG_dpsit[i] * dpsit_dw[i][j][k] +
-                        dG_ddel_psit[i][j] * d2psit_dwdx[i][j][k]
+                    dG_dv[i,k] += dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k]
+                    dG_du[i,k] += dG_ddelYt[i,j]*d2Yt_dudx[i,j,k]
+                    dG_dw[i,j,k] = (
+                        dG_dYt[i]*dYt_dw[i,j,k] +
+                        dG_ddelYt[i,j]*d2Yt_dwdx[i,j,k]
                     )
         if debug: print('G =', G)
-        if debug: print('dG_dx =', dG_dx)
-        if debug: print('dG_dpsit =', dG_dpsit)
-        if debug: print('dG_ddel_psit =', dG_ddel_psit)
+        if debug: print('dG_dYt =', dG_dYt)
+        if debug: print('dG_ddelYt =', dG_ddelYt)
         if debug: print('dG_dv =', dG_dv)
         if debug: print('dG_du =', dG_du)
         if debug: print('dG_dw =', dG_dw)
 
-        # Compute the error function for this pass.
-        E = 0
-        for i in range(n):
-            E += G[i]**2
+        # Compute the error function for this epoch.
+        E = sum(G**2)
         if debug: print('E =', E)
 
         # Compute the partial derivatives of the error with respect to the
@@ -342,33 +322,31 @@ def nnpde1(
         dE_dw = np.zeros((m, H))
         for k in range(H):
             for i in range(n):
-                dE_dv[k] += 2 * G[i] * dG_dv[i][k]
-                dE_du[k] += 2 * G[i] * dG_du[i][k]
+                dE_dv[k] += 2*G[i]*dG_dv[i,k]
+                dE_du[k] += 2*G[i]*dG_du[i,k]
             for j in range(m):
                 for i in range(n):
-                    dE_dw[j][k] += 2 * G[i] * dG_dw[i][j][k]
+                    dE_dw[j,k] += 2*G[i]*dG_dw[i,j,k]
         if debug: print('dE_dv =', dE_dv)
         if debug: print('dE_du =', dE_du)
         if debug: print('dE_dw =', dE_dw)
 
         #------------------------------------------------------------------------
 
-        # Update the weights and biases.
-    
         # Compute the new values of the network parameters.
         v_new = np.zeros(H)
         u_new = np.zeros(H)
         w_new = np.zeros((m, H))
         for k in range(H):
-            v_new[k] = v[k] - eta * dE_dv[k]
-            u_new[k] = u[k] - eta * dE_du[k]
+            v_new[k] = v[k] - eta*dE_dv[k]
+            u_new[k] = u[k] - eta*dE_du[k]
             for j in range(m):
-                w_new[j][k] = w[j][k] - eta * dE_dw[j][k]
+                w_new[j,k] = w[j,k] - eta*dE_dw[j,k]
         if debug: print('v_new =', v_new)
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        if verbose: print(epoch, sqrt(E / n))
+        if verbose: print(epoch, sqrt(E/n))
 
         # Save the new weights and biases.
         v = v_new
@@ -376,7 +354,7 @@ def nnpde1(
         w = w_new
 
     # Return the final solution.
-    return (psit, dpsit_dx)
+    return (Yt, dYt_dx)
 
 #--------------------------------------------------------------------------------
 
@@ -465,18 +443,15 @@ if __name__ == '__main__':
     assert pdemod.Gf
     assert len(pdemod.bcf) > 0
     assert len(pdemod.bcdf) == len(pdemod.bcf)
-    assert pdemod.dG_dpsif
-    assert pdemod.del_Gf
-    assert pdemod.dG_ddel_psif
-    assert pdemod.psiaf
-    assert len(pdemod.del_psiaf) == len(pdemod.bcf)
+    assert pdemod.dG_dYf
+    assert pdemod.dG_ddelYf
+    assert pdemod.Yaf
+    assert len(pdemod.delYaf) == len(pdemod.bcf)
 
     # Create the array of evenly-spaced training points. Use the same
     # values of the training points for each dimension.
-    if verbose: print('Computing training points in [0,1] along 2 dimensions.')
-    dxy = 1 / (ntrain - 1)
-    if debug: print('dxy =', dxy)
-    xt = [i * dxy for i in range(ntrain)]
+    if verbose: print('Computing training points in [[0,1],[0,1]].')
+    xt = np.linspace(0, 1, ntrain)
     if debug: print('xt =', xt)
     yt = xt
     if debug: print('yt =', yt)
@@ -486,7 +461,7 @@ if __name__ == '__main__':
     if debug: print('nxt =', nxt)
     nyt = len(yt)
     if debug: print('nyt =', nyt)
-    ntrain = len(xt) * len(yt)
+    ntrain = len(xt)*len(yt)
     if debug: print('ntrain =', ntrain)
 
     # Create the list of training points.
@@ -495,22 +470,20 @@ if __name__ == '__main__':
     x = np.zeros((ntrain, 2))
     for j in range(nyt):
         for i in range(nxt):
-            k = j * nxt + i
-            if debug: print('k =', k)
-            x[k][0] = xt[i]
-            x[k][1] = yt[j]
+            k = j*nxt + i
+            x[k,0] = xt[i]
+            x[k,1] = yt[j]
     if debug: print('x =', x)
 
     #----------------------------------------------------------------------------
 
     # Compute the 1st-order PDE solution using the neural network.
-    (psit, del_psit) = nnpde1(
+    (Yt, delYt) = nnpde1(
         pdemod.Gf,             # 2-variable, 1st-order PDE IVP to solve
+        pdemod.dG_dYf,         # Partial of G wrt Y
+        pdemod.dG_ddelYf,      # Partials of G wrt del Y
         pdemod.bcf,            # BC functions
         pdemod.bcdf,           # BC function derivatives
-        pdemod.dG_dpsif,       # Partial of G wrt psi
-        pdemod.del_Gf,         # Gradient of G
-        pdemod.dG_ddel_psif,   # Partials of G wrt del psi
         x,                     # Training points as pairs
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
@@ -522,44 +495,44 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    psia = np.zeros(len(x))
+    Ya = np.zeros(len(x))
     for i in range(len(x)):
-        psia[i] = pdemod.psiaf(x[i])
-    if debug: print('psia =', psia)
+        Ya[i] = pdemod.Yaf(x[i])
+    if debug: print('Ya =', Ya)
 
     # Compute the analytical derivative at the training points.
-    del_psia = np.zeros((len(x), len(x[1])))
+    delYa = np.zeros((len(x), len(x[1])))
     for i in range(len(x)):
         for j in range(len(x[0])):
-            del_psia[i][j] = pdemod.del_psiaf[j](x[i])
-    if debug: print('del_psia =', del_psia)
+            delYa[i,j] = pdemod.delYaf[j](x[i])
+    if debug: print('delYa =', delYa)
 
     # Compute the RMSE of the trial solution.
-    psi_err = psit - psia
-    if debug: print('psi_err =', psi_err)
-    rmse_psi = sqrt(sum(psi_err**2) / len(x))
-    if debug: print('rmse_psi =', rmse_psi)
+    Y_err = Yt - Ya
+    if debug: print('Y_err =', Y_err)
+    rmse_Y = sqrt(sum(Y_err**2) / len(x))
+    if debug: print('rmse_Y =', rmse_Y)
 
     # Compute the MSE of the trial derivative.
-    del_psi_err = del_psit - del_psia
-    if debug: print('del_psi_err =', del_psi_err)
-    rmse_del_psi = np.zeros(len(x[0]))
+    delY_err = delYt - delYa
+    if debug: print('delY_err =', delY_err)
+    rmse_delY = np.zeros(len(x[0]))
     e2sum = np.zeros(len(x[0]))
     for j in range(len(x[0])):
         for i in range(len(x)):
-            e2sum[j] += del_psi_err[i][j]**2
-        rmse_del_psi[j] = sqrt(e2sum[j] / len(x))
-    if debug: print('rmse_del_psi =', rmse_del_psi)
+            e2sum[j] += delY_err[i,j]**2
+        rmse_delY[j] = sqrt(e2sum[j] / len(x))
+    if debug: print('rmse_delY =', rmse_delY)
 
     # Print the report.
-    print('    x        y      psia     psit   dpsia_dx dpsit_dx dpsia_dy dpsit_dy')
-    for i in range(len(psia)):
+    print('    x        y      Ya     Yt   dYa_dx dYt_dx dYa_dy dYt_dy')
+    for i in range(len(Ya)):
         print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
-              (x[i][0], x[i][1],
-               psia[i], psit[i],
-               del_psia[i][0], del_psit[i][0],
-               del_psia[i][1], del_psit[i][1]
+              (x[i,0], x[i,1],
+               Ya[i], Yt[i],
+               delYa[i,0], delYt[i,0],
+               delYa[i,1], delYt[i,1]
               )
         )
     print('RMSE              %f          %f          %f' %
-          (rmse_psi, rmse_del_psi[0], rmse_del_psi[1]))
+          (rmse_Y, rmse_delY[0], rmse_delY[1]))

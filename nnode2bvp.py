@@ -1,19 +1,15 @@
 #!/usr/bin/env python
 
 # Use a neural network to solve a 2nd-order ODE BVP, with 2 Dirichlet
-# BC, i.e. the value of the solution is specified at both ends of the
-# solution region [0,1]. Note that any 2nd-order Dirichlet BVP can be
-# mapped to a corresponding BVP of this type, so this is the only
-# solution form needed.
-
+# BC. Note that any 2nd-order ODE BVP with Dirichlet BC can be mapped
+# to a corresponding BVP of this type, so this is the only solution
+# form needed.
 
 # The general form of such equations is:
 
-# G(x, y, dy_dx, dy_dx2) = 0
+# G(x, y, dy_dx, d2y_dx2) = 0
 
 # Notation notes:
-
-# 0. Notation is developed to mirror my derivations and notes.
 
 # 1. Names that end in 'f' are usually functions, or containers of functions.
 
@@ -53,18 +49,18 @@ v_max = 1
 
 #********************************************************************************
 
-# The range of the trial solution is assumed to be [0, 1].
+# The domain of the trial solution is assumed to be [0, 1].
 
 # Define the trial solution for a 2nd-order ODE BVP.
-def ytrial(A, B, x, N):
+def ytf(A, B, x, N):
     return A*(1 - x) + B*x + x*(1 - x)*N
 
 # Define the 1st trial derivative.
-def dytrial_dx(A, B, x, N, dN_dx):
+def dyt_dxf(A, B, x, N, dN_dx):
     return -A + B + x*(1 - x)*dN_dx + (1 - 2*x)*N
 
 # Define the 2nd trial derivative.
-def d2ytrial_dx2(A, B, x, N, dN_dx, d2N_dx2):
+def d2yt_dx2f(A, B, x, N, dN_dx, d2N_dx2):
     return x*(1 - x)*d2N_dx2 + 2*(1 - 2*x)*dN_dx - 2*N
 
 #********************************************************************************
@@ -73,12 +69,12 @@ def d2ytrial_dx2(A, B, x, N, dN_dx, d2N_dx2):
 # feedforward neural network.
 
 def nnode2bvp(
-        Gf,             # 1st-order ODE IVP to solve
-        bc0,            # BC at x=0
-        bc1,            # BC at x=1
-        dG_dyf,         # Partial of G(x,y,dy/dx) wrt y
-        dG_dydxf,       # Partial of G(x,y,dy/dx) wrt dy/dx
-        dG_d2ydx2f,     # Partial of G(x,y,dy/dx) wrt d2y/dx2
+        Gf,                            # 2nd-order ODE BVP to solve
+        bc0,                           # BC at x=0
+        bc1,                           # BC at x=1
+        dG_dyf,                        # Partial of G(x,y,dy/dx) wrt y
+        dG_dydxf,                      # Partial of G(x,y,dy/dx) wrt dy/dx
+        dG_d2ydx2f,                    # Partial of G(x,y,dy/dx) wrt d2y/dx2
         x,                             # x-values for training points
         nhid = default_nhid,           # Node count in hidden layer
         maxepochs = default_maxepochs, # Max training epochs
@@ -99,7 +95,7 @@ def nnode2bvp(
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
-        # Sanity-check arguments.
+    # Sanity-check arguments.
     assert Gf
     assert bc0 != None
     assert bc1 != None
@@ -114,8 +110,16 @@ def nnode2bvp(
     #----------------------------------------------------------------------------
 
     # Determine the number of training points.
-    ntrain = len(x)
-    if debug: print('ntrain =', ntrain)
+    n = len(x)
+    if debug: print('n =', n)
+
+    # Change notation for convenience.
+    A = bc0
+    if debug: print('A =', A)
+    B = bc1
+    if debug: print('B =', B)
+    H = nhid
+    if debug: print('H =', H)
 
     #----------------------------------------------------------------------------
 
@@ -124,29 +128,19 @@ def nnode2bvp(
     # Create an array to hold the weights connecting the input node to the
     # hidden nodes. The weights are initialized with a uniform random
     # distribution.
-    w = np.random.uniform(w_min, w_max, nhid)
+    w = np.random.uniform(w_min, w_max, H)
     if debug: print('w =', w)
 
     # Create an array to hold the biases for the hidden nodes. The
     # biases are initialized with a uniform random distribution.
-    u = np.random.uniform(u_min, u_max, nhid)
+    u = np.random.uniform(u_min, u_max, H)
     if debug: print('u =', u)
 
     # Create an array to hold the weights connecting the hidden nodes
     # to the output node. The weights are initialized with a uniform
     # random distribution.
-    v = np.random.uniform(v_min, v_max, nhid)
+    v = np.random.uniform(v_min, v_max, H)
     if debug: print('v =', v)
-
-    # Change notation for convenience.
-    A = bc0
-    if debug: print('A =', A)
-    B = bc1
-    if debug: print('B =', B)
-    n = ntrain
-    if debug: print('n =', n)
-    H = nhid
-    if debug: print('H =', H)
 
     #----------------------------------------------------------------------------
 
@@ -163,11 +157,11 @@ def nnode2bvp(
         s3 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                z[i][k] = w[k] * x[i] + u[k]
-                s[i][k] = sigma(z[i][k])
-                s1[i][k] = dsigma_dz(z[i][k])
-                s2[i][k] = d2sigma_dz2(z[i][k])
-                s3[i][k] = d3sigma_dz3(z[i][k])
+                z[i,k] = w[k]*x[i] + u[k]
+                s[i,k] = sigma(z[i,k])
+                s1[i,k] = dsigma_dz(z[i,k])
+                s2[i,k] = d2sigma_dz2(z[i,k])
+                s3[i,k] = d3sigma_dz3(z[i,k])
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -190,19 +184,19 @@ def nnode2bvp(
         d3N_dwdx2 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                N[i] += v[k] * s[i][k]
-                dN_dx[i] += v[k] * s1[i][k] * w[k]
-                dN_dv[i][k] = s[i][k]
-                dN_du[i][k] = v[k] * s1[i][k]
-                dN_dw[i][k] = v[k] * s1[i][k] * x[i]
-                d2N_dvdx[i][k] = s1[i][k] * w[k]
-                d2N_dudx[i][k] = v[k] * s2[i][k] * w[k]
-                d2N_dwdx[i][k] = v[k] * (s1[i][k] + s2[i][k] * w[k] * x[i])
-                d2N_dx2[i] += v[k] * s2[i][k] * w[k]**2
-                d3N_dvdx2[i][k] = s2[i][k] * w[k]**2
-                d3N_dudx2[i][k] = v[k] * s3[i][k] * w[k]**2
-                d3N_dwdx2[i][k] = (
-                    v[k] * (2 * s2[i][k] * w[k] + s3[i][k] * w[k]**2 * x[i])
+                N[i] += v[k]*s[i,k]
+                dN_dx[i] += v[k]*s1[i,k]*w[k]
+                dN_dv[i,k] = s[i,k]
+                dN_du[i,k] = v[k]*s1[i,k]
+                dN_dw[i,k] = v[k]*s1[i,k]*x[i]
+                d2N_dvdx[i,k] = s1[i,k]*w[k]
+                d2N_dudx[i,k] = v[k]*s2[i,k]*w[k]
+                d2N_dwdx[i,k] = v[k]*(s1[i,k] + s2[i,k]*w[k]*x[i])
+                d2N_dx2[i] += v[k]*s2[i,k]*w[k]**2
+                d3N_dvdx2[i,k] = s2[i,k]*w[k]**2
+                d3N_dudx2[i,k] = v[k]*s3[i,k]*w[k]**2
+                d3N_dwdx2[i,k] = (
+                    v[k]*(2*s2[i,k]*w[k] + s3[i,k]*w[k]**2*x[i])
                 )
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
@@ -234,36 +228,36 @@ def nnode2bvp(
         d3yt_dudx2 = np.zeros((n, H))
         d3yt_dwdx2 = np.zeros((n, H))
         for i in range(n):
-            yt[i] = ytrial(A, B, x[i], N[i])
-            dyt_dx[i] = dytrial_dx(A, B, x[i], N[i], dN_dx[i])
-            d2yt_dx2[i] = d2ytrial_dx2(A, B, x[i], N[i], dN_dx[i], d2N_dx2[i])
+            yt[i] = ytf(A, B, x[i], N[i])
+            dyt_dx[i] = dyt_dxf(A, B, x[i], N[i], dN_dx[i])
+            d2yt_dx2[i] = d2yt_dx2f(A, B, x[i], N[i], dN_dx[i], d2N_dx2[i])
             for k in range(H):
-                dyt_dv[i][k] = x[i]*(1 - x[i])*dN_dv[i][k]
-                dyt_du[i][k] = x[i]*(1 - x[i])*dN_du[i][k]
-                dyt_dw[i][k] = x[i]*(1 - x[i])*dN_dw[i][k]
-                d2yt_dvdx[i][k] = (
-                    x[i]*(1 - x[i])*d2N_dvdx[i][k] + (1 - 2*x[i])*dN_dv[i][k]
+                dyt_dv[i,k] = x[i]*(1 - x[i])*dN_dv[i,k]
+                dyt_du[i,k] = x[i]*(1 - x[i])*dN_du[i,k]
+                dyt_dw[i,k] = x[i]*(1 - x[i])*dN_dw[i,k]
+                d2yt_dvdx[i,k] = (
+                    x[i]*(1 - x[i])*d2N_dvdx[i,k] + (1 - 2*x[i])*dN_dv[i,k]
                 )
-                d2yt_dudx[i][k] = (
-                    x[i]*(1 - x[i])*d2N_dudx[i][k] + (1 - 2*x[i])*dN_du[i][k]
+                d2yt_dudx[i,k] = (
+                    x[i]*(1 - x[i])*d2N_dudx[i,k] + (1 - 2*x[i])*dN_du[i,k]
                 )
-                d2yt_dwdx[i][k] = (
-                    x[i]*(1 - x[i])*d2N_dwdx[i][k] + (1 - 2*x[i])*dN_dw[i][k]
+                d2yt_dwdx[i,k] = (
+                    x[i]*(1 - x[i])*d2N_dwdx[i,k] + (1 - 2*x[i])*dN_dw[i,k]
                 )
-                d3yt_dvdx2[i][k] = (
-                    x[i]*(1 - x[i])*d3N_dvdx2[i][k]
-                    + 2*(1 - 2*x[i])*d2N_dvdx[i][k]
-                    - 2*dN_dv[i][k]
+                d3yt_dvdx2[i,k] = (
+                    x[i]*(1 - x[i])*d3N_dvdx2[i,k]
+                    + 2*(1 - 2*x[i])*d2N_dvdx[i,k]
+                    - 2*dN_dv[i,k]
                 )
-                d3yt_dudx2[i][k] = (
-                    x[i]*(1 - x[i])*d3N_dudx2[i][k]
-                    + 2*(1 - 2*x[i])*d2N_dudx[i][k]
-                    - 2*dN_du[i][k]
+                d3yt_dudx2[i,k] = (
+                    x[i]*(1 - x[i])*d3N_dudx2[i,k]
+                    + 2*(1 - 2*x[i])*d2N_dudx[i,k]
+                    - 2*dN_du[i,k]
                 )
-                d3yt_dwdx2[i][k] = (
-                    x[i]*(1 - x[i])*d3N_dwdx2[i][k]
-                    + 2*(1 - 2*x[i])*d2N_dwdx[i][k]
-                    - 2*dN_dw[i][k]
+                d3yt_dwdx2[i,k] = (
+                    x[i]*(1 - x[i])*d3N_dwdx2[i,k]
+                    + 2*(1 - 2*x[i])*d2N_dwdx[i,k]
+                    - 2*dN_dw[i,k]
                 )
         if debug: print('yt =', yt)
         if debug: print('dyt_dx =', dyt_dx)
@@ -283,40 +277,38 @@ def nnode2bvp(
         G = np.zeros(n)
         dG_dyt = np.zeros(n)
         dG_dytdx = np.zeros(n)
-        dG_d2ytdx2 = np.zeros(n)
         dG_dv = np.zeros((n, H))
         dG_du = np.zeros((n, H))
         dG_dw = np.zeros((n, H))
+        dG_d2ytdx2 = np.zeros(n)
         for i in range(n):
             G[i] = Gf(x[i], yt[i], dyt_dx[i], d2yt_dx2[i])
             dG_dyt[i] = dG_dyf(x[i], yt[i], dyt_dx[i], d2yt_dx2[i])
             dG_dytdx[i] = dG_dydxf(x[i], yt[i], dyt_dx[i], d2yt_dx2[i])
             dG_d2ytdx2[i] = dG_d2ydx2f(x[i], yt[i], dyt_dx[i], d2yt_dx2[i])
             for k in range(H):
-                dG_dv[i][k] = (
-                    dG_dyt[i]*dyt_dv[i][k] + dG_dytdx[i]*d2yt_dvdx[i][k]
-                    + dG_d2ytdx2[i]*d3yt_dvdx2[i][k]
+                dG_dv[i,k] = (
+                    dG_dyt[i]*dyt_dv[i,k] + dG_dytdx[i]*d2yt_dvdx[i,k]
+                    + dG_d2ytdx2[i]*d3yt_dvdx2[i,k]
                 )
-                dG_du[i][k] = (
-                    dG_dyt[i]*dyt_du[i][k] + dG_dytdx[i]*d2yt_dudx[i][k]
-                    + dG_d2ytdx2[i]*d3yt_dudx2[i][k]
+                dG_du[i,k] = (
+                    dG_dyt[i]*dyt_du[i,k] + dG_dytdx[i]*d2yt_dudx[i,k]
+                    + dG_d2ytdx2[i]*d3yt_dudx2[i,k]
                 )
-                dG_dw[i][k] = (
-                    dG_dyt[i]*dyt_dw[i][k] + dG_dytdx[i]*d2yt_dwdx[i][k]
-                    + dG_d2ytdx2[i]*d3yt_dwdx2[i][k]
+                dG_dw[i,k] = (
+                    dG_dyt[i]*dyt_dw[i,k] + dG_dytdx[i]*d2yt_dwdx[i,k]
+                    + dG_d2ytdx2[i]*d3yt_dwdx2[i,k]
                 )
         if debug: print('G =', G)
         if debug: print('dG_dyt =', dG_dyt)
         if debug: print('dG_dytdx =', dG_dytdx)
-        if debug: print('dG_d2ytdx2 =', dG_d2ytdx2)
         if debug: print('dG_dv =', dG_dv)
         if debug: print('dG_du =', dG_du)
         if debug: print('dG_dw =', dG_dw)
+        if debug: print('dG_d2ytdx2 =', dG_d2ytdx2)
 
-        # Compute the error function for this pass.
-        E = 0
-        for i in range(n):
-            E += G[i]**2
+        # Compute the error function for this epoch.
+        E = sum(G**2)
         if debug: print('E =', E)
 
         # Compute the partial derivatives of the error with respect to
@@ -326,9 +318,9 @@ def nnode2bvp(
         dE_dw = np.zeros(H)
         for k in range(H):
             for i in range(n):
-                dE_dv[k] += 2 * G[i] * dG_dv[i][k]
-                dE_du[k] += 2 * G[i] * dG_du[i][k]
-                dE_dw[k] += 2 * G[i] * dG_dw[i][k]
+                dE_dv[k] += 2*G[i]*dG_dv[i,k]
+                dE_du[k] += 2*G[i]*dG_du[i,k]
+                dE_dw[k] += 2*G[i]*dG_dw[i,k]
         if debug: print('dE_dv =', dE_dv)
         if debug: print('dE_du =', dE_du)
         if debug: print('dE_dw =', dE_dw)
@@ -340,14 +332,14 @@ def nnode2bvp(
         u_new = np.zeros(H)
         w_new = np.zeros(H)
         for k in range(H):
-            v_new[k] = v[k] - eta * dE_dv[k]
-            u_new[k] = u[k] - eta * dE_du[k]
-            w_new[k] = w[k] - eta * dE_dw[k]
+            v_new[k] = v[k] - eta*dE_dv[k]
+            u_new[k] = u[k] - eta*dE_du[k]
+            w_new[k] = w[k] - eta*dE_dw[k]
         if debug: print('v_new =', v_new)
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        if verbose: print(epoch, E)
+        if verbose: print(epoch, sqrt(E))
 
         # Save the new weights and biases.
         v = v_new
@@ -375,6 +367,7 @@ if __name__ == '__main__':
     # Add command-line options.
     parser.add_argument('--debug', '-d',
                         action = 'store_true',
+                        default = default_debug,
                          help = 'Produce debugging output')
     parser.add_argument('--eta', type = float,
                         default = default_eta,
@@ -454,21 +447,19 @@ if __name__ == '__main__':
 
     # Create the array of evenly-spaced training points.
     if verbose: print('Computing training points in domain [0,1].')
-    dx = 1 / (ntrain - 1)
-    if debug: print('dx =', dx)
-    xt = [i * dx for i in range(ntrain)]
+    xt = np.linspace(0, 1, ntrain)
     if debug: print('xt =', xt)
 
     #----------------------------------------------------------------------------
 
     # Compute the 2nd-order ODE solution using the neural network.
     (yt, dyt_dx, d2yt_dx2) = nnode2bvp(
-        odemod.Gf,             # 1st-order ODE IVP to solve
+        odemod.Gf,             # 2nd-order ODE BVP to solve
         odemod.bc0,            # BC at x=0
         odemod.bc1,            # BC at x=1
-        odemod.dG_dyf,         # Partial of G(x,y,dy/dx) wrt y
-        odemod.dG_dydxf,       # Partial of G(x,y,dy/dx) wrt dy/dx
-        odemod.dG_d2ydx2f,     # Partial of G(x,y,dy/dx) wrt d2y/dx2
+        odemod.dG_dyf,         # Partial of G(x,y,dy/dx,d2y_dx2) wrt y
+        odemod.dG_dydxf,       # Partial of G(x,y,dy/dx,d2y_dx2) wrt dy/dx
+        odemod.dG_d2ydx2f,     # Partial of G(x,y,dy/dx,d2y_dx2) wrt d2y/dx2
         xt,                    # x-values for training points
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs

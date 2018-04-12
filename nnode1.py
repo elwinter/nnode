@@ -10,8 +10,6 @@
 
 # Notation notes:
 
-# 0. Notation is developed to mirror my derivations and notes.
-
 # 1. Names that end in 'f' are usually functions, or containers of functions.
 
 # 2. Underscores separate the numerator and denominator in a name
@@ -49,21 +47,20 @@ u_max = 1
 
 #********************************************************************************
 
-# The range of the trial solution is assumed to be [0, 1].
+# The domain of the trial solution is assumed to be [0, 1].
 
 # Define the trial solution for a 1st-order ODE IVP.
-def ytrial(A, x, N):
-    return A + x * N
+def ytf(A, x, N):
+    return A + x*N
 
-# Define the first trial derivative.
-def dytrial_dx(x, N, dN_dx):
-    return x * dN_dx + N
+# Define the 1st trial derivative.
+def dyt_dxf(x, N, dN_dx):
+    return x*dN_dx + N
 
 #********************************************************************************
 
 # Function to solve a 1st-order ODE IVP using a single-hidden-layer
-# feedforward neural network with a single input node and a single
-# output node.
+# feedforward neural network.
 
 def nnode1(
         Gf,                            # 1st-order ODE IVP to solve
@@ -101,8 +98,14 @@ def nnode1(
     #----------------------------------------------------------------------------
 
     # Determine the number of training points.
-    ntrain = len(x)
-    if debug: print('ntrain =', ntrain)
+    n = len(x)
+    if debug: print('n =', n)
+
+    # Change notation for convenience.
+    A = ic
+    if debug: print('A =', A)
+    H = nhid
+    if debug: print('H =', H)
 
     #----------------------------------------------------------------------------
 
@@ -111,27 +114,19 @@ def nnode1(
     # Create an array to hold the weights connecting the input node to the
     # hidden nodes. The weights are initialized with a uniform random
     # distribution.
-    w = np.random.uniform(w_min, w_max, nhid)
+    w = np.random.uniform(w_min, w_max, H)
     if debug: print('w =', w)
 
     # Create an array to hold the biases for the hidden nodes. The
     # biases are initialized with a uniform random distribution.
-    u = np.random.uniform(u_min, u_max, nhid)
+    u = np.random.uniform(u_min, u_max, H)
     if debug: print('u =', u)
 
     # Create an array to hold the weights connecting the hidden nodes
     # to the output node. The weights are initialized with a uniform
     # random distribution.
-    v = np.random.uniform(v_min, v_max, nhid)
+    v = np.random.uniform(v_min, v_max, H)
     if debug: print('v =', v)
-
-    # Change notation for convenience.
-    A = ic
-    if debug: print('A =', A)
-    n = ntrain
-    if debug: print('n =', n)
-    H = nhid
-    if debug: print('H =', H)
 
     #----------------------------------------------------------------------------
 
@@ -147,10 +142,10 @@ def nnode1(
         s2 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                z[i][k] = w[k] * x[i] + u[k]
-                s[i][k] = sigma(z[i][k])
-                s1[i][k] = dsigma_dz(z[i][k])
-                s2[i][k] = d2sigma_dz2(z[i][k])
+                z[i,k] = w[k]*x[i] + u[k]
+                s[i,k] = sigma(z[i,k])
+                s1[i,k] = dsigma_dz(z[i,k])
+                s2[i,k] = d2sigma_dz2(z[i,k])
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -168,14 +163,14 @@ def nnode1(
         d2N_dwdx = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                N[i] += v[k] * s[i][k]
-                dN_dx[i] += v[k] * s1[i][k]* w[k]
-                dN_dv[i][k] = s[i][k]
-                dN_du[i][k] = v[k] * s1[i][k]
-                dN_dw[i][k] = v[k] * s1[i][k] * x[i]
-                d2N_dvdx[i][k] = s1[i][k] * w[k]
-                d2N_dudx[i][k] = v[k] * s2[i][k] * w[k]
-                d2N_dwdx[i][k] =  v[k] * (s1[i][k] + s2[i][k] * w[k] * x[i])
+                N[i] += v[k]*s[i,k]
+                dN_dx[i] += v[k]*s1[i,k]*w[k]
+                dN_dv[i,k] = s[i,k]
+                dN_du[i,k] = v[k]*s1[i,k]
+                dN_dw[i,k] = v[k]*s1[i,k]*x[i]
+                d2N_dvdx[i,k] = s1[i,k]*w[k]
+                d2N_dudx[i,k] = v[k]*s2[i,k]*w[k]
+                d2N_dwdx[i,k] =  v[k]*(s1[i,k] + s2[i,k]*w[k]*x[i])
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
         if debug: print('dN_dv =', dN_dv)
@@ -198,15 +193,15 @@ def nnode1(
         d2yt_dudx = np.zeros((n, H))
         d2yt_dwdx = np.zeros((n, H))
         for i in range(n):
-            yt[i] = ytrial(A, x[i], N[i])
-            dyt_dx[i] = dytrial_dx(x[i], N[i], dN_dx[i])
+            yt[i] = ytf(A, x[i], N[i])
+            dyt_dx[i] = dyt_dxf(x[i], N[i], dN_dx[i])
             for k in range(H):
-                dyt_dv[i][k] = x[i] * dN_dv[i][k]
-                dyt_du[i][k] = x[i] * dN_du[i][k]
-                dyt_dw[i][k] = x[i] * dN_dw[i][k]
-                d2yt_dvdx[i][k] = x[i] * d2N_dvdx[i][k] + dN_dv[i][k]
-                d2yt_dudx[i][k] = x[i] * d2N_dudx[i][k] + dN_du[i][k]
-                d2yt_dwdx[i][k] = x[i] * d2N_dwdx[i][k] + dN_dw[i][k]
+                dyt_dv[i,k] = x[i]*dN_dv[i,k]
+                dyt_du[i,k] = x[i]*dN_du[i,k]
+                dyt_dw[i,k] = x[i]*dN_dw[i,k]
+                d2yt_dvdx[i,k] = x[i]*d2N_dvdx[i,k] + dN_dv[i,k]
+                d2yt_dudx[i,k] = x[i]*d2N_dudx[i,k] + dN_du[i,k]
+                d2yt_dwdx[i,k] = x[i]*d2N_dwdx[i,k] + dN_dw[i,k]
         if debug: print('yt =', yt)
         if debug: print('dyt_dx =', dyt_dx)
         if debug: print('dyt_dv =', dyt_dv)
@@ -229,14 +224,14 @@ def nnode1(
             dG_dyt[i] = dG_dyf(x[i], yt[i], dyt_dx[i])
             dG_dytdx[i] = dG_dydxf(x[i], yt[i], dyt_dx[i])
             for k in range(H):
-                dG_dv[i][k] = (
-                    dG_dyt[i] * dyt_dv[i][k] + dG_dytdx[i] * d2yt_dvdx[i][k]
+                dG_dv[i,k] = (
+                    dG_dyt[i]*dyt_dv[i,k] + dG_dytdx[i]*d2yt_dvdx[i,k]
                 )
-                dG_du[i][k] = (
-                    dG_dyt[i] * dyt_du[i][k] + dG_dytdx[i] * d2yt_dudx[i][k]
+                dG_du[i,k] = (
+                    dG_dyt[i]*dyt_du[i,k] + dG_dytdx[i]*d2yt_dudx[i,k]
                 )
-                dG_dw[i][k] = (
-                    dG_dyt[i] * dyt_dw[i][k] + dG_dytdx[i] * d2yt_dwdx[i][k]
+                dG_dw[i,k] = (
+                    dG_dyt[i]*dyt_dw[i,k] + dG_dytdx[i]*d2yt_dwdx[i,k]
                 )
         if debug: print('G =', G)
         if debug: print('dG_dyt =', dG_dyt)
@@ -245,10 +240,8 @@ def nnode1(
         if debug: print('dG_du =', dG_du)
         if debug: print('dG_dw =', dG_dw)
 
-        # Compute the error function for this pass.
-        E = 0
-        for i in range(n):
-            E += G[i]**2
+        # Compute the error function for this epoch.
+        E = sum(G**2)
         if debug: print('E =', E)
 
         # Compute the partial derivatives of the error with respect to the
@@ -258,30 +251,28 @@ def nnode1(
         dE_dw = np.zeros(H)
         for k in range(H):
             for i in range(n):
-                dE_dv[k] += 2 * G[i] * dG_dv[i][k]
-                dE_du[k] += 2 * G[i] * dG_du[i][k]
-                dE_dw[k] += 2 * G[i] * dG_dw[i][k]
+                dE_dv[k] += 2*G[i]*dG_dv[i,k]
+                dE_du[k] += 2*G[i]*dG_du[i,k]
+                dE_dw[k] += 2*G[i]*dG_dw[i,k]
         if debug: print('dE_dv =', dE_dv)
         if debug: print('dE_du =', dE_du)
         if debug: print('dE_dw =', dE_dw)
 
         #------------------------------------------------------------------------
-
-        # Update the weights and biases.
-    
+   
         # Compute the new values of the network parameters.
         v_new = np.zeros(H)
         u_new = np.zeros(H)
         w_new = np.zeros(H)
         for j in range(H):
-            v_new[j] = v[j] - eta * dE_dv[j]
-            u_new[j] = u[j] - eta * dE_du[j]
-            w_new[j] = w[j] - eta * dE_dw[j]
+            v_new[j] = v[j] - eta*dE_dv[j]
+            u_new[j] = u[j] - eta*dE_du[j]
+            w_new[j] = w[j] - eta*dE_dw[j]
         if debug: print('v_new =', v_new)
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        if verbose: print(epoch, E)
+        if verbose: print(epoch, sqrt(E))
 
         # Save the new weights and biases.
         v = v_new
@@ -385,9 +376,7 @@ if __name__ == '__main__':
 
     # Create the array of evenly-spaced training points.
     if verbose: print('Computing training points in domain [0,1].')
-    dx = 1 / (ntrain - 1)
-    if debug: print('dx =', dx)
-    xt = [i * dx for i in range(ntrain)]
+    xt = np.linspace(0, 1, ntrain)
     if debug: print('xt =', xt)
 
     #----------------------------------------------------------------------------

@@ -2,8 +2,8 @@
 
 # Use a neural network to solve a 2-variable, 2nd-order PDE BVP with
 # Dirichlet BC. Note that any 2-variable 2nd-order PDE BVP can be
-# mapped to a corresponding BVP with boundaries at 0 and 1, so this is
-# the only solution form needed.
+# mapped to a corresponding BVP of this type, so this is the only
+# solution form needed.
 
 # The general form of such equations is, for Y = Y(x,y):
 
@@ -11,21 +11,13 @@
 
 # Notation notes:
 
-# * Notation is developed to mirror my derivations and notes.
+# 1. Names that end in 'f' are usually functions, or containers of functions.
 
-# * The symbol psi has been replaced by 'Y' to simplify variable names.
+# 2. Underscores separate the numerator and denominator in a name
+# which represents a derivative.
 
-# * No space between differential operators and the variables they act on.
-
-# * Names that end in 'f' are usually functions, or containers of functions.
-
-# * Underscores separate the numerator and denominator in a name
-# which represents a derivative or fraction.
-
-# * Names beginning with 'del' are gradients of another function.
-
-# * delYt[i,j] is the derivative of the trial solution Yt[i] wrt
-# x[i][j]. Similarly for del2Yt[i,j].
+# 3. Names beginning with 'del' are gradients of another function, in
+# the form of function lists.
 
 #********************************************************************************
 
@@ -59,8 +51,7 @@ v_max = 1
 
 #********************************************************************************
 
-# The range of the trial solution is assumed to be [0, 1].
-# N.B. ASSUMES ONLY 2 DIMENSIONS!
+# The domain of the trial solution is assumed to be [[0, 1], [0, 1]].
 
 # Define the coefficient functions for the trial solution, and their derivatives.
 def Af(xy, bcf):
@@ -143,7 +134,7 @@ def d2P_dy2f(xy):
 
 del2Pf = (d2P_dx2f, d2P_dy2f)
 
-# Define the trial solution and its derivatives.
+# Define the trial solution.
 def Ytf(xy, N, bcf):
     A = Af(xy, bcf)
     P = Pf(xy)
@@ -420,9 +411,7 @@ def nnpde2bvp(
         if debug: print('dG_dw =', dG_dw)
 
         # Compute the error function for this pass.
-        E = 0
-        for i in range(n):
-            E += G[i]**2
+        E = sum(G**2)
         if debug: print('E =', E)
 
         # Compute the partial derivatives of the error with respect to the
@@ -443,8 +432,6 @@ def nnpde2bvp(
 
         #------------------------------------------------------------------------
 
-        # Update the weights and biases.
-    
         # Compute the new values of the network parameters.
         v_new = np.zeros(H)
         u_new = np.zeros(H)
@@ -565,10 +552,8 @@ if __name__ == '__main__':
 
     # Create the array of evenly-spaced training points. Use the same
     # values of the training points for each dimension.
-    if verbose: print('Computing training points in [0,1] along 2 dimensions.')
-    dxy = 1/(ntrain - 1)
-    if debug: print('dxy =', dxy)
-    xt = [i*dxy for i in range(ntrain)]
+    if verbose: print('Computing training points in [[0,1],[0,1]].')
+    xt = np.linspace(0, 1, ntrain)
     if debug: print('xt =', xt)
     yt = xt
     if debug: print('yt =', yt)
@@ -594,12 +579,12 @@ if __name__ == '__main__':
 
     #----------------------------------------------------------------------------
 
-    # Compute the PDE solution using the neural network.
+    # Compute the 2nd-order PDE solution using the neural network.
     (Yt, delYt, del2Yt) = nnpde2bvp(
-        pdemod.Gf,             # 2-variable, 1st-order PDE IVP to solve
-        pdemod.dG_dYf,         # Partial of G wrt psi
-        pdemod.dG_ddelYf,      # Partials of G wrt del psi
-        pdemod.dG_ddel2Yf,     # Partials of G wrt del2 psi
+        pdemod.Gf,             # 2-variable, 2nd-order PDE BVP to solve
+        pdemod.dG_dYf,         # Partial of G wrt Y
+        pdemod.dG_ddelYf,      # Partials of G wrt delY
+        pdemod.dG_ddel2Yf,     # Partials of G wrt del2Y
         pdemod.bcf,            # BC functions
         pdemod.bcdf,           # BC function derivatives
         pdemod.bcd2f,          # BC function 2nd derivatives
