@@ -5,8 +5,8 @@ from math import cos, exp, sin
 # A reasonable solution can be found using the following settings:
 # All defaults
 
-# The equation is defined on the domain [0,1], with the boundary
-# conditions defined at x=0.
+# The equation is defined on the domain [0,1], with the initial
+# condition defined at x=0.
 
 # Define the original differential equation, assumed to be in the form:
 # G(x,y,dy/dx) = dy/dx + y/5 - exp(-x/5)*cos(x)

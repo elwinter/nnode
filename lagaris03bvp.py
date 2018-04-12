@@ -1,7 +1,7 @@
 # This ODE is Problem 3 in Lagaris et al (BVP version).
 
 # A reasonable solution can be found using the following settings:
-# eta=0.001
+# All defaults
 
 # The equation is defined on the domain [0,1], with the boundary
 # conditions defined at x=0 and x=1.
