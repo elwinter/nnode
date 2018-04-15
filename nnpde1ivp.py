@@ -105,7 +105,7 @@ def Ytf(xy, N, bcf):
 # Function to solve a 2-variable, 1st-order PDE IVP using a single-hidden-layer
 # feedforward neural network.
 
-def nnpde1(
+def nnpde1ivp(
         Gf,                            # 2-variable, 1st-order PDE IVP to solve
         dG_dYf,                        # Partial of G wrt Y
         dG_ddelYf,                     # Partials of G wrt del Y
@@ -478,7 +478,7 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the 1st-order PDE solution using the neural network.
-    (Yt, delYt) = nnpde1(
+    (Yt, delYt) = nnpde1ivp(
         pdemod.Gf,             # 2-variable, 1st-order PDE IVP to solve
         pdemod.dG_dYf,         # Partial of G wrt Y
         pdemod.dG_ddelYf,      # Partials of G wrt del Y
