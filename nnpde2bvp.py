@@ -680,56 +680,57 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    # Ya = np.zeros(len(x))
-    # for i in range(len(x)):
-    #     Ya[i] = pdemod.Yaf(x[i])
-    # if debug: print('Ya =', Ya)
+    Ya = np.zeros(ntrain)
+    for i in range(ntrain):
+        Ya[i] = pdemod.Yaf(x[i])
+    if debug: print('Ya =', Ya)
 
-    # Compute the analytical derivatives at the training points.
-    # delYa = np.zeros((len(x), len(x[1])))
-    # for i in range(len(x)):
-    #     for j in range(len(x[0])):
-    #         delYa[i,j] = pdemod.delYaf[j](x[i])
-    # if debug: print('delYa =', delYa)
+    # Compute the analytical gradient at the training points.
+    delYa = np.zeros((ntrain, len(x[1])))
+    for i in range(ntrain):
+        for j in range(ndim):
+            delYa[i,j] = pdemod.delYaf[j](x[i])
+    if debug: print('delYa =', delYa)
 
-    # Compute the analytical 2nd derivatives at the training points.
-    # del2Ya = np.zeros((len(x), len(x[1])))
-    # for i in range(len(x)):
-    #     for j in range(len(x[0])):
-    #         del2Ya[i,j] = pdemod.del2Yaf[j](x[i])
-    # if debug: print('del2Ya =', del2Ya)
+    # Compute the analytical Hessian at the training points.
+    deldelYa = np.zeros((ntrain, len(x[1]), len(x[1])))
+    for i in range(ntrain):
+        for j in range(ndim):
+            for jj in range(ndim):
+                deldelYa[i,j, jj] = pdemod.deldelYaf[j][jj](x[i])
+    if debug: print('deldelYa =', deldelYa)
 
     # Compute the RMSE of the trial solution.
-    # Yerr = Yt - Ya
-    # if debug: print('Yerr =', Yerr)
-    # rmseY = sqrt(sum(Yerr**2)/len(x))
-    # if debug: print('rmseY =', rmseY)
+    Yerr = Yt - Ya
+    if debug: print('Yerr =', Yerr)
+    rmseY = sqrt(sum(Yerr**2)/ntrain)
+    if debug: print('rmseY =', rmseY)
 
-    # Compute the RMSE of the trial derivative.
-    # delYerr = delYt - delYa
-    # if debug: print('delYerr =', delYerr)
-    # rmsedelY = np.zeros(len(x[0]))
-    # e2sum = np.zeros(len(x[0]))
-    # for j in range(len(x[0])):
-    #     for i in range(len(x)):
-    #         e2sum[j] += delYerr[i,j]**2
-    #     rmsedelY[j] = sqrt(e2sum[j]/len(x))
-    # if debug: print('rmsedelY =', rmsedelY)
+    # Compute the RMSEs of the gradient.
+    delYerr = delYt - delYa
+    if debug: print('delYerr =', delYerr)
+    rmsedelY = np.zeros(ndim)
+    e2sum = np.zeros(ndim)
+    for j in range(ndim):
+        for i in range(ntrain):
+            e2sum[j] += delYerr[i,j]**2
+        rmsedelY[j] = sqrt(e2sum[j]/ntrain)
+    if debug: print('rmsedelY =', rmsedelY)
 
-    # Compute the RMSE of the 2nd trial derivative.
+    # Compute the RMSEs of the Hessian.
     # del2Yerr = del2Yt - del2Ya
     # if debug: print('del2Yerr =', del2Yerr)
-    # rmsedel2Y = np.zeros(len(x[0]))
-    # e2sum = np.zeros(len(x[0]))
-    # for j in range(len(x[0])):
-    #     for i in range(len(x)):
+    # rmsedel2Y = np.zeros(ndim)
+    # e2sum = np.zeros(ndim)
+    # for j in range(ndim):
+    #     for i in range(ntrain):
     #         e2sum[j] += del2Yerr[i,j]**2
-    #     rmsedel2Y[j] = sqrt(e2sum[j]/len(x))
+    #     rmsedel2Y[j] = sqrt(e2sum[j]/ntrain)
     # if debug: print('rmsedel2Y =', rmsedel2Y)
 
     # Print the report.
-    # print('    x        y       Ya       Yt     dYa_dx   dYt_dx   dYa_dy   dYt_dy  d2Ya_dx2 d2Yt_dx2 d2Ya_dy2 d2Yt_dy2')
-    # for i in range(len(Ya)):
+    print('    x        y       Ya       Yt     dYa_dx   dYt_dx   dYa_dy   dYt_dy  d2Ya_dxdx d2Yt_dxdx d2Ya_dxdy d2Yt_dxdy d2Ya_dydx d2Ya_dydy')
+    for i in range(len(Ya)):
     #     print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
     #           (x[i,0], x[i,1],
     #            Ya[i], Yt[i],
@@ -737,5 +738,18 @@ if __name__ == '__main__':
     #            del2Ya[i,0], del2Yt[i,0], del2Ya[i,1], del2Yt[i,1]
     #           )
     # )
+        print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
+              (x[i,0], x[i,1],
+               Ya[i], Yt[i],
+               delYa[i,0], delYt[i,0],
+               delYa[i,1], delYt[i,1],
+               deldelYa[i,0,0], deldelYt[i,0,0],
+               deldelYa[i,0,1], deldelYt[i,0,1],
+               deldelYa[i,1,0], deldelYt[i,1,0],
+               deldelYa[i,1,1], deldelYt[i,1,1]
+              ))
     # print('RMSE                       %f          %f          %f          %f          %f' %
     #       (rmseY, rmsedelY[0], rmsedelY[1], rmsedel2Y[0], rmsedel2Y[1]))
+    print('RMSE                       %f          %f          %f' %
+          (rmseY, rmsedelY[0], rmsedelY[1])
+    )
