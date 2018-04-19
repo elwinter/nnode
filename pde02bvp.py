@@ -1,62 +1,75 @@
 # Sample 2nd-order PDE BVP
 
 # A reasonable solution can be found using the following settings:
-# 
+# ALL DEFAULTS
 
 # The equation is defined on the domain [[0,1],[0,1]], with the
 # Dirichlet boundary conditions specified at x=0|1 and y=0|1.
 
 # The analytical form of the equation is:
 
-# G(x,y,Y,dY/dx,dY/dy,d2Y_dx2,d2Y_dy2) = x*y - Y = 0.
+# G(x,y,Y,delY,deldelY) = x*y - Y = 0.
 
 # The analytical solution is:
 
 # Y(x,y) = x*y
 
 # Define the original differential equation.
-def Gf(xy, Y, delY, del2Y):
+def Gf(xy, Y, delY, deldelY):
     (x, y) = xy
     (dY_dx, dY_dy) = delY
-    (d2Y_dx2, d2Y_dy2) = del2Y
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Ydydy)) = deldelY
     return x*y - Y
 
 # Partial of PDE wrt Y
-def dG_dYf(xy, Y, delY, del2Y):
+def dG_dYf(xy, Y, delY, deldelY):
     (x, y) = xy
     (dY_dx, dY_dy) = delY
-    (d2Y_dx2, d2Y_dy2) = del2Y
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Ydydy)) = deldelY
     return -1
 
-# Partial of PDE wrt gradient of Y
-def dG_dY_dxf(xy, Y, delY, del2Y):
+# Partials of PDE wrt del Y (partials wrt gradient of Y)
+def dG_dY_dxf(xy, Y, delY, deldelY):
     (x, y) = xy
     (dY_dx, dY_dy) = delY
-    (d2Y_dx2, d2Y_dy2) = del2Y
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Ydydy)) = deldelY
     return 0
 
-def dG_dY_dyf(xy, Y, delY, del2Y):
+def dG_dY_dyf(xy, Y, delY, deldelY):
     (x, y) = xy
     (dY_dx, dY_dy) = delY
-    (d2Y_dx2, d2Y_dy2) = del2Y
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Ydydy)) = deldelY
     return 0
 
 dG_ddelYf = (dG_dY_dxf, dG_dY_dyf)
 
-# Partial of PDE wrt del**2 of Y
-def dG_d2Y_dx2f(xy, Y, delY, del2Y):
+# Partials of PDE wrt del del Y (partials wrt Hessian of Y)
+def dG_d2Y_dxdxf(xy, Y, delY, deldelY):
     (x, y) = xy
     (dY_dx, dY_dy) = delY
-    (d2Y_dx2, d2Y_dy2) = del2Y
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Y_dydy)) = deldelY
     return 0
 
-def dG_d2Y_dy2f(xy, Y, delY, del2Y):
+def dG_d2Y_dxdyf(xy, Y, delY, deldelY):
     (x, y) = xy
     (dY_dx, dY_dy) = delY
-    (d2Y_dx2, d2Y_dy2) = del2Y
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Y_dydy)) = deldelY
     return 0
 
-dG_ddel2Yf = (dG_d2Y_dx2f, dG_d2Y_dy2f)
+def dG_d2Y_dydxf(xy, Y, delY, deldelY):
+    (x, y) = xy
+    (dY_dx, dY_dy) = delY
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Y_dydy)) = deldelY
+    return 0
+
+def dG_d2Y_dydyf(xy, Y, delY, deldelY):
+    (x, y) = xy
+    (dY_dx, dY_dy) = delY
+    ((d2Y_dxdx, d2Y_dxdy), (d2Y_dydx, d2Y_dydy)) = deldelY
+    return 0
+
+dG_ddeldelYf = ((dG_d2Y_dxdxf, dG_d2Y_dxdyf),
+                (dG_d2Y_dydxf, dG_d2Y_dydyf))
 
 # Boundary conditions for x at 0 and 1
 def f0f(y):
@@ -124,12 +137,17 @@ def dYa_dyf(xy):
 
 delYaf = (dYa_dxf, dYa_dyf)
 
-def d2Ya_dx2f(xy):
-    (x, y) = xy
+def d2Ya_dxdxf(xy):
     return 0
 
-def d2Ya_dy2f(xy):
-    (x, y) = xy
+def d2Ya_dxdyf(xy):
     return 0
 
-del2Yaf = (d2Ya_dx2f, d2Ya_dy2f)
+def d2Ya_dydxf(xy):
+    return 0
+
+def d2Ya_dydyf(xy):
+    return 0
+
+deldelYaf = ((d2Ya_dxdxf, d2Ya_dxdyf),
+             (d2Ya_dydxf, d2Ya_dydyf))

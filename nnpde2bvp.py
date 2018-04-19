@@ -87,23 +87,42 @@ def dA_dyf(xy, bcf, bcdf):
 
 delAf = (dA_dxf, dA_dyf)
 
-def d2A_dx2f(xy, bcf, bcdf, bcd2f):
+def d2A_dxdxf(xy, bcf, bcdf, bcd2f):
     (x, y) = xy
     ((f0f, g0f), (f1f, g1f)) = bcf
     ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
     ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    d2A_dx2 = (1 - y)*d2g0_dx2f(x) + y*d2g1_dx2f(x)
-    return d2A_dx2
+    return (1 - y)*d2g0_dx2f(x) + y*d2g1_dx2f(x)
 
-def d2A_dy2f(xy, bcf, bcdf, bcd2f):
+def d2A_dxdyf(xy, bcf, bcdf, bcd2f):
     (x, y) = xy
     ((f0f, g0f), (f1f, g1f)) = bcf
     ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
     ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    d2A_dy2 = (1 - x)*d2f0_dy2f(y) + x*d2f1_dy2f(y)
-    return d2A_dy2
+    return (
+        -df0_dyf(y) + df1_dyf(y) - dg0_dxf(x) + dg1_dxf(x) -
+        g0f(0) + g0f(1) + g1f(0) - g1f(1)
+    )
 
-del2Af = (d2A_dx2f, d2A_dy2f)
+def d2A_dydxf(xy, bcf, bcdf, bcd2f):
+    (x, y) = xy
+    ((f0f, g0f), (f1f, g1f)) = bcf
+    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
+    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
+    return (
+        -df0_dyf(y) + df1_dyf(y) - dg0_dxf(x) + dg1_dxf(x) -
+        g0f(0) + g0f(1) + g1f(0) - g1f(1)
+    )
+
+def d2A_dydyf(xy, bcf, bcdf, bcd2f):
+    (x, y) = xy
+    ((f0f, g0f), (f1f, g1f)) = bcf
+    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
+    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
+    return (1 - x)*d2f0_dy2f(y) + y*d2f1_dy2f(y)
+
+deldelAf = ((d2A_dxdxf, d2A_dxdyf),
+            (d2A_dydxf, d2A_dydyf))
 
 def Pf(xy):
     (x, y) = xy
@@ -122,17 +141,24 @@ def dP_dyf(xy):
 
 delPf = (dP_dxf, dP_dyf)
 
-def d2P_dx2f(xy):
+def d2P_dxdxf(xy):
     (x, y) = xy
-    d2P_dx2 = -2*y*(1 - y)
-    return d2P_dx2
+    return -2*y*(1 - y)
 
-def d2P_dy2f(xy):
+def d2P_dxdyf(xy):
     (x, y) = xy
-    d2P_dy2 = -2*x*(1 - x)
-    return d2P_dy2
+    return (1 - 2*x)*(1 - 2*y)
 
-del2Pf = (d2P_dx2f, d2P_dy2f)
+def d2P_dydxf(xy):
+    (x, y) = xy
+    return (1 - 2*x)*(1 - 2*y)
+
+def d2P_dydyf(xy):
+    (x, y) = xy
+    return -2*y*(1 - y)
+
+deldelPf = ((d2P_dxdxf, d2P_dxdyf),
+            (d2P_dydxf, d2P_dydyf))
 
 # Define the trial solution.
 def Ytf(xy, N, bcf):
@@ -150,8 +176,8 @@ def Ytf(xy, N, bcf):
 def nnpde2bvp(
         Gf,                            # 2-variable, 2nd-order PDE BVP
         dG_dYf,                        # Partial of G wrt Y
-        dG_ddelYf,                     # Partials of G wrt delY
-        dG_ddel2Yf,                    # Partials of G wrt del2Y
+        dG_ddelYf,                     # Partials of G wrt del Y
+        dG_ddeldelYf,                  # Partials of G wrt del del Y
         bcf,                           # BC functions
         bcdf,                          # BC function derivatives
         bcd2f,                         # BC function 2nd derivatives
@@ -165,7 +191,7 @@ def nnpde2bvp(
     if debug: print('Gf =', Gf)
     if debug: print('dG_dYf =', dG_dYf)
     if debug: print('dG_ddelYf =', dG_ddelYf)
-    if debug: print('dG_ddel2Yf =', dG_ddel2Yf)
+    if debug: print('dG_ddeldelYf =', dG_ddeldelYf)
     if debug: print('bcf =', bcf)
     if debug: print('bcdf =', bcdf)
     if debug: print('bcd2f =', bcd2f)
@@ -176,18 +202,27 @@ def nnpde2bvp(
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
-    # Sanity-check arguments.
+    # Sanity-check arguments. UPDATE THESE CHECKS!
     assert Gf
     assert dG_dYf
-    assert len(dG_ddelYf) == 2
-    assert len(dG_ddel2Yf) == 2
-    assert len(bcf) == 2
-    assert len(bcdf) == 2
-    assert len(bcd2f) == 2
-    assert len(x) > 0
-    assert nhid > 0
-    assert maxepochs > 0
-    assert eta > 0
+    assert len(dG_ddelYf) > 0
+    ndim = len(dG_ddelYf)
+    assert len(dG_ddeldelYf) == ndim
+    for j in range(ndim):
+        assert len(dG_ddeldelYf[j]) == ndim
+    assert len(bcf) == ndim
+    for j in range(ndim):
+        assert len(bcf[j]) == 2  # 0 and 1
+    assert len(bcdf) == ndim
+    for j in range(ndim):
+        assert len(bcdf[j]) == 2  # 0 and 1
+    assert len(bcd2f) == ndim
+    for j in range(ndim):
+        assert len(bcd2f[j]) == 2  # 0 and 1
+
+    # <HACK> ndim must be 2!
+    assert ndim == 2
+    # </HACK>
 
     #----------------------------------------------------------------------------
 
@@ -196,7 +231,7 @@ def nnpde2bvp(
     if debug: print('n =', n)
 
     # Change notation for convenience.
-    m = len(bcf)
+    m = ndim
     if debug: print('m =', m)  # Will always be 2 in this code.
     H = nhid
     if debug: print('H =', H)
@@ -208,7 +243,7 @@ def nnpde2bvp(
     # Create an array to hold the weights connecting the 2 input nodes
     # to the hidden nodes. The weights are initialized with a uniform
     # random distribution.
-    w = np.random.uniform(w_min, w_max, (2, H))
+    w = np.random.uniform(w_min, w_max, (m, H))
     if debug: print('w =', w)
 
     # Create an array to hold the biases for the hidden nodes. The
@@ -224,14 +259,18 @@ def nnpde2bvp(
 
     #----------------------------------------------------------------------------
 
+    # 0 <= i < n (n = # of sample points)
+    # 0 <= j < m (m = # independent variables)
+    # 0 <= k < H (H = # hidden nodes)
+
     # Run the network.
     for epoch in range(maxepochs):
         if debug: print('Starting epoch %d.' % epoch)
 
         # Compute the net input, the sigmoid function and its derivatives,
-        # for each hidden node.
-        z = np.zeros((n, H))
-        s = np.zeros((n, H))
+        # for each hidden node and each training point.
+        z =  np.zeros((n, H))
+        s =  np.zeros((n, H))
         s1 = np.zeros((n, H))
         s2 = np.zeros((n, H))
         s3 = np.zeros((n, H))
@@ -250,6 +289,8 @@ def nnpde2bvp(
         if debug: print('s2 =', s2)
         if debug: print('s3 =', s3)
 
+        #------------------------------------------------------------------------
+
         # Compute the network output and its derivatives, for each
         # training point.
         N = np.zeros(n)
@@ -260,10 +301,10 @@ def nnpde2bvp(
         d2N_dvdx = np.zeros((n, m, H))
         d2N_dudx = np.zeros((n, m, H))
         d2N_dwdx = np.zeros((n, m, H))
-        d2N_dx2 = np.zeros((n, m))
-        d3N_dvdx2 = np.zeros((n, m, H))
-        d3N_dudx2 = np.zeros((n, m, H))
-        d3N_dwdx2 = np.zeros((n, m, H))
+        d2N_dxdy = np.zeros((n, m, m))
+        d3N_dvdxdy = np.zeros((n, m, m, H))
+        d3N_dudxdy = np.zeros((n, m, m, H))
+        d3N_dwdxdy = np.zeros((n, m, m, H))
         for i in range(n):
             for k in range(H):
                 N[i] += v[k]*s[i,k]
@@ -275,12 +316,14 @@ def nnpde2bvp(
                     d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
                     d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
                     d2N_dwdx[i,j,k] = v[k]*(s1[i,k] + s2[i,k]*w[j,k]*x[i,j])
-                    d2N_dx2[i,j] += v[k]*s2[i,k]*w[j,k]**2
-                    d3N_dvdx2[i,j,k] = s2[i,k]*w[j,k]**2
-                    d3N_dudx2[i,j,k] = v[k]*s3[i,k]*w[j,k]**2
-                    d3N_dwdx2[i,j,k] = (
-                        v[k]*(2*s2[i,k]*w[j,k] + s3[i,k]*w[j,k]**2*x[i,j])
-                    )
+                    for jj in range(m):
+                        d2N_dxdy[i,j,jj] += v[k]*s2[i,k]*w[jj,k]*w[j,k]
+                        d3N_dvdxdy[i,j,jj,k] = s2[i,k]*w[j,k]*w[jj,k]
+                        d3N_dudxdy[i,j,jj,k] = v[k]*s3[i,k]*w[j,k]*w[jj,k]
+                        d3N_dwdxdy[i,j,jj,k] = (
+                            v[k]*s2[i,k]*(w[j,k] + w[jj,k]) +
+                            v[k]*s3[i,k]*w[j,k]*w[jj,k]*x[i,j]
+                        )
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
         if debug: print('dN_dv =', dN_dv)
@@ -289,20 +332,21 @@ def nnpde2bvp(
         if debug: print('d2N_dvdx =', d2N_dvdx)
         if debug: print('d2N_dudx =', d2N_dudx)
         if debug: print('d2N_dwdx =', d2N_dwdx)
-        if debug: print('d2N_dx2 =', d2N_dx2)
-        if debug: print('d3N_dvdx2 =', d3N_dvdx2)
-        if debug: print('d3N_dudx2 =', d3N_dudx2)
-        if debug: print('d3N_dwdx2 =', d3N_dwdx2)
+        if debug: print('d2N_dxdy =', d2N_dxdy)
+        if debug: print('d3N_dvdxdy =', d3N_dvdxdy)
+        if debug: print('d3N_dudxdy =', d3N_dudxdy)
+        if debug: print('d3N_dwdxdy =', d3N_dwdxdy)
 
         #------------------------------------------------------------------------
 
         # Compute the value of the trial solution and its derivatives,
         # for each training point.
+        A = np.zeros(n)
         dA_dx = np.zeros((n, m))
-        d2A_dx2 = np.zeros((n, m))
+        d2A_dxdy = np.zeros((n, m, m))
         P = np.zeros(n)
         dP_dx = np.zeros((n, m))
-        d2P_dx2 = np.zeros((n, m))
+        d2P_dxdy = np.zeros((n, m, m))
         Yt = np.zeros(n)
         dYt_dx = np.zeros((n, m))
         dYt_dv = np.zeros((n, H))
@@ -311,23 +355,28 @@ def nnpde2bvp(
         d2Yt_dvdx = np.zeros((n, m, H))
         d2Yt_dudx = np.zeros((n, m, H))
         d2Yt_dwdx = np.zeros((n, m, H))
-        d2Yt_dx2 = np.zeros((n, m))
-        d3Yt_dvdx2 = np.zeros((n, m, H))
-        d3Yt_dudx2 = np.zeros((n, m, H))
-        d3Yt_dwdx2 = np.zeros((n, m, H))
+        d2Yt_dxdy = np.zeros((n, m, m))
+        d3Yt_dvdxdy = np.zeros((n, m, m, H))
+        d3Yt_dudxdy = np.zeros((n, m, m, H))
+        d3Yt_dwdxdy = np.zeros((n, m, m, H))
         for i in range(n):
+            A[i] = Af(x[i], bcf)
             P[i] = Pf(x[i])
             Yt[i] = Ytf(x[i], N[i], bcf)
             for j in range(m):
                 dA_dx[i,j] = delAf[j](x[i], bcf, bcdf)
-                d2A_dx2[i,j] = del2Af[j](x[i], bcf, bcdf, bcd2f)
                 dP_dx[i,j] = delPf[j](x[i])
-                d2P_dx2[i,j] = del2Pf[j](x[i])
                 dYt_dx[i,j] = dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
-                d2Yt_dx2[i,j] = (
-                    d2A_dx2[i,j] + P[i]*d2N_dx2[i,j]
-                    +  2*dP_dx[i,j]*dN_dx[i,j] + d2P_dx2[i,j]*N[i]
-                )
+                for jj in range(m):
+                    d2A_dxdy[i,j,jj] = deldelAf[j][jj](x[i], bcf, bcdf, bcd2f)
+                    d2P_dxdy[i,j,jj] = deldelPf[j][jj](x[i])
+                    d2Yt_dxdy[i,j,jj] = (
+                        d2A_dxdy[i,j,jj] +
+                        P[i]*d2N_dxdy[i,j,jj] +
+                        dP_dx[i,jj]*dN_dx[i,j] +
+                        dP_dx[i,j]*dN_dx[i,jj] +
+                        d2P_dxdy[i,j,jj]*N[i]
+                    )
             for k in range(H):
                 dYt_dv[i,k] = P[i]*dN_dv[i,k]
                 dYt_du[i,k] = P[i]*dN_du[i,k]
@@ -342,23 +391,31 @@ def nnpde2bvp(
                     d2Yt_dwdx[i,j,k] = (
                         P[i]*d2N_dwdx[i,j,k] + dP_dx[i,j]*dN_dw[i,j,k]
                     )
-                    d3Yt_dvdx2[i,j,k] = (
-                        P[i]*d3N_dvdx2[i,j,k] + 2*dP_dx[i,j]*d2N_dvdx[i,j,k]
-                        + d2P_dx2[i,j]*dN_dv[i,k]
-                    )
-                    d3Yt_dudx2[i,j,k] = (
-                        P[i]*d3N_dudx2[i,j,k] + 2*dP_dx[i,j]*d2N_dudx[i,j,k]
-                        + d2P_dx2[i,j]*dN_du[i,k]
-                    )
-                    d3Yt_dwdx2[i,j,k] = (
-                        P[i]*d3N_dwdx2[i,j,k] + 2*dP_dx[i,j]*d2N_dwdx[i,j,k]
-                        + d2P_dx2[i,j]*dN_dw[i,j,k]
-                    )
+                    for jj in range(m):
+                        d3Yt_dvdxdy[i,j,jj,k] = (
+                            P[i]*d3N_dvdxdy[i,j,jj,k] +
+                            dP_dx[i,jj]*d2N_dvdx[i,j,k] +
+                            dP_dx[i,jj]*d2N_dvdx[i,jj,k] +
+                            d2P_dxdy[i,j,jj]*dN_dv[i,k]
+                        )
+                        d3Yt_dudxdy[i,j,jj,k] = (
+                            P[i]*d3N_dudxdy[i,j,jj,k] +
+                            dP_dx[i,jj]*d2N_dudx[i,j,k] +
+                            dP_dx[i,jj]*d2N_dudx[i,jj,k] +
+                            d2P_dxdy[i,j,jj]*dN_du[i,k]
+                        )
+                        d3Yt_dwdxdy[i,j,jj,k] = ( # Is this right?
+                            P[i]*d3N_dwdxdy[i,j,jj,k] +
+                            dP_dx[i,jj]*d2N_dwdx[i,j,k] +
+                            dP_dx[i,jj]*d2N_dwdx[i,jj,k] +
+                            d2P_dxdy[i,j,jj]*dN_dw[i,j,k]
+                        )
+        if debug: print('A =', A)
         if debug: print('dA_dx =', dA_dx)
-        if debug: print('d2A_dx2 =', d2A_dx2)
+        if debug: print('d2A_dxdy =', d2A_dxdy)
         if debug: print('P =', P)
         if debug: print('dP_dx =', dP_dx)
-        if debug: print('d2P_dx2 =', d2P_dx2)
+        if debug: print('d2P_dxdy =', d2P_dxdy)
         if debug: print('Yt =', Yt)
         if debug: print('dYt_dx =', dYt_dx)
         if debug: print('dYt_dv =', dYt_dv)
@@ -367,48 +424,55 @@ def nnpde2bvp(
         if debug: print('d2Yt_dvdx =', d2Yt_dvdx)
         if debug: print('d2Yt_dudx =', d2Yt_dudx)
         if debug: print('d2Yt_dwdx =', d2Yt_dwdx)
-        if debug: print('d2Yt_dx2 =', d2Yt_dx2)
-        if debug: print('d3Yt_dvdx2 =', d3Yt_dvdx2)
-        if debug: print('d3Yt_dudx2 =', d3Yt_dudx2)
-        if debug: print('d3Yt_dwdx2 =', d3Yt_dwdx2)
+        if debug: print('d2Yt_dxdy =', d2Yt_dxdy)
+        if debug: print('d3Yt_dvdxdy =', d3Yt_dvdxdy)
+        if debug: print('d3Yt_dudxdy =', d3Yt_dudxdy)
+        if debug: print('d3Yt_dwdxdy =', d3Yt_dwdxdy)
+
+        #------------------------------------------------------------------------
 
         # Compute the value of the original differential equation
         # for each training point, and its derivatives.
         G = np.zeros(n)
         dG_dYt = np.zeros(n)
         dG_ddelYt = np.zeros((n, m))
-        dG_ddel2Yt = np.zeros((n, m))
+        dG_ddeldelYt = np.zeros((n, m, m))
         dG_dv = np.zeros((n, H))
         dG_du = np.zeros((n, H))
         dG_dw = np.zeros((n, m, H))
         for i in range(n):
-            G[i] = Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
-            dG_dYt[i] = dG_dYf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+            G[i] = Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dxdy[i])
+            dG_dYt[i] = dG_dYf(x[i], Yt[i], dYt_dx[i], d2Yt_dxdy[i])
             for j in range(m):
                 dG_ddelYt[i,j] = dG_ddelYf[j](x[i], Yt[i],
-                                              dYt_dx[i], d2Yt_dx2[i])
-                dG_ddel2Yt[i,j] = dG_ddel2Yf[j](x[i], Yt[i],
-                                                dYt_dx[i], d2Yt_dx2[i])
+                                              dYt_dx[i], d2Yt_dxdy[i])
+                for jj in range(m):
+                    dG_ddeldelYt[i,j,jj] = dG_ddeldelYf[j][jj](x[i], Yt[i],
+                                                               dYt_dx[i],
+                                                               d2Yt_dxdy[i])
             for k in range(H):
                 dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
                 dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
+                dG_dw[i,j,k] = dG_dYt[i]*dYt_dw[i,j,k]
                 for j in range(m):
                     dG_dv[i,k] += dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k]
-                    + dG_ddel2Yt[i,j]*d3Yt_dvdx2[i,j,k]
                     dG_du[i,k] += dG_ddelYt[i,j]*d2Yt_dudx[i,j,k]
-                    + dG_ddel2Yt[i,j]*d3Yt_dudx2[i,j,k]
-                    dG_dw[i,j,k] = (
-                        dG_dYt[i]*dYt_dw[i,j,k]
-                        + dG_ddelYt[i,j]*d2Yt_dwdx[i,j,k]
-                        + dG_ddel2Yt[i,j]*d3Yt_dwdx2[i,j,k]
-                    )
+                    dG_dw[i,j,k] += dG_ddelYt[i,j]*d2Yt_dwdx[i,j,k]
+                    for jj in range(m):
+                        dG_dv[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dvdxdy[i,j,jj,k]
+                        dG_du[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dudxdy[i,j,jj,k]
+                        dG_dw[i,j,k] += (
+                            dG_ddeldelYt[i,j,jj]*d3Yt_dwdxdy[i,j,jj,k]
+                        )
         if debug: print('G =', G)
         if debug: print('dG_dYt =', dG_dYt)
         if debug: print('dG_ddelYt =', dG_ddelYt)
-        if debug: print('dG_ddel2Yt =', dG_ddel2Yt)
+        if debug: print('dG_ddeldelYt =', dG_ddeldelYt)
         if debug: print('dG_dv =', dG_dv)
         if debug: print('dG_du =', dG_du)
         if debug: print('dG_dw =', dG_dw)
+
+        #------------------------------------------------------------------------
 
         # Compute the error function for this pass.
         E = sum(G**2)
@@ -453,7 +517,7 @@ def nnpde2bvp(
         w = w_new
 
     # Return the final solution.
-    return (Yt, dYt_dx, d2Yt_dx2)
+    return (Yt, dYt_dx, d2Yt_dxdy)
 
 #--------------------------------------------------------------------------------
 
@@ -539,16 +603,33 @@ if __name__ == '__main__':
     if verbose:
         print('Importing PDE module %s.' % pde)
     pdemod = import_module(pde)
+
+    # Validate the module contents.
     assert pdemod.Gf
-    assert len(pdemod.bcf) > 0
-    assert len(pdemod.bcdf) == len(pdemod.bcf)
-    assert len(pdemod.bcd2f) == len(pdemod.bcf)
     assert pdemod.dG_dYf
-    assert pdemod.dG_ddelYf
-    assert pdemod.dG_ddel2Yf
+    assert len(pdemod.dG_ddelYf) > 0
+    ndim = len(pdemod.dG_ddelYf)
+    assert len(pdemod.dG_ddeldelYf) == ndim
+    for j in range(ndim):
+        assert len(pdemod.dG_ddeldelYf[j]) == ndim
+    assert len(pdemod.bcf) == ndim
+    for j in range(ndim):
+        assert len(pdemod.bcf[j]) == 2  # 0 and 1
+    assert len(pdemod.bcdf) == ndim
+    for j in range(ndim):
+        assert len(pdemod.bcdf[j]) == 2  # 0 and 1
+    assert len(pdemod.bcd2f) == ndim
+    for j in range(ndim):
+        assert len(pdemod.bcd2f[j]) == 2  # 0 and 1
     assert pdemod.Yaf
-    assert len(pdemod.delYaf) == len(pdemod.bcf)
-    assert len(pdemod.del2Yaf) == len(pdemod.bcf)
+    assert len(pdemod.delYaf) == ndim
+    assert len(pdemod.deldelYaf) == ndim
+    for j in range(ndim):
+        assert len(pdemod.deldelYaf[j]) == ndim
+
+    # <HACK> ndim must be 2!
+    assert ndim == 2
+    # </HACK>
 
     # Create the array of evenly-spaced training points. Use the same
     # values of the training points for each dimension.
@@ -558,7 +639,7 @@ if __name__ == '__main__':
     yt = xt
     if debug: print('yt =', yt)
 
-    # Determine the number of training points.
+    # Compute the total number of training points, replacing ntrain.
     nxt = len(xt)
     if debug: print('nxt =', nxt)
     nyt = len(yt)
@@ -567,9 +648,9 @@ if __name__ == '__main__':
     if debug: print('ntrain =', ntrain)
 
     # Create the list of training points.
-    # ((x0,y0),(x1,y0),(x2,y0),...
-    #  (x0,y1),(x1,y1),(x2,y1),...
-    x = np.zeros((ntrain, 2))
+    #((x0,y0),(x1,y0),(x2,y0),...
+    # (x0,y1),(x1,y1),(x2,y1),...
+    x = np.zeros((ntrain, ndim))
     for j in range(nyt):
         for i in range(nxt):
             k = j*nxt + i
@@ -580,11 +661,11 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the 2nd-order PDE solution using the neural network.
-    (Yt, delYt, del2Yt) = nnpde2bvp(
+    (Yt, delYt, deldelYt) = nnpde2bvp(
         pdemod.Gf,             # 2-variable, 2nd-order PDE BVP to solve
         pdemod.dG_dYf,         # Partial of G wrt Y
-        pdemod.dG_ddelYf,      # Partials of G wrt delY
-        pdemod.dG_ddel2Yf,     # Partials of G wrt del2Y
+        pdemod.dG_ddelYf,      # Partials of G wrt del Y (wrt gradient)
+        pdemod.dG_ddeldelYf,   # Partials of G wrt del del Y (wrt Hessian)
         pdemod.bcf,            # BC functions
         pdemod.bcdf,           # BC function derivatives
         pdemod.bcd2f,          # BC function 2nd derivatives
@@ -599,62 +680,62 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    Ya = np.zeros(len(x))
-    for i in range(len(x)):
-        Ya[i] = pdemod.Yaf(x[i])
-    if debug: print('Ya =', Ya)
+    # Ya = np.zeros(len(x))
+    # for i in range(len(x)):
+    #     Ya[i] = pdemod.Yaf(x[i])
+    # if debug: print('Ya =', Ya)
 
     # Compute the analytical derivatives at the training points.
-    delYa = np.zeros((len(x), len(x[1])))
-    for i in range(len(x)):
-        for j in range(len(x[0])):
-            delYa[i,j] = pdemod.delYaf[j](x[i])
-    if debug: print('delYa =', delYa)
+    # delYa = np.zeros((len(x), len(x[1])))
+    # for i in range(len(x)):
+    #     for j in range(len(x[0])):
+    #         delYa[i,j] = pdemod.delYaf[j](x[i])
+    # if debug: print('delYa =', delYa)
 
     # Compute the analytical 2nd derivatives at the training points.
-    del2Ya = np.zeros((len(x), len(x[1])))
-    for i in range(len(x)):
-        for j in range(len(x[0])):
-            del2Ya[i,j] = pdemod.del2Yaf[j](x[i])
-    if debug: print('del2Ya =', del2Ya)
+    # del2Ya = np.zeros((len(x), len(x[1])))
+    # for i in range(len(x)):
+    #     for j in range(len(x[0])):
+    #         del2Ya[i,j] = pdemod.del2Yaf[j](x[i])
+    # if debug: print('del2Ya =', del2Ya)
 
     # Compute the RMSE of the trial solution.
-    Yerr = Yt - Ya
-    if debug: print('Yerr =', Yerr)
-    rmseY = sqrt(sum(Yerr**2)/len(x))
-    if debug: print('rmseY =', rmseY)
+    # Yerr = Yt - Ya
+    # if debug: print('Yerr =', Yerr)
+    # rmseY = sqrt(sum(Yerr**2)/len(x))
+    # if debug: print('rmseY =', rmseY)
 
     # Compute the RMSE of the trial derivative.
-    delYerr = delYt - delYa
-    if debug: print('delYerr =', delYerr)
-    rmsedelY = np.zeros(len(x[0]))
-    e2sum = np.zeros(len(x[0]))
-    for j in range(len(x[0])):
-        for i in range(len(x)):
-            e2sum[j] += delYerr[i,j]**2
-        rmsedelY[j] = sqrt(e2sum[j]/len(x))
-    if debug: print('rmsedelY =', rmsedelY)
+    # delYerr = delYt - delYa
+    # if debug: print('delYerr =', delYerr)
+    # rmsedelY = np.zeros(len(x[0]))
+    # e2sum = np.zeros(len(x[0]))
+    # for j in range(len(x[0])):
+    #     for i in range(len(x)):
+    #         e2sum[j] += delYerr[i,j]**2
+    #     rmsedelY[j] = sqrt(e2sum[j]/len(x))
+    # if debug: print('rmsedelY =', rmsedelY)
 
     # Compute the RMSE of the 2nd trial derivative.
-    del2Yerr = del2Yt - del2Ya
-    if debug: print('del2Yerr =', del2Yerr)
-    rmsedel2Y = np.zeros(len(x[0]))
-    e2sum = np.zeros(len(x[0]))
-    for j in range(len(x[0])):
-        for i in range(len(x)):
-            e2sum[j] += del2Yerr[i,j]**2
-        rmsedel2Y[j] = sqrt(e2sum[j]/len(x))
-    if debug: print('rmsedel2Y =', rmsedel2Y)
+    # del2Yerr = del2Yt - del2Ya
+    # if debug: print('del2Yerr =', del2Yerr)
+    # rmsedel2Y = np.zeros(len(x[0]))
+    # e2sum = np.zeros(len(x[0]))
+    # for j in range(len(x[0])):
+    #     for i in range(len(x)):
+    #         e2sum[j] += del2Yerr[i,j]**2
+    #     rmsedel2Y[j] = sqrt(e2sum[j]/len(x))
+    # if debug: print('rmsedel2Y =', rmsedel2Y)
 
     # Print the report.
-    print('    x        y       Ya       Yt     dYa_dx   dYt_dx   dYa_dy   dYt_dy  d2Ya_dx2 d2Yt_dx2 d2Ya_dy2 d2Yt_dy2')
-    for i in range(len(Ya)):
-        print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
-              (x[i,0], x[i,1],
-               Ya[i], Yt[i],
-               delYa[i,0], delYt[i,0], delYa[i,1], delYt[i,1],
-               del2Ya[i,0], del2Yt[i,0], del2Ya[i,1], del2Yt[i,1]
-              )
-    )
-    print('RMSE                       %f          %f          %f          %f          %f' %
-          (rmseY, rmsedelY[0], rmsedelY[1], rmsedel2Y[0], rmsedel2Y[1]))
+    # print('    x        y       Ya       Yt     dYa_dx   dYt_dx   dYa_dy   dYt_dy  d2Ya_dx2 d2Yt_dx2 d2Ya_dy2 d2Yt_dy2')
+    # for i in range(len(Ya)):
+    #     print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
+    #           (x[i,0], x[i,1],
+    #            Ya[i], Yt[i],
+    #            delYa[i,0], delYt[i,0], delYa[i,1], delYt[i,1],
+    #            del2Ya[i,0], del2Yt[i,0], del2Ya[i,1], del2Yt[i,1]
+    #           )
+    # )
+    # print('RMSE                       %f          %f          %f          %f          %f' %
+    #       (rmseY, rmsedelY[0], rmsedelY[1], rmsedel2Y[0], rmsedel2Y[1]))
