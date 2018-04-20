@@ -27,6 +27,7 @@ import argparse
 from importlib import import_module
 from math import sqrt
 import numpy as np
+from kdelta import kdelta
 from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
 
 #********************************************************************************
@@ -81,7 +82,7 @@ def dA_dyf(xy, bcf, bcdf):
     dA_dy = (
         (1 - x)*df0_dyf(y) + x*df1_dyf(y)
         - (g0f(x) - (1 - x)*g0f(0) - x*g0f(1))
-        + (g1f(x) - (1 - x)*g1f(0) + x*g1f(1))
+        + (g1f(x) - (1 - x)*g1f(0) - x*g1f(1))
     )
     return dA_dy
 
@@ -155,7 +156,7 @@ def d2P_dydxf(xy):
 
 def d2P_dydyf(xy):
     (x, y) = xy
-    return -2*y*(1 - y)
+    return -2*x*(1 - x)
 
 deldelPf = ((d2P_dxdxf, d2P_dxdyf),
             (d2P_dydxf, d2P_dydyf))
@@ -260,7 +261,7 @@ def nnpde2bvp(
     #----------------------------------------------------------------------------
 
     # 0 <= i < n (n = # of sample points)
-    # 0 <= j < m (m = # independent variables)
+    # 0 <= j,jj,jjj < m (m = # independent variables)
     # 0 <= k < H (H = # hidden nodes)
 
     # Run the network.
@@ -300,11 +301,11 @@ def nnpde2bvp(
         dN_dw = np.zeros((n, m, H))
         d2N_dvdx = np.zeros((n, m, H))
         d2N_dudx = np.zeros((n, m, H))
-        d2N_dwdx = np.zeros((n, m, H))
+        d2N_dwdx = np.zeros((n, m, m, H))
         d2N_dxdy = np.zeros((n, m, m))
         d3N_dvdxdy = np.zeros((n, m, m, H))
         d3N_dudxdy = np.zeros((n, m, m, H))
-        d3N_dwdxdy = np.zeros((n, m, m, H))
+        d3N_dwdxdy = np.zeros((n, m, m, m, H))
         for i in range(n):
             for k in range(H):
                 N[i] += v[k]*s[i,k]
@@ -315,15 +316,18 @@ def nnpde2bvp(
                     dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
                     d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
                     d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
-                    d2N_dwdx[i,j,k] = v[k]*(s1[i,k] + s2[i,k]*w[j,k]*x[i,j])
                     for jj in range(m):
-                        d2N_dxdy[i,j,jj] += v[k]*s2[i,k]*w[jj,k]*w[j,k]
+                        d2N_dxdy[i,j,jj] += v[k]*s2[i,k]*w[j,k]*w[jj,k]
+                        d2N_dwdx[i,j,jj,k] = v[k]*(s1[i,k]*kdelta(j,jj) +
+                                                   s2[i,k]*w[jj,k]*x[i,j])
                         d3N_dvdxdy[i,j,jj,k] = s2[i,k]*w[j,k]*w[jj,k]
                         d3N_dudxdy[i,j,jj,k] = v[k]*s3[i,k]*w[j,k]*w[jj,k]
-                        d3N_dwdxdy[i,j,jj,k] = (
-                            v[k]*s2[i,k]*(w[j,k] + w[jj,k]) +
-                            v[k]*s3[i,k]*w[j,k]*w[jj,k]*x[i,j]
-                        )
+                        for jjj in range(m):
+                            d3N_dwdxdy[i,j,jj,jjj,k] = (
+                                v[k]*s2[i,k]*(w[jj,k]*kdelta(j,jjj)
+                                              + w[jjj,k]*kdelta(j,jj)) +
+                                v[k]*s3[i,k]*w[jj,k]*w[jjj,k]*x[i,j]
+                            )
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
         if debug: print('dN_dv =', dN_dv)
@@ -354,11 +358,11 @@ def nnpde2bvp(
         dYt_dw = np.zeros((n, m, H))
         d2Yt_dvdx = np.zeros((n, m, H))
         d2Yt_dudx = np.zeros((n, m, H))
-        d2Yt_dwdx = np.zeros((n, m, H))
+        d2Yt_dwdx = np.zeros((n, m, m, H))
         d2Yt_dxdy = np.zeros((n, m, m))
         d3Yt_dvdxdy = np.zeros((n, m, m, H))
         d3Yt_dudxdy = np.zeros((n, m, m, H))
-        d3Yt_dwdxdy = np.zeros((n, m, m, H))
+        d3Yt_dwdxdy = np.zeros((n, m, m, m, H))
         for i in range(n):
             A[i] = Af(x[i], bcf)
             P[i] = Pf(x[i])
@@ -373,8 +377,8 @@ def nnpde2bvp(
                     d2Yt_dxdy[i,j,jj] = (
                         d2A_dxdy[i,j,jj] +
                         P[i]*d2N_dxdy[i,j,jj] +
-                        dP_dx[i,jj]*dN_dx[i,j] +
                         dP_dx[i,j]*dN_dx[i,jj] +
+                        dP_dx[i,jj]*dN_dx[i,j] +
                         d2P_dxdy[i,j,jj]*N[i]
                     )
             for k in range(H):
@@ -388,28 +392,29 @@ def nnpde2bvp(
                     d2Yt_dudx[i,j,k] = (
                         P[i]*d2N_dudx[i,j,k] + dP_dx[i,j]*dN_du[i,k]
                     )
-                    d2Yt_dwdx[i,j,k] = (
-                        P[i]*d2N_dwdx[i,j,k] + dP_dx[i,j]*dN_dw[i,j,k]
-                    )
                     for jj in range(m):
+                        d2Yt_dwdx[i,jj,j,k] = (
+                            P[i]*d2N_dwdx[i,jj,j,k] + dP_dx[i,j]*dN_dw[i,j,k]
+                        )
                         d3Yt_dvdxdy[i,j,jj,k] = (
                             P[i]*d3N_dvdxdy[i,j,jj,k] +
+                            dP_dx[i,j]*d2N_dvdx[i,jj,k] +
                             dP_dx[i,jj]*d2N_dvdx[i,j,k] +
-                            dP_dx[i,jj]*d2N_dvdx[i,jj,k] +
                             d2P_dxdy[i,j,jj]*dN_dv[i,k]
                         )
                         d3Yt_dudxdy[i,j,jj,k] = (
                             P[i]*d3N_dudxdy[i,j,jj,k] +
+                            dP_dx[i,j]*d2N_dudx[i,jj,k] +
                             dP_dx[i,jj]*d2N_dudx[i,j,k] +
-                            dP_dx[i,jj]*d2N_dudx[i,jj,k] +
                             d2P_dxdy[i,j,jj]*dN_du[i,k]
                         )
-                        d3Yt_dwdxdy[i,j,jj,k] = ( # Is this right?
-                            P[i]*d3N_dwdxdy[i,j,jj,k] +
-                            dP_dx[i,jj]*d2N_dwdx[i,j,k] +
-                            dP_dx[i,jj]*d2N_dwdx[i,jj,k] +
-                            d2P_dxdy[i,j,jj]*dN_dw[i,j,k]
-                        )
+                        for jjj in range(m):
+                            d3Yt_dwdxdy[i,jjj,j,jj,k] = (
+                                P[i]*d3N_dwdxdy[i,jjj,j,jj,k] +
+                                dP_dx[i,j]*d2N_dwdx[i,jjj,jj,k] +
+                                dP_dx[i,jj]*d2N_dwdx[i,jj,j,k] +
+                                d2P_dxdy[i,j,jj]*dN_dw[i,jjj,k]
+                            )
         if debug: print('A =', A)
         if debug: print('dA_dx =', dA_dx)
         if debug: print('d2A_dxdy =', d2A_dxdy)
@@ -453,17 +458,19 @@ def nnpde2bvp(
             for k in range(H):
                 dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
                 dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
-                dG_dw[i,j,k] = dG_dYt[i]*dYt_dw[i,j,k]
                 for j in range(m):
                     dG_dv[i,k] += dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k]
                     dG_du[i,k] += dG_ddelYt[i,j]*d2Yt_dudx[i,j,k]
-                    dG_dw[i,j,k] += dG_ddelYt[i,j]*d2Yt_dwdx[i,j,k]
+                    dG_dw[i,j,k] = dG_dYt[i]*dYt_dw[i,j,k]
+                    for l in range(m):
+                        dG_dw[i,j,k] += dG_ddelYt[i,l]*d2Yt_dwdx[i,j,l,k]
+                        for ll in range(m):
+                            dG_dw[i,j,k] += (
+                                dG_ddeldelYt[i,l,ll]*d3Yt_dwdxdy[i,j,l,ll,k]
+                            )
                     for jj in range(m):
                         dG_dv[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dvdxdy[i,j,jj,k]
                         dG_du[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dudxdy[i,j,jj,k]
-                        dG_dw[i,j,k] += (
-                            dG_ddeldelYt[i,j,jj]*d3Yt_dwdxdy[i,j,jj,k]
-                        )
         if debug: print('G =', G)
         if debug: print('dG_dYt =', dG_dYt)
         if debug: print('dG_ddelYt =', dG_ddelYt)
@@ -718,26 +725,20 @@ if __name__ == '__main__':
     if debug: print('rmsedelY =', rmsedelY)
 
     # Compute the RMSEs of the Hessian.
-    # del2Yerr = del2Yt - del2Ya
-    # if debug: print('del2Yerr =', del2Yerr)
-    # rmsedel2Y = np.zeros(ndim)
-    # e2sum = np.zeros(ndim)
-    # for j in range(ndim):
-    #     for i in range(ntrain):
-    #         e2sum[j] += del2Yerr[i,j]**2
-    #     rmsedel2Y[j] = sqrt(e2sum[j]/ntrain)
-    # if debug: print('rmsedel2Y =', rmsedel2Y)
+    deldelYerr = deldelYt - deldelYa
+    if debug: print('deldelYerr =', deldelYerr)
+    rmsedeldelY = np.zeros((ndim, ndim))
+    e2sum = np.zeros((ndim, ndim))
+    for j in range(ndim):
+        for jj in range(ndim):
+            for i in range(ntrain):
+                e2sum[j,jj] += deldelYerr[i,j,jj]**2
+            rmsedeldelY[j,jj] = sqrt(e2sum[j,jj]/ntrain)
+    if debug: print('rmsedeldelY =', rmsedeldelY)
 
     # Print the report.
     print('    x        y       Ya       Yt     dYa_dx   dYt_dx   dYa_dy   dYt_dy  d2Ya_dxdx d2Yt_dxdx d2Ya_dxdy d2Yt_dxdy d2Ya_dydx d2Ya_dydy')
     for i in range(len(Ya)):
-    #     print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
-    #           (x[i,0], x[i,1],
-    #            Ya[i], Yt[i],
-    #            delYa[i,0], delYt[i,0], delYa[i,1], delYt[i,1],
-    #            del2Ya[i,0], del2Yt[i,0], del2Ya[i,1], del2Yt[i,1]
-    #           )
-    # )
         print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
               (x[i,0], x[i,1],
                Ya[i], Yt[i],
@@ -748,8 +749,7 @@ if __name__ == '__main__':
                deldelYa[i,1,0], deldelYt[i,1,0],
                deldelYa[i,1,1], deldelYt[i,1,1]
               ))
-    # print('RMSE                       %f          %f          %f          %f          %f' %
-    #       (rmseY, rmsedelY[0], rmsedelY[1], rmsedel2Y[0], rmsedel2Y[1]))
-    print('RMSE                       %f          %f          %f' %
-          (rmseY, rmsedelY[0], rmsedelY[1])
+    print('RMSE                       %f          %f          %f          %f          %f          %f          %f' %
+          (rmseY, rmsedelY[0], rmsedelY[1], rmsedeldelY[0,0], rmsedeldelY[0,1],
+           rmsedeldelY[1,0], rmsedeldelY[1,1])
     )

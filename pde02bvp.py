@@ -141,10 +141,10 @@ def d2Ya_dxdxf(xy):
     return 0
 
 def d2Ya_dxdyf(xy):
-    return 0
+    return 1
 
 def d2Ya_dydxf(xy):
-    return 0
+    return 1
 
 def d2Ya_dydyf(xy):
     return 0
