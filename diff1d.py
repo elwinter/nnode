@@ -27,6 +27,8 @@ import argparse
 from importlib import import_module
 from math import sqrt
 import numpy as np
+import sys
+
 from kdelta import kdelta
 from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
 
@@ -38,7 +40,7 @@ default_eta = 0.01
 default_maxepochs = 1000
 default_nhid = 10
 default_ntrain = 10
-default_pde = 'pde02bvp'
+default_pde = 'diffusion1d'
 default_seed = 0
 default_verbose = False
 
@@ -55,118 +57,95 @@ v_max = 1
 # The domain of the trial solution is assumed to be [[0, 1], [0, 1]].
 
 # Define the coefficient functions for the trial solution, and their derivatives.
-def Af(xy, bcf):
-    (x, y) = xy
+def Af(xt, bcf):
+    (x, t) = xt
     ((f0f, g0f), (f1f, g1f)) = bcf
-    A = (
-        (1 - x)*f0f(y) + x*f1f(y)
-        + (1 - y)*(g0f(x) - (1 - x)*g0f(0) - x*g0f(1))
-        + y*(g1f(x) - (1 - x)*g1f(0) - x*g1f(1))
-    )
-    return A
+    return f0f(t)*(1 - x)*t + f1f(t)*x*t + (1 - t)*g0f(x)
 
-def dA_dxf(xy, bcf, bcdf):
-    (x, y) = xy
+def dA_dxf(xt, bcf, bcdf):
+    (x, t) = xt
     ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    dA_dx = (
-        -f0f(y) + f1f(y) + (1 - y)*(dg0_dxf(x) + g0f(0) - g0f(1))
-        + y*(dg1_dxf(x) + g1f(0) - g1f(1))
-        )
-    return dA_dx
+    ((df0_dtf, dg0_dxf), (df1_dtf, dg1_dxf)) = bcdf
+    return (f1f(t) - f0f(t))*t + (1 - t)*dg0_dxf(x)
 
-def dA_dyf(xy, bcf, bcdf):
-    (x, y) = xy
+def dA_dtf(xt, bcf, bcdf):
+    (x, t) = xt
     ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    dA_dy = (
-        (1 - x)*df0_dyf(y) + x*df1_dyf(y)
-        - (g0f(x) - (1 - x)*g0f(0) - x*g0f(1))
-        + (g1f(x) - (1 - x)*g1f(0) - x*g1f(1))
-    )
-    return dA_dy
+    ((df0_dtf, dg0_dxf), (df1_dtf, dg1_dxf)) = bcdf
+    return (1 - x)*(f0f(t) + df0_dtf(t)*t) + x*(f1f(t) + df1_dtf(t)*t) - g0f(x)
 
-delAf = (dA_dxf, dA_dyf)
+delAf = (dA_dxf, dA_dtf)
 
-def d2A_dxdxf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
+def d2A_dxdxf(xt, bcf, bcdf, bcd2f):
+    (x, t) = xt
     ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    return (1 - y)*d2g0_dx2f(x) + y*d2g1_dx2f(x)
+    ((df0_dtf, dg0_dxf), (df1_dtf, dg1_dxf)) = bcdf
+    ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f)) = bcd2f
+    return (1 - t)*d2g0_dx2f(x)
 
-def d2A_dxdyf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
+def d2A_dxdtf(xt, bcf, bcdf, bcd2f):
+    (x, t) = xt
     ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
+    ((df0_dtf, dg0_dxf), (df1_dtf, dg1_dxf)) = bcdf
+    ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f)) = bcd2f
+    return -f0f(t) - df0_dtf(t) + f1f(t) + df1_dtf(t) - dg0_dxf(x)
+
+def d2A_dtdxf(xt, bcf, bcdf, bcd2f):
+    (x, t) = xt
+    ((f0f, g0f), (f1f, g1f)) = bcf
+    ((df0_dtf, dg0_dxf), (df1_dtf, dg1_dxf)) = bcdf
+    ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f)) = bcd2f
+    return -f0f(t) - df0_dtf(t) + f1f(t) + df1_dtf(t) - dg0_dxf(x)
+
+def d2A_dtdtf(xt, bcf, bcdf, bcd2f):
+    (x, t) = xt
+    ((f0f, g0f), (f1f, g1f)) = bcf
+    ((df0_dtf, dg0_dxf), (df1_dtf, dg1_dxf)) = bcdf
+    ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f)) = bcd2f
     return (
-        -df0_dyf(y) + df1_dyf(y) - dg0_dxf(x) + dg1_dxf(x) -
-        g0f(0) + g0f(1) + g1f(0) - g1f(1)
+        (1 - x)*(2*df0_dtf(t) + d2f0_dt2f(t)*t) +
+        x*(2*df1_dtf(t) + d2f1_dt2f(t)*t)
     )
 
-def d2A_dydxf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    return (
-        -df0_dyf(y) + df1_dyf(y) - dg0_dxf(x) + dg1_dxf(x) -
-        g0f(0) + g0f(1) + g1f(0) - g1f(1)
-    )
+deldelAf = ((d2A_dxdxf, d2A_dxdtf),
+            (d2A_dtdxf, d2A_dtdtf))
 
-def d2A_dydyf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    return (1 - x)*d2f0_dy2f(y) + y*d2f1_dy2f(y)
+def Pf(xt):
+    (x, t) = xt
+    return x*(1 - x)*t
 
-deldelAf = ((d2A_dxdxf, d2A_dxdyf),
-            (d2A_dydxf, d2A_dydyf))
+def dP_dxf(xt):
+    (x, t) = xt
+    return (1 - 2*x)*t
 
-def Pf(xy):
-    (x, y) = xy
-    P = x*(1 - x)*y*(1 - y)
-    return P
+def dP_dtf(xt):
+    (x, t) = xt
+    return x*(1 - x)
 
-def dP_dxf(xy):
-    (x, y) = xy
-    dP_dx = (1 - 2*x)*y*(1 - y)
-    return dP_dx
+delPf = (dP_dxf, dP_dtf)
 
-def dP_dyf(xy):
-    (x, y) = xy
-    dP_dy = x*(1 - x)*(1 - 2*y)
-    return dP_dy
+def d2P_dxdxf(xt):
+    (x, t) = xt
+    return -2*t
 
-delPf = (dP_dxf, dP_dyf)
+def d2P_dxdtf(xt):
+    (x, t) = xt
+    return 1 - 2*x
 
-def d2P_dxdxf(xy):
-    (x, y) = xy
-    return -2*y*(1 - y)
+def d2P_dtdxf(xt):
+    (x, t) = xt
+    return 1 - 2*x
 
-def d2P_dxdyf(xy):
-    (x, y) = xy
-    return (1 - 2*x)*(1 - 2*y)
+def d2P_dtdtf(xt):
+    (x, t) = xt
+    return 0
 
-def d2P_dydxf(xy):
-    (x, y) = xy
-    return (1 - 2*x)*(1 - 2*y)
-
-def d2P_dydyf(xy):
-    (x, y) = xy
-    return -2*x*(1 - x)
-
-deldelPf = ((d2P_dxdxf, d2P_dxdyf),
-            (d2P_dydxf, d2P_dydyf))
+deldelPf = ((d2P_dxdxf, d2P_dxdtf),
+            (d2P_dtdxf, d2P_dtdtf))
 
 # Define the trial solution.
-def Ytf(xy, N, bcf):
-    A = Af(xy, bcf)
-    P = Pf(xy)
-    Yt = A + P*N
-    return Yt
+def Ytf(xt, N, bcf):
+    return Af(xt, bcf) + Pf(xt)*N
 
 #********************************************************************************
 
@@ -283,7 +262,11 @@ def nnpde2bvp(
                 s[i,k] = sigma(z[i,k])
                 s1[i,k] = dsigma_dz(z[i,k])
                 s2[i,k] = d2sigma_dz2(z[i,k])
-                s3[i,k] = d3sigma_dz3(z[i,k])
+                try:
+                    s3[i,k] = d3sigma_dz3(z[i,k])
+                except:
+                    print('z[%d,%d] = %f' % (i, k, z[i,k]))
+                    sys.exit()
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -517,12 +500,12 @@ def nnpde2bvp(
         if debug: print('w_new =', w_new)
 
         # Clamp the values at +/-1.
-        # w_new[w_new < w_min] = w_min
-        # w_new[w_new > w_max] = w_max
-        # u_new[u_new < u_min] = u_min
-        # u_new[u_new > u_max] = u_max
-        # v_new[v_new < v_min] = v_min
-        # v_new[v_new > v_max] = v_max
+        w_new[w_new < w_min] = w_min
+        w_new[w_new > w_max] = w_max
+        u_new[u_new < u_min] = u_min
+        u_new[u_new > u_max] = u_max
+        v_new[v_new < v_min] = v_min
+        v_new[v_new > v_max] = v_max
 
         if verbose: print(epoch, sqrt(E/n))
 
@@ -637,10 +620,10 @@ if __name__ == '__main__':
     for j in range(ndim):
         assert len(pdemod.bcd2f[j]) == 2  # 0 and 1
     assert pdemod.Yaf
-    assert len(pdemod.delYaf) == ndim
-    assert len(pdemod.deldelYaf) == ndim
-    for j in range(ndim):
-        assert len(pdemod.deldelYaf[j]) == ndim
+    # assert len(pdemod.delYaf) == ndim
+    # assert len(pdemod.deldelYaf) == ndim
+    # for j in range(ndim):
+    #     assert len(pdemod.deldelYaf[j]) == ndim
 
     # <HACK> ndim must be 2!
     assert ndim == 2
@@ -701,19 +684,19 @@ if __name__ == '__main__':
     if debug: print('Ya =', Ya)
 
     # Compute the analytical gradient at the training points.
-    delYa = np.zeros((ntrain, len(x[1])))
-    for i in range(ntrain):
-        for j in range(ndim):
-            delYa[i,j] = pdemod.delYaf[j](x[i])
-    if debug: print('delYa =', delYa)
+    # delYa = np.zeros((ntrain, len(x[1])))
+    # for i in range(ntrain):
+    #     for j in range(ndim):
+    #         delYa[i,j] = pdemod.delYaf[j](x[i])
+    # if debug: print('delYa =', delYa)
 
     # Compute the analytical Hessian at the training points.
-    deldelYa = np.zeros((ntrain, len(x[1]), len(x[1])))
-    for i in range(ntrain):
-        for j in range(ndim):
-            for jj in range(ndim):
-                deldelYa[i,j, jj] = pdemod.deldelYaf[j][jj](x[i])
-    if debug: print('deldelYa =', deldelYa)
+    # deldelYa = np.zeros((ntrain, len(x[1]), len(x[1])))
+    # for i in range(ntrain):
+    #     for j in range(ndim):
+    #         for jj in range(ndim):
+    #             deldelYa[i,j, jj] = pdemod.deldelYaf[j][jj](x[i])
+    # if debug: print('deldelYa =', deldelYa)
 
     # Compute the RMSE of the trial solution.
     Yerr = Yt - Ya
@@ -722,42 +705,38 @@ if __name__ == '__main__':
     if debug: print('rmseY =', rmseY)
 
     # Compute the RMSEs of the gradient.
-    delYerr = delYt - delYa
-    if debug: print('delYerr =', delYerr)
-    rmsedelY = np.zeros(ndim)
-    e2sum = np.zeros(ndim)
-    for j in range(ndim):
-        for i in range(ntrain):
-            e2sum[j] += delYerr[i,j]**2
-        rmsedelY[j] = sqrt(e2sum[j]/ntrain)
-    if debug: print('rmsedelY =', rmsedelY)
+    # delYerr = delYt - delYa
+    # if debug: print('delYerr =', delYerr)
+    # rmsedelY = np.zeros(ndim)
+    # e2sum = np.zeros(ndim)
+    # for j in range(ndim):
+    #     for i in range(ntrain):
+    #         e2sum[j] += delYerr[i,j]**2
+    #     rmsedelY[j] = sqrt(e2sum[j]/ntrain)
+    # if debug: print('rmsedelY =', rmsedelY)
 
     # Compute the RMSEs of the Hessian.
-    deldelYerr = deldelYt - deldelYa
-    if debug: print('deldelYerr =', deldelYerr)
-    rmsedeldelY = np.zeros((ndim, ndim))
-    e2sum = np.zeros((ndim, ndim))
-    for j in range(ndim):
-        for jj in range(ndim):
-            for i in range(ntrain):
-                e2sum[j,jj] += deldelYerr[i,j,jj]**2
-            rmsedeldelY[j,jj] = sqrt(e2sum[j,jj]/ntrain)
-    if debug: print('rmsedeldelY =', rmsedeldelY)
+    # deldelYerr = deldelYt - deldelYa
+    # if debug: print('deldelYerr =', deldelYerr)
+    # rmsedeldelY = np.zeros((ndim, ndim))
+    # e2sum = np.zeros((ndim, ndim))
+    # for j in range(ndim):
+    #     for jj in range(ndim):
+    #         for i in range(ntrain):
+    #             e2sum[j,jj] += deldelYerr[i,j,jj]**2
+    #         rmsedeldelY[j,jj] = sqrt(e2sum[j,jj]/ntrain)
+    # if debug: print('rmsedeldelY =', rmsedeldelY)
 
     # Print the report.
-    print('    x        y       Ya       Yt     dYa_dx   dYt_dx   dYa_dy   dYt_dy  d2Ya_dxdx d2Yt_dxdx d2Ya_dxdy d2Yt_dxdy d2Ya_dydx d2Ya_dydy')
-    for i in range(len(Ya)):
-        print('%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f|%.6f %.6f' %
-              (x[i,0], x[i,1],
-               Ya[i], Yt[i],
-               delYa[i,0], delYt[i,0],
-               delYa[i,1], delYt[i,1],
-               deldelYa[i,0,0], deldelYt[i,0,0],
-               deldelYa[i,0,1], deldelYt[i,0,1],
-               deldelYa[i,1,0], deldelYt[i,1,0],
-               deldelYa[i,1,1], deldelYt[i,1,1]
-              ))
-    print('RMSE                       %f          %f          %f          %f          %f          %f          %f' %
-          (rmseY, rmsedelY[0], rmsedelY[1], rmsedeldelY[0,0], rmsedeldelY[0,1],
-           rmsedeldelY[1,0], rmsedeldelY[1,1])
-    )
+    # print('    x        t       Yt     dYt_dx   dYt_dt  d2Yt_dxdx d2Yt_dxdt d2Yt_dtdx d2Yt_dtdt')
+    # print('    x        t       Yt')
+    # for i in range(len(Yt)):
+#        print('%.6f %.6f %.6f' % (x[i,0], x[i,1], Yt[i]))
+        # print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
+        #       (x[i,0], x[i,1],
+        #        Yt[i],
+        #        delYt[i,0], delYt[i,1],
+        #        deldelYt[i,0,0], deldelYt[i,0,1],
+        #        deldelYt[i,1,0], deldelYt[i,1,1]
+        #       ))
+    print(rmseY)

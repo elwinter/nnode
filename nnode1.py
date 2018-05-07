@@ -272,7 +272,15 @@ def nnode1(
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        if verbose: print(epoch, sqrt(E))
+        # Clamp the values at +/-1.
+        # w_new[w_new < w_min] = w_min
+        # w_new[w_new > w_max] = w_max
+        # u_new[u_new < u_min] = u_min
+        # u_new[u_new > u_max] = u_max
+        # v_new[v_new < v_min] = v_min
+        # v_new[v_new > v_max] = v_max
+
+        # if verbose: print(epoch, sqrt(E))
 
         # Save the new weights and biases.
         v = v_new
@@ -422,7 +430,8 @@ if __name__ == '__main__':
     if debug: print('rmse_dy_dx =', rmse_dy_dx)
 
     # Print the report.
-    print('    xt       yt       ya      dyt_dx    dya_dx')
-    for i in range(ntrain):
-        print('%f %f %f %f %f' % (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i]))
-    print('RMSE     %f          %f' % (rmse_y, rmse_dy_dx))
+    # print('    xt       yt       ya      dyt_dx    dya_dx')
+    # for i in range(ntrain):
+    #     print('%f %f %f %f %f' % (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i]))
+    # print('RMSE     %f          %f' % (rmse_y, rmse_dy_dx))
+    print(rmse_y)

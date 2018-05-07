@@ -346,6 +346,14 @@ def nnpde1ivp(
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
+        # Clamp the values at +/-1.
+        # w_new[w_new < w_min] = w_min
+        # w_new[w_new > w_max] = w_max
+        # u_new[u_new < u_min] = u_min
+        # u_new[u_new > u_max] = u_max
+        # v_new[v_new < v_min] = v_min
+        # v_new[v_new > v_max] = v_max
+
         if verbose: print(epoch, sqrt(E/n))
 
         # Save the new weights and biases.

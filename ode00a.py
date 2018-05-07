@@ -25,7 +25,7 @@ def dG_dydxf(x, y, dy_dx):
 
 # Define the analytical solution.
 def yaf(x):
-    return x**2 / 2
+    return x**2/2
 
 # Define the 1st analytical derivative.
 def dya_dxf(x):
