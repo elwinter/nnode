@@ -35,6 +35,7 @@ from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
 #********************************************************************************
 
 # Default values for program parameters
+default_clamp = False
 default_debug = False
 default_eta = 0.01
 default_maxepochs = 1000
@@ -165,6 +166,7 @@ def nnpde2bvp(
         nhid = default_nhid,           # Node count in hidden layer
         maxepochs = default_maxepochs, # Max training epochs
         eta = default_eta,             # Learning rate
+        clamp = default_clamp,         # Turn on/off parameter clamping
         debug = default_debug,
         verbose = default_verbose
 ):
@@ -179,6 +181,7 @@ def nnpde2bvp(
     if debug: print('nhid =', nhid)
     if debug: print('maxepochs =', maxepochs)
     if debug: print('eta =', eta)
+    if debug: print('clamp =', clamp)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
@@ -262,11 +265,7 @@ def nnpde2bvp(
                 s[i,k] = sigma(z[i,k])
                 s1[i,k] = dsigma_dz(z[i,k])
                 s2[i,k] = d2sigma_dz2(z[i,k])
-                try:
-                    s3[i,k] = d3sigma_dz3(z[i,k])
-                except:
-                    print('z[%d,%d] = %f' % (i, k, z[i,k]))
-                    sys.exit()
+                s3[i,k] = d3sigma_dz3(z[i,k])
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -500,12 +499,13 @@ def nnpde2bvp(
         if debug: print('w_new =', w_new)
 
         # Clamp the values at +/-1.
-        w_new[w_new < w_min] = w_min
-        w_new[w_new > w_max] = w_max
-        u_new[u_new < u_min] = u_min
-        u_new[u_new > u_max] = u_max
-        v_new[v_new < v_min] = v_min
-        v_new[v_new > v_max] = v_max
+        if clamp:
+            w_new[w_new < w_min] = w_min
+            w_new[w_new > w_max] = w_max
+            u_new[u_new < u_min] = u_min
+            u_new[u_new > u_max] = u_max
+            v_new[v_new < v_min] = v_min
+            v_new[v_new > v_max] = v_max
 
         if verbose: print(epoch, sqrt(E/n))
 
@@ -532,6 +532,10 @@ if __name__ == '__main__':
     # print('parser =', parser)
 
     # Add command-line options.
+    parser.add_argument('--clamp', '-c',
+                        action = 'store_true',
+                        default = default_clamp,
+                        help = 'Clamp parameter values at +/- 1.')
     parser.add_argument('--debug', '-d',
                         action = 'store_true',
                         default = default_debug,
@@ -566,6 +570,7 @@ if __name__ == '__main__':
     if args.debug: print('args =', args)
 
     # Extract the processed options.
+    clamp = args.clamp
     debug = args.debug
     eta = args.eta
     maxepochs = args.maxepochs
@@ -574,6 +579,7 @@ if __name__ == '__main__':
     pde = args.pde
     seed = args.seed
     verbose = args.verbose
+    if debug: print('clamp =', clamp)
     if debug: print('debug =', debug)
     if debug: print('eta =', eta)
     if debug: print('maxepochs =', maxepochs)
@@ -671,6 +677,7 @@ if __name__ == '__main__':
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
+        clamp = clamp,         # Turn on/off parameter clamping
         debug = debug,
         verbose = verbose
     )
