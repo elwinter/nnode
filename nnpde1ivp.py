@@ -32,6 +32,7 @@ from sigma import sigma, dsigma_dz, d2sigma_dz2
 #********************************************************************************
 
 # Default values for program parameters
+default_clamp = False
 default_debug = False
 default_eta = 0.01
 default_maxepochs = 1000
@@ -115,6 +116,7 @@ def nnpde1ivp(
         nhid = default_nhid,           # Node count in hidden layer
         maxepochs = default_maxepochs, # Max training epochs
         eta = default_eta,             # Learning rate
+        clamp = default_clamp,         # Turn on/off parameter clamping
         debug = default_debug,
         verbose = default_verbose
 ):
@@ -127,6 +129,7 @@ def nnpde1ivp(
     if debug: print('nhid =', nhid)
     if debug: print('maxepochs =', maxepochs)
     if debug: print('eta =', eta)
+    if debug: print('clamp =', clamp)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
@@ -347,12 +350,14 @@ def nnpde1ivp(
         if debug: print('w_new =', w_new)
 
         # Clamp the values at +/-1.
-        # w_new[w_new < w_min] = w_min
-        # w_new[w_new > w_max] = w_max
-        # u_new[u_new < u_min] = u_min
-        # u_new[u_new > u_max] = u_max
-        # v_new[v_new < v_min] = v_min
-        # v_new[v_new > v_max] = v_max
+        # Clamp the values at +/-1.
+        if clamp:
+            w_new[w_new < w_min] = w_min
+            w_new[w_new > w_max] = w_max
+            u_new[u_new < u_min] = u_min
+            u_new[u_new > u_max] = u_max
+            v_new[v_new < v_min] = v_min
+            v_new[v_new > v_max] = v_max
 
         if verbose: print(epoch, sqrt(E/n))
 
@@ -379,6 +384,10 @@ if __name__ == '__main__':
     # print('parser =', parser)
 
     # Add command-line options.
+    parser.add_argument('--clamp', '-c',
+                        action = 'store_true',
+                        default = default_clamp,
+                        help = 'Clamp parameter values at +/- 1.')
     parser.add_argument('--debug', '-d',
                         action = 'store_true',
                         default = default_debug,
@@ -413,6 +422,7 @@ if __name__ == '__main__':
     if args.debug: print('args =', args)
 
     # Extract the processed options.
+    clamp = args.clamp
     debug = args.debug
     eta = args.eta
     maxepochs = args.maxepochs
@@ -421,6 +431,7 @@ if __name__ == '__main__':
     pde = args.pde
     seed = args.seed
     verbose = args.verbose
+    if debug: print('clamp =', clamp)
     if debug: print('debug =', debug)
     if debug: print('eta =', eta)
     if debug: print('maxepochs =', maxepochs)
@@ -496,6 +507,7 @@ if __name__ == '__main__':
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
+        clamp = clamp,         # Turn on/off parameter clamping
         debug = debug,
         verbose = verbose
     )
@@ -533,14 +545,15 @@ if __name__ == '__main__':
     if debug: print('rmse_delY =', rmse_delY)
 
     # Print the report.
-    print('    x        y      Ya     Yt   dYa_dx dYt_dx dYa_dy dYt_dy')
-    for i in range(len(Ya)):
-        print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
-              (x[i,0], x[i,1],
-               Ya[i], Yt[i],
-               delYa[i,0], delYt[i,0],
-               delYa[i,1], delYt[i,1]
-              )
-        )
-    print('RMSE              %f          %f          %f' %
-          (rmse_Y, rmse_delY[0], rmse_delY[1]))
+    # print('    x        y      Ya     Yt   dYa_dx dYt_dx dYa_dy dYt_dy')
+    # for i in range(len(Ya)):
+    #     print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
+    #           (x[i,0], x[i,1],
+    #            Ya[i], Yt[i],
+    #            delYa[i,0], delYt[i,0],
+    #            delYa[i,1], delYt[i,1]
+    #           )
+    #     )
+    # print('RMSE              %f          %f          %f' %
+    #       (rmse_Y, rmse_delY[0], rmse_delY[1]))
+    print(rmse_Y)
