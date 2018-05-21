@@ -7,43 +7,43 @@
 # initial conditions specified at x=0 and y=0.
 
 # Define the original differential equation, assumed to be in the form
-# G(x,y,psi,dpsi/dx,dpsi/dy) = 1/2*(x*dpsi_dx + y*dpsi_dy) - psi = 0.
-# The analytical solution is: psi(x,y) = x**2 + y**2
-def Gf(xy, psi, del_psi):
+# G(x,y,Y,dY/dx,dY/dy) = 1/2*(x*dY_dx + y*dY_dy) - Y = 0.
+# The analytical solution is: Y(x,y) = x**2 + y**2
+def Gf(xy, Y, del_Y):
     (x, y) = xy
-    (dpsi_dx, dpsi_dy) = del_psi
-    return 1/2*(x*dpsi_dx + y*dpsi_dy) - psi
+    (dY_dx, dY_dy) = del_Y
+    return 1/2*(x*dY_dx + y*dY_dy) - Y
 
 # First partials of the PDE
 
-def dG_dxf(xy, psi, del_psi):
+def dG_dxf(xy, Y, del_Y):
     (x, y) = xy
-    (dpsi_dx, dpsi_dy) = del_psi
-    return 1/2*dpsi_dx
+    (dY_dx, dY_dy) = del_Y
+    return 1/2*dY_dx
 
-def dG_dyf(xy, psi, del_psi):
+def dG_dyf(xy, Y, del_Y):
     (x, y) = xy
-    (dpsi_dx, dpsi_dy) = del_psi
-    return 1/2*dpsi_dy
+    (dY_dx, dY_dy) = del_Y
+    return 1/2*dY_dy
 
 del_Gf = (dG_dxf, dG_dyf)
 
-def dG_dpsif(xy, psi, del_psi):
+def dG_dYf(xy, Y, del_Y):
     (x, y) = xy
-    (dpsi_dx, dpsi_dy) = del_psi
+    (dY_dx, dY_dy) = del_Y
     return -1
 
-def dG_dpsi_dxf(xy, psi, del_psi):
+def dG_dY_dxf(xy, Y, del_Y):
     (x, y) = xy
-    (dpsi_dx, dpsi_dy) = del_psi
+    (dY_dx, dY_dy) = del_Y
     return x/2
 
-def dG_dpsi_dyf(xy, psi, del_psi):
+def dG_dY_dyf(xy, Y, del_Y):
     (x, y) = xy
-    (dpsi_dx, dpsi_dy) = del_psi
+    (dY_dx, dY_dy) = del_Y
     return y/2
 
-dG_ddel_psif = (dG_dpsi_dxf, dG_dpsi_dyf)
+dG_ddelYf = (dG_dY_dxf, dG_dY_dyf)
 
 # Boundary condition functions and derivatives
 def f0f(y):
@@ -63,16 +63,16 @@ def dg0_dxf(x):
 bcdf = (df0_dyf, dg0_dxf)
 
 # Define the analytical solution and its derivatives.
-def psiaf(xy):
+def Yaf(xy):
     (x, y) = xy
     return x**2 + y**2
 
-def dpsia_dxf(xy):
+def dYa_dxf(xy):
     (x, y) = xy
     return 2*x
 
-def dpsia_dyf(xy):
+def dYa_dyf(xy):
     (x, y) = xy
     return 2*y
 
-del_psiaf = (dpsia_dxf, dpsia_dyf)
+delYaf = (dYa_dxf, dYa_dyf)
