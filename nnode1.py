@@ -284,7 +284,7 @@ def nnode1(
             v_new[v_new < v_min] = v_min
             v_new[v_new > v_max] = v_max
 
-        # if verbose: print(epoch, sqrt(E))
+        if verbose: print(epoch, sqrt(E))
 
         # Save the new weights and biases.
         v = v_new
