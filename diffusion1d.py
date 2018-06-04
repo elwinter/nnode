@@ -142,6 +142,6 @@ def Yaf(xt):
     (x, t) = xt
     Ya = 0
     for k in range(1, 101):
-        Ya += exp(-k**2*pi**2*t)*sin(k*pi/2)*sin(k*pi*x)/k**2
+        Ya += exp(-k**2*pi**2*D*t)*sin(k*pi/2)*sin(k*pi*x)/k**2
     Ya *= 4/pi**2
     return Ya

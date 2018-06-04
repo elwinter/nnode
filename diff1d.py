@@ -507,7 +507,9 @@ def nnpde2bvp(
             v_new[v_new < v_min] = v_min
             v_new[v_new > v_max] = v_max
 
-        if verbose: print(epoch, sqrt(E/n))
+        # Compute the RMS error in the differential equation.
+        rmse = sqrt(E/n)
+        if verbose: print(epoch, rmse)
 
         # Save the new weights and biases.
         v = v_new
@@ -735,15 +737,7 @@ if __name__ == '__main__':
     # if debug: print('rmsedeldelY =', rmsedeldelY)
 
     # Print the report.
-    # print('    x        t       Yt     dYt_dx   dYt_dt  d2Yt_dxdx d2Yt_dxdt d2Yt_dtdx d2Yt_dtdt')
-    # print('    x        t       Yt')
-    # for i in range(len(Yt)):
-#        print('%.6f %.6f %.6f' % (x[i,0], x[i,1], Yt[i]))
-        # print('%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' %
-        #       (x[i,0], x[i,1],
-        #        Yt[i],
-        #        delYt[i,0], delYt[i,1],
-        #        deldelYt[i,0,0], deldelYt[i,0,1],
-        #        deldelYt[i,1,0], deldelYt[i,1,1]
-        #       ))
+    print('    x        t       Yt      Ya')
+    for i in range(len(Yt)):
+        print('%.6f %.6f %.6f %.6f' % (x[i,0], x[i,1], Yt[i], Ya[i]))
     print(rmseY)
