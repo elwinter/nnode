@@ -240,6 +240,11 @@ def nnpde2bvp(
     v = np.random.uniform(v_min, v_max, H)
     if debug: print('v =', v)
 
+    # Create arrays to hold parameter history.
+    w_history = np.zeros((maxepochs, 2, H))
+    u_history = np.zeros((maxepochs, H))
+    v_history = np.zeros((maxepochs, H))
+
     #----------------------------------------------------------------------------
 
     # 0 <= i < n (n = # of sample points)
@@ -249,6 +254,11 @@ def nnpde2bvp(
     # Run the network.
     for epoch in range(maxepochs):
         if debug: print('Starting epoch %d.' % epoch)
+
+        # Save the current parameter values in the history.
+        w_history[epoch] = w
+        u_history[epoch] = u
+        v_history[epoch] = v
 
         # Compute the net input, the sigmoid function and its derivatives,
         # for each hidden node and each training point.
@@ -515,6 +525,28 @@ def nnpde2bvp(
         v = v_new
         u = u_new
         w = w_new
+
+    # Save the parameter history.
+    with open('w0.dat', 'w') as f:
+        for epoch in range(maxepochs):
+            for k in range(H):
+                f.write('%f ' % w_history[epoch][0][k])
+            f.write('\n')
+    with open('w1.dat', 'w') as f:
+        for epoch in range(maxepochs):
+            for k in range(H):
+                f.write('%f ' % w_history[epoch][1][k])
+            f.write('\n')
+    with open('u.dat', 'w') as f:
+        for epoch in range(maxepochs):
+            for k in range(H):
+                f.write('%f ' % u_history[epoch][k])
+            f.write('\n')
+    with open('v.dat', 'w') as f:
+        for epoch in range(maxepochs):
+            for k in range(H):
+                f.write('%f ' % v_history[epoch][k])
+            f.write('\n')
 
     # Return the final solution.
     return (Yt, dYt_dx, d2Yt_dxdy)
