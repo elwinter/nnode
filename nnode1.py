@@ -160,6 +160,16 @@ def nnode1(
 
     #----------------------------------------------------------------------------
 
+    # Vectorize the functions used by the network.
+    sigma_v = np.vectorize(sigma)
+    dsigma_dz_v = np.vectorize(dsigma_dz)
+    d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
+    ytf_v = np.vectorize(ytf)
+    dyt_dxf_v = np.vectorize(dyt_dxf)
+    Gf_v = np.vectorize(Gf)
+    dG_dyf_v = np.vectorize(dG_dyf)
+    dG_dydxf_v = np.vectorize(dG_dydxf)
+
     # Run the network.
     for epoch in range(maxepochs):
         if debug: print('Starting epoch %d.' % epoch)
@@ -177,9 +187,9 @@ def nnode1(
         # Compute the input, the sigmoid function and its derivatives,
         # for each hidden node.
         z = np.outer(x, w) + u
-        s = np.vectorize(sigma)(z)
-        s1 = np.vectorize(dsigma_dz)(z)
-        s2 = np.vectorize(d2sigma_dz2)(z)
+        s = sigma_v(z)
+        s1 = dsigma_dz_v(z)
+        s2 = d2sigma_dz2_v(z)
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -208,8 +218,8 @@ def nnode1(
 
         # Compute the value of the trial solution and its derivatives,
         # for each training point.
-        yt = np.vectorize(ytf)(A, x, N)
-        dyt_dx = np.vectorize(dyt_dxf)(x, N, dN_dx)
+        yt = ytf_v(A, x, N)
+        dyt_dx = dyt_dxf_v(x, N, dN_dx)
         dyt_dv = np.broadcast_to(x, (H, n)).T*dN_dv
         dyt_du = np.broadcast_to(x, (H, n)).T*dN_du
         dyt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
@@ -227,9 +237,9 @@ def nnode1(
 
         # Compute the value of the original differential equation for
         # each training point, and its derivatives.
-        G = np.vectorize(Gf)(x, yt, dyt_dx)
-        dG_dyt = np.vectorize(dG_dyf)(x, yt, dyt_dx)
-        dG_dytdx = np.vectorize(dG_dydxf)(x, yt, dyt_dx)
+        G = Gf_v(x, yt, dyt_dx)
+        dG_dyt = dG_dyf_v(x, yt, dyt_dx)
+        dG_dytdx = dG_dydxf_v(x, yt, dyt_dx)
         dG_dv = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dv + \
                 np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx
         dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du + \
