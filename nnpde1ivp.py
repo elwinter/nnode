@@ -39,6 +39,7 @@ default_maxepochs = 1000
 default_nhid = 10
 default_ntrain = 10
 default_pde = 'pde00'
+default_randomize = False
 default_seed = 0
 default_verbose = False
 
@@ -117,6 +118,7 @@ def nnpde1ivp(
         maxepochs = default_maxepochs, # Max training epochs
         eta = default_eta,             # Learning rate
         clamp = default_clamp,         # Turn on/off parameter clamping
+        randomize = default_randomize, # Randomize training sample order
         debug = default_debug,
         verbose = default_verbose
 ):
@@ -130,6 +132,7 @@ def nnpde1ivp(
     if debug: print('maxepochs =', maxepochs)
     if debug: print('eta =', eta)
     if debug: print('clamp =', clamp)
+    if debug: print('randomize =', randomize)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
@@ -192,6 +195,11 @@ def nnpde1ivp(
         w_history[epoch] = w
         u_history[epoch] = u
         v_history[epoch] = v
+
+        # If the randomize flag is set, shuffle the order of the training points.
+        if randomize:
+            if debug: print('Randomizing training sample order.')
+            np.random.shuffle(x)
 
         # Compute the input, the sigmoid function and its derivatives,
         # for each hidden node.
@@ -439,6 +447,10 @@ if __name__ == '__main__':
     parser.add_argument('--pde', type = str,
                         default = default_pde,
                         help = 'Name of module containing PDE to solve')
+    parser.add_argument('--randomize', '-r',
+                        action = 'store_true',
+                        default = default_randomize,
+                        help = 'Randomize training sample order')
     parser.add_argument('--seed', type = int,
                         default = default_seed,
                         help = 'Random number generator seed')
@@ -461,6 +473,7 @@ if __name__ == '__main__':
     nhid = args.nhid
     ntrain = args.ntrain
     pde = args.pde
+    randomize = args.randomize
     seed = args.seed
     verbose = args.verbose
     if debug: print('clamp =', clamp)
@@ -470,6 +483,7 @@ if __name__ == '__main__':
     if debug: print('nhid =', nhid)
     if debug: print('ntrain =', ntrain)
     if debug: print('pde =', pde)
+    if debug: print('randomize =', randomize)
     if debug: print('seed =', seed)
     if debug: print('verbose =', verbose)
 
@@ -540,6 +554,7 @@ if __name__ == '__main__':
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
         clamp = clamp,         # Turn on/off parameter clamping
+        randomize = randomize, # Randomize training sample order
         debug = debug,
         verbose = verbose
     )
