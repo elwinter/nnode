@@ -41,6 +41,7 @@ default_ntest = 10
 default_ntrain = 10
 default_pde = 'pde00'
 default_randomize = False
+default_rmseout = 'rmse.dat'
 default_seed = 0
 default_verbose = False
 
@@ -120,6 +121,7 @@ def nnpde1ivp(
         eta = default_eta,             # Learning rate
         clamp = default_clamp,         # Turn on/off parameter clamping
         randomize = default_randomize, # Randomize training sample order
+        rmseout = default_rmseout,     # Output file for PDE RMS error
         debug = default_debug,
         verbose = default_verbose
 ):
@@ -134,6 +136,7 @@ def nnpde1ivp(
     if debug: print('eta =', eta)
     if debug: print('clamp =', clamp)
     if debug: print('randomize =', randomize)
+    if debug: print('rmseout =', rmseout)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
@@ -147,6 +150,7 @@ def nnpde1ivp(
     assert nhid > 0
     assert maxepochs > 0
     assert eta > 0
+    assert rmseout
 
     #----------------------------------------------------------------------------
 
@@ -181,7 +185,8 @@ def nnpde1ivp(
     v = np.random.uniform(v_min, v_max, H)
     if debug: print('v =', v)
 
-    # Create arrays to hold parameter history.
+    # Create arrays to hold RMSE and parameter history.
+    rmse_history = np.zeros(maxepochs)
     w_history = np.zeros((maxepochs, 2, H))
     u_history = np.zeros((maxepochs, H))
     v_history = np.zeros((maxepochs, H))
@@ -368,8 +373,7 @@ def nnpde1ivp(
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        # Clamp the values at +/-1.
-        # Clamp the values at +/-1.
+        # Clamp the values at the limits.
         if clamp:
             w_new[w_new < w_min] = w_min
             w_new[w_new > w_max] = w_max
@@ -378,12 +382,18 @@ def nnpde1ivp(
             v_new[v_new < v_min] = v_min
             v_new[v_new > v_max] = v_max
 
-        if verbose: print(epoch, sqrt(E/n))
+        # Record the current RMSE.
+        rmse = sqrt(E/n)
+        rmse_history[epoch] = rmse
+        if verbose: print(epoch, rmse)
 
         # Save the new weights and biases.
         v = v_new
         u = u_new
         w = w_new
+
+    # Save the error and parameter history.
+    np.savetxt(rmseout, rmse_history)
 
     # Save the parameter history.
     with open('w0.dat', 'w') as f:
@@ -455,6 +465,9 @@ if __name__ == '__main__':
                         action = 'store_true',
                         default = default_randomize,
                         help = 'Randomize training sample order')
+    parser.add_argument('--rmseout', type = str,
+                        default = default_rmseout,
+                        help = 'Name of file to hold ODE RMS error')
     parser.add_argument('--seed', type = int,
                         default = default_seed,
                         help = 'Random number generator seed')
@@ -479,6 +492,7 @@ if __name__ == '__main__':
     ntrain = args.ntrain
     pde = args.pde
     randomize = args.randomize
+    rmseout = args.rmseout
     seed = args.seed
     verbose = args.verbose
     if debug: print('clamp =', clamp)
@@ -490,6 +504,7 @@ if __name__ == '__main__':
     if debug: print('ntrain =', ntrain)
     if debug: print('pde =', pde)
     if debug: print('randomize =', randomize)
+    if debug: print('rmseout =', rmseout)
     if debug: print('seed =', seed)
     if debug: print('verbose =', verbose)
 
@@ -500,6 +515,7 @@ if __name__ == '__main__':
     assert ntest > 0
     assert ntrain > 0
     assert pde
+    assert rmseout
     assert seed >= 0
 
     #----------------------------------------------------------------------------
@@ -562,6 +578,7 @@ if __name__ == '__main__':
         eta = eta,             # Learning rate
         clamp = clamp,         # Turn on/off parameter clamping
         randomize = randomize, # Randomize training sample order
+        rmseout = rmseout,     # Output file for PDE RMS error
         debug = debug,
         verbose = verbose
     )
