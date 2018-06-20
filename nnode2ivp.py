@@ -34,8 +34,10 @@ default_debug = False
 default_eta = 0.01
 default_maxepochs = 1000
 default_nhid = 10
+default_ntest = 10
 default_ntrain = 10
 default_ode = 'ode01ivp'
+default_randomize = False
 default_seed = 0
 default_verbose = False
 
@@ -80,6 +82,7 @@ def nnode2ivp(
         maxepochs = default_maxepochs, # Max training epochs
         eta = default_eta,             # Learning rate
         clamp = default_clamp,         # Turn on/off parameter clamping
+        randomize = default_randomize, # Randomize training sample order
         debug = default_debug,
         verbose = default_verbose
 ):
@@ -94,6 +97,7 @@ def nnode2ivp(
     if debug: print('maxepochs =', maxepochs)
     if debug: print('eta =', eta)
     if debug: print('clamp =', clamp)
+    if debug: print('randomize =', randomize)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
@@ -159,6 +163,11 @@ def nnode2ivp(
         w_history[epoch] = w
         u_history[epoch] = u
         v_history[epoch] = v
+
+        # If the randomize flag is set, shuffle the order of the training points.
+        if randomize:
+            if debug: print('Randomizing training sample order.')
+            np.random.shuffle(x)
 
         # Compute the input, the sigmoid function and its derivatives,
         # for each hidden node.
@@ -342,7 +351,7 @@ def nnode2ivp(
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        # Clamp the values at +/-1.
+        # Clamp the values at limits.
         if clamp:
             w_new[w_new < w_min] = w_min
             w_new[w_new > w_max] = w_max
@@ -397,7 +406,7 @@ if __name__ == '__main__':
     parser.add_argument('--clamp', '-c',
                         action = 'store_true',
                         default = default_clamp,
-                        help = 'Clamp parameter values at +/- 1.')
+                        help = 'Clamp parameter values at limits.')
     parser.add_argument('--debug', '-d',
                         action = 'store_true',
                         default = default_debug,
@@ -411,12 +420,19 @@ if __name__ == '__main__':
     parser.add_argument('--nhid', type = int,
                         default = default_nhid,
                         help = 'Number of hidden-layer nodes to use')
+    parser.add_argument('--ntest', type = int,
+                        default = default_ntest,
+                        help = 'Number of evenly-spaced test points to use')
     parser.add_argument('--ntrain', type = int,
                         default = default_ntrain,
                         help = 'Number of evenly-spaced training points to use')
     parser.add_argument('--ode', type = str,
                         default = default_ode,
                         help = 'Name of module containing ODE to solve')
+    parser.add_argument('--randomize', '-r',
+                        action = 'store_true',
+                        default = default_randomize,
+                        help = 'Randomize training sample order')
     parser.add_argument('--seed', type = int,
                         default = default_seed,
                         help = 'Random number generator seed')
@@ -438,8 +454,10 @@ if __name__ == '__main__':
     eta = args.eta
     maxepochs = args.maxepochs
     nhid = args.nhid
+    ntest = args.ntest
     ntrain = args.ntrain
     ode = args.ode
+    randomize = args.randomize
     seed = args.seed
     verbose = args.verbose
     if debug: print('clamp =', clamp)
@@ -447,8 +465,10 @@ if __name__ == '__main__':
     if debug: print('eta =', eta)
     if debug: print('maxepochs =', maxepochs)
     if debug: print('nhid =', nhid)
+    if debug: print('ntest =', ntest)
     if debug: print('ntrain =', ntrain)
     if debug: print('ode =', ode)
+    if debug: print('randomize =', randomize)
     if debug: print('seed =', seed)
     if debug: print('verbose =', verbose)
 
@@ -456,6 +476,7 @@ if __name__ == '__main__':
     assert eta > 0
     assert maxepochs > 0
     assert nhid > 0
+    assert ntest > 0
     assert ntrain > 0
     assert ode
     assert seed >= 0
@@ -500,6 +521,7 @@ if __name__ == '__main__':
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
         clamp = clamp,         # Turn on/off parameter clamping
+        randomize = randomize, # Randomize training sample order
         debug = debug,
         verbose = verbose
     )
