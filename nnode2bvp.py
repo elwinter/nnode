@@ -16,7 +16,6 @@
 # 2. Underscores separate the numerator and denominator in a name
 # which represents a derivative.
 
-
 #********************************************************************************
 
 # Import external modules, using standard shorthand.
@@ -182,6 +181,11 @@ def nnode2bvp(
         w_history[epoch] = w
         u_history[epoch] = u
         v_history[epoch] = v
+
+        # If the randomize flag is set, shuffle the order of the training points.
+        if randomize:
+            if debug: print('Randomizing training sample order.')
+            np.random.shuffle(x)
 
         # Compute the input, the sigmoid function and its derivatives,
         # for each hidden node.

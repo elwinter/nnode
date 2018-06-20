@@ -276,7 +276,7 @@ def nnode1(
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
 
-        # Clamp the values at +/-1.
+        # Clamp the values at the limits.
         if clamp:
             w_new[w_new < wmin] = wmin
             w_new[w_new > wmax] = wmax
@@ -335,7 +335,7 @@ def create_argument_parser():
     parser.add_argument('--clamp', '-c',
                         action = 'store_true',
                         default = default_clamp,
-                        help = 'Clamp parameter values at +/- 1.')
+                        help = 'Clamp parameter values at limits.')
     parser.add_argument('--debug', '-d',
                         action = 'store_true',
                         default = default_debug,
@@ -570,6 +570,6 @@ if __name__ == '__main__':
     # Compute the RMS error of the solution at the test points.
     ytest_err = ytest - yatest
     if debug: print('ytest_err =', ytest_err)
-    rmse_ytest = sqrt(sum(ytest_err**2) / ntest)
+    rmse_ytest = sqrt(np.sum(ytest_err**2)/ntest)
     if debug: print('rmse_ytest =', rmse_ytest)
     print(rmse_ytest)
