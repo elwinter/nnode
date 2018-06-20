@@ -40,15 +40,15 @@ default_ode = 'ode01ivp'
 default_randomize = False
 default_rmseout = 'rmse.dat'
 default_seed = 0
+default_testout = 'testpoints.dat'
+default_trainout = 'trainpoints.dat'
+default_umax = 1
+default_umin = -1
 default_verbose = False
-
-# Default ranges for weights and biases
-v_min = -1
-v_max = 1
-w_min = -1
-w_max = 1
-u_min = -1
-u_max = 1
+default_vmax = 1
+default_vmin = -1
+default_wmax = 1
+default_wmin = -1
 
 #********************************************************************************
 
@@ -84,6 +84,12 @@ def nnode2ivp(
         eta = default_eta,             # Learning rate
         clamp = default_clamp,         # Turn on/off parameter clamping
         randomize = default_randomize, # Randomize training sample order
+        vmax = default_vmax,           # Maximum initial output weight value
+        vmin = default_vmin,           # Minimum initial output weight value
+        wmax = default_wmax,           # Maximum initial hidden weight value
+        wmin = default_wmin,           # Minimum initial hidden weight value
+        umax = default_umax,           # Maximum initial hidden bias value
+        umin = default_umin,           # Minimum initial hidden bias value
         rmseout = default_rmseout,     # Output file for ODE RMS error
         debug = default_debug,
         verbose = default_verbose
@@ -101,6 +107,12 @@ def nnode2ivp(
     if debug: print('clamp =', clamp)
     if debug: print('randomize =', randomize)
     if debug: print('rmseout =', rmseout)
+    if debug: print('vmin =', vmin)
+    if debug: print('vmax =', vmax)
+    if debug: print('wmin =', wmin)
+    if debug: print('wmax =', wmax)
+    if debug: print('umin =', umin)
+    if debug: print('umax =', umax)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
@@ -116,6 +128,9 @@ def nnode2ivp(
     assert maxepochs > 0
     assert eta > 0
     assert rmseout
+    assert vmin < vmax
+    assert wmin < wmax
+    assert umin < umax
 
     #----------------------------------------------------------------------------
 
@@ -138,18 +153,18 @@ def nnode2ivp(
     # Create an array to hold the weights connecting the input node to the
     # hidden nodes. The weights are initialized with a uniform random
     # distribution.
-    w = np.random.uniform(w_min, w_max, H)
+    w = np.random.uniform(wmin, wmax, H)
     if debug: print('w =', w)
 
     # Create an array to hold the biases for the hidden nodes. The
     # biases are initialized with a uniform random distribution.
-    u = np.random.uniform(u_min, u_max, H)
+    u = np.random.uniform(umin, umax, H)
     if debug: print('u =', u)
 
     # Create an array to hold the weights connecting the hidden nodes
     # to the output node. The weights are initialized with a uniform
     # random distribution.
-    v = np.random.uniform(v_min, v_max, H)
+    v = np.random.uniform(vmin, vmax, H)
     if debug: print('v =', v)
 
     # Create arrays to hold RMSE and parameter history.
@@ -358,12 +373,12 @@ def nnode2ivp(
 
         # Clamp the values at limits.
         if clamp:
-            w_new[w_new < w_min] = w_min
-            w_new[w_new > w_max] = w_max
-            u_new[u_new < u_min] = u_min
-            u_new[u_new > u_max] = u_max
-            v_new[v_new < v_min] = v_min
-            v_new[v_new > v_max] = v_max
+            w_new[w_new < w_min] = wmin
+            w_new[w_new > w_max] = wmax
+            u_new[u_new < u_min] = umin
+            u_new[u_new > u_max] = umax
+            v_new[v_new < v_min] = vmin
+            v_new[v_new > v_max] = vmax
 
         # Record the current RMSE.
         rmse = sqrt(E/n)
@@ -382,22 +397,34 @@ def nnode2ivp(
     np.savetxt('u.dat', u_history)
 
     # Return the final solution.
-    return (yt, dyt_dx, d2yt_dx2)
+    return (yt, dyt_dx, d2yt_dx2, v, u, w)
 
 #--------------------------------------------------------------------------------
 
-# Begin main program.
+# Run the network using the specified parameters.
 
-if __name__ == '__main__':
+def run(v, w, u, x):
+
+    # Compute the input to and output from each hidden node.
+    z = w*x + u
+    s = np.vectorize(sigma)(z)
+
+    # Compute the network output.
+    N = np.dot(v, s)
+
+    return N
+
+#--------------------------------------------------------------------------------
+
+def create_argument_parser():
 
     # Create the argument parser.
     parser = argparse.ArgumentParser(
-        description =
-        'Solve a 2nd-order ODE IVP with Neumann IC with a neural net',
+        description = 'Solve a 1st-order ODE IVP with a neural net',
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
         epilog = 'Experiment with the settings to find what works.'
     )
-    # print('parser =', parser)
+    assert parser
 
     # Add command-line options.
     parser.add_argument('--clamp', '-c',
@@ -436,6 +463,18 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type = int,
                         default = default_seed,
                         help = 'Random number generator seed')
+    parser.add_argument('--testout', type = str,
+                        default = default_testout,
+                        help = 'Name of file to hold results at test points')
+    parser.add_argument('--trainout', type = str,
+                        default = default_trainout,
+                        help = 'Name of file to hold results at training points')
+    parser.add_argument('--umax', type = float,
+                        default = default_umax,
+                        help = 'Maximum initial hidden bias value')
+    parser.add_argument('--umin', type = float,
+                        default = default_umin,
+                        help = 'Minimum initial hidden bias value')
     parser.add_argument('--verbose', '-v',
                         action = 'store_true',
                         default = default_verbose,
@@ -443,6 +482,31 @@ if __name__ == '__main__':
     parser.add_argument('--version',
                         action = 'version',
                         version = '%(prog)s 0.0')
+    parser.add_argument('--vmax', type = float,
+                        default = default_vmax,
+                        help = 'Maximum initial output weight value')
+    parser.add_argument('--vmin', type = float,
+                        default = default_vmin,
+                        help = 'Minimum initial output weight value')
+    parser.add_argument('--wmax', type = float,
+                        default = default_wmax,
+                        help = 'Maximum initial hidden weight value')
+    parser.add_argument('--wmin', type = float,
+                        default = default_wmin,
+                        help = 'Minimum initial hidden weight value')
+
+    # Return the argument parser.
+    return parser
+
+#--------------------------------------------------------------------------------
+
+# Begin main program.
+
+if __name__ == '__main__':
+
+    # Create the argument parser.
+    parser = create_argument_parser()
+    assert parser
 
     # Fetch and process the arguments from the command line.
     args = parser.parse_args()
@@ -460,7 +524,15 @@ if __name__ == '__main__':
     randomize = args.randomize
     rmseout = args.rmseout
     seed = args.seed
+    testout = args.testout
+    trainout = args.trainout
+    umax = args.umax
+    umin = args.umin
     verbose = args.verbose
+    vmax = args.vmax
+    vmin = args.vmin
+    wmax = args.wmax
+    wmin = args.wmin
     if debug: print('clamp =', clamp)
     if debug: print('debug =', debug)
     if debug: print('eta =', eta)
@@ -472,7 +544,15 @@ if __name__ == '__main__':
     if debug: print('randomize =', randomize)
     if debug: print('rmseout =', rmseout)
     if debug: print('seed =', seed)
+    if debug: print('testout =', testout)
+    if debug: print('trainout =', trainout)
+    if debug: print('umax =', umax)
+    if debug: print('umin =', umin)
     if debug: print('verbose =', verbose)
+    if debug: print('vmax =', vmax)
+    if debug: print('vmin =', vmin)
+    if debug: print('wmax =', wmax)
+    if debug: print('wmin =', wmin)
 
     # Perform basic sanity checks on the command-line options.
     assert eta > 0
@@ -483,6 +563,11 @@ if __name__ == '__main__':
     assert ode
     assert rmseout
     assert seed >= 0
+    assert testout
+    assert trainout
+    assert vmin < vmax
+    assert wmin < wmax
+    assert umin < umax
 
     #----------------------------------------------------------------------------
 
@@ -512,7 +597,7 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the 2nd-order ODE solution using the neural network.
-    (yt, dyt_dx, d2yt_dx2) = nnode2ivp(
+    (yt, dyt_dx, d2yt_dx2, v, u, w) = nnode2ivp(
         odemod.Gf,             # 2nd-order ODE IVP to solve
         odemod.ic,             # IC for ODE
         odemod.ic1,            # 1st derivative IC for ODE
@@ -525,6 +610,12 @@ if __name__ == '__main__':
         eta = eta,             # Learning rate
         clamp = clamp,         # Turn on/off parameter clamping
         randomize = randomize, # Randomize training sample order
+        vmax = vmax,           # Maximum initial output weight value
+        vmin = vmin,           # Minimum initial output weight value
+        wmax = wmax,           # Maximum initial hidden weight value
+        wmin = wmin,           # Minimum initial hidden weight value
+        umax = umax,           # Maximum initial hidden bias value
+        umin = umin,           # Minimum initial hidden bias value
         rmseout = rmseout,     # Output file for ODE RMS error
         debug = debug,
         verbose = verbose
@@ -533,39 +624,33 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    ya = np.zeros(ntrain)
-    for i in range(ntrain):
-        ya[i] = odemod.yaf(xt[i])
+    ya = np.vectorize(odemod.yaf)(xt)
     if debug: print('ya =', ya)
 
     # Compute the 1st analytical derivative at the training points.
-    dya_dx = np.zeros(ntrain)
-    for i in range(ntrain):
-        dya_dx[i] = odemod.dya_dxf(xt[i])
+    dya_dx = np.vectorize(odemod.dya_dxf)(xt)
     if debug: print('dya_dx =', dya_dx)
 
     # Compute the 2nd analytical derivative at the training points.
-    d2ya_dx2 = np.zeros(ntrain)
-    for i in range(ntrain):
-        d2ya_dx2[i] = odemod.d2ya_dx2f(xt[i])
+    d2ya_dx2 = np.vectorize(odemod.d2ya_dx2f)(xt)
     if debug: print('d2ya_dx2 =', d2ya_dx2)
 
     # Compute the RMS error of the trial solution.
     y_err = yt - ya
     if debug: print('y_err =', y_err)
-    rmse_y = sqrt(sum(y_err**2) / ntrain)
+    rmse_y = sqrt(np.sum(y_err**2) / ntrain)
     if debug: print('rmse_y =', rmse_y)
 
     # Compute the RMS error of the 1st trial derivative.
     dy_dx_err = dyt_dx - dya_dx
     if debug: print('dy_dx_err =', dy_dx_err)
-    rmse_dy_dx = sqrt(sum(dy_dx_err**2) / ntrain)
+    rmse_dy_dx = sqrt(np.sum(dy_dx_err**2) / ntrain)
     if debug: print('rmse_dy_dx =', rmse_dy_dx)
 
     # Compute the RMS error of the 2nd trial derivative.
     d2y_dx2_err = d2yt_dx2 - d2ya_dx2
     if debug: print('d2y_dx2_err =', d2y_dx2_err)
-    rmse_d2y_dx2 = sqrt(sum(d2y_dx2_err**2) / ntrain)
+    rmse_d2y_dx2 = sqrt(np.sum(d2y_dx2_err**2) / ntrain)
     if debug: print('rmse_d2y_dx2 =', rmse_d2y_dx2)
 
     # Print the report.
@@ -578,3 +663,28 @@ if __name__ == '__main__':
     # print('RMSE     %f          %f          %f' %
     #       (rmse_y, rmse_dy_dx, rmse_d2y_dx2))
     print(rmse_y)
+
+    # Save the trained and analytical values at the training points.
+    np.savetxt(trainout, list(zip(xt, yt, ya)))
+
+    # Compute the value of the analytical and trained solution at the
+    # test points.
+    xtest = np.linspace(0, 1, ntest)
+    ytest = np.zeros(ntest)
+    yatest = np.zeros(ntest)
+    A = odemod.ic
+    Ap = odemod.ic1
+    for i, x in enumerate(xtest):
+        N = run(v, w, u, x)
+        ytest[i] = ytf(A, Ap, x, N)
+        yatest[i] = odemod.yaf(x)
+
+    # Save the trained and analytical values at the test points.
+    np.savetxt(testout, list(zip(xtest, ytest, yatest)))
+
+    # Compute the RMS error of the solution at the test points.
+    ytest_err = ytest - yatest
+    if debug: print('ytest_err =', ytest_err)
+    rmse_ytest = sqrt(np.sum(ytest_err**2)/ntest)
+    if debug: print('rmse_ytest =', rmse_ytest)
+    print(rmse_ytest)
