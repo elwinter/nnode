@@ -37,6 +37,7 @@ default_debug = False
 default_eta = 0.01
 default_maxepochs = 1000
 default_nhid = 10
+default_ntest = 10
 default_ntrain = 10
 default_pde = 'pde00'
 default_randomize = False
@@ -441,6 +442,9 @@ if __name__ == '__main__':
     parser.add_argument('--nhid', type = int,
                         default = default_nhid,
                         help = 'Number of hidden-layer nodes to use')
+    parser.add_argument('--ntest', type = int,
+                        default = default_ntest,
+                        help = 'Number of evenly-spaced test points to use')
     parser.add_argument('--ntrain', type = int,
                         default = default_ntrain,
                         help = 'Number of evenly-spaced training points to use along each dimension')
@@ -471,6 +475,7 @@ if __name__ == '__main__':
     eta = args.eta
     maxepochs = args.maxepochs
     nhid = args.nhid
+    ntest = args.ntest
     ntrain = args.ntrain
     pde = args.pde
     randomize = args.randomize
@@ -481,6 +486,7 @@ if __name__ == '__main__':
     if debug: print('eta =', eta)
     if debug: print('maxepochs =', maxepochs)
     if debug: print('nhid =', nhid)
+    if debug: print('ntest =', ntest)
     if debug: print('ntrain =', ntrain)
     if debug: print('pde =', pde)
     if debug: print('randomize =', randomize)
@@ -491,6 +497,7 @@ if __name__ == '__main__':
     assert eta > 0
     assert maxepochs > 0
     assert nhid > 0
+    assert ntest > 0
     assert ntrain > 0
     assert pde
     assert seed >= 0
