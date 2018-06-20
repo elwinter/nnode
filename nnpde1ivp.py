@@ -43,15 +43,13 @@ default_pde = 'pde00'
 default_randomize = False
 default_rmseout = 'rmse.dat'
 default_seed = 0
+default_umax = 1
+default_umin = -1
 default_verbose = False
-
-# Default ranges for weights and biases
-w_min = -1
-w_max = 1
-u_min = -1
-u_max = 1
-v_min = -1
-v_max = 1
+default_vmax = 1
+default_vmin = -1
+default_wmax = 1
+default_wmin = -1
 
 #********************************************************************************
 
@@ -121,6 +119,12 @@ def nnpde1ivp(
         eta = default_eta,             # Learning rate
         clamp = default_clamp,         # Turn on/off parameter clamping
         randomize = default_randomize, # Randomize training sample order
+        vmax = default_vmax,           # Maximum initial output weight value
+        vmin = default_vmin,           # Minimum initial output weight value
+        wmax = default_wmax,           # Maximum initial hidden weight value
+        wmin = default_wmin,           # Minimum initial hidden weight value
+        umax = default_umax,           # Maximum initial hidden bias value
+        umin = default_umin,           # Minimum initial hidden bias value
         rmseout = default_rmseout,     # Output file for PDE RMS error
         debug = default_debug,
         verbose = default_verbose
@@ -137,6 +141,12 @@ def nnpde1ivp(
     if debug: print('clamp =', clamp)
     if debug: print('randomize =', randomize)
     if debug: print('rmseout =', rmseout)
+    if debug: print('vmin =', vmin)
+    if debug: print('vmax =', vmax)
+    if debug: print('wmin =', wmin)
+    if debug: print('wmax =', wmax)
+    if debug: print('umin =', umin)
+    if debug: print('umax =', umax)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
@@ -151,6 +161,9 @@ def nnpde1ivp(
     assert maxepochs > 0
     assert eta > 0
     assert rmseout
+    assert vmin < vmax
+    assert wmin < wmax
+    assert umin < umax
 
     #----------------------------------------------------------------------------
 
@@ -171,18 +184,18 @@ def nnpde1ivp(
     # Create an array to hold the weights connecting the input nodes to the
     # hidden nodes. The weights are initialized with a uniform random
     # distribution.
-    w = np.random.uniform(w_min, w_max, (2, H))
+    w = np.random.uniform(wmin, wmax, (2, H))
     if debug: print('w =', w)
 
     # Create an array to hold the biases for the hidden nodes. The
     # biases are initialized with a uniform random distribution.
-    u = np.random.uniform(u_min, u_max, H)
+    u = np.random.uniform(umin, umax, H)
     if debug: print('u =', u)
 
     # Create an array to hold the weights connecting the hidden nodes
     # to the output node. The weights are initialized with a uniform
     # random distribution.
-    v = np.random.uniform(v_min, v_max, H)
+    v = np.random.uniform(vmin, vmax, H)
     if debug: print('v =', v)
 
     # Create arrays to hold RMSE and parameter history.
@@ -375,12 +388,12 @@ def nnpde1ivp(
 
         # Clamp the values at the limits.
         if clamp:
-            w_new[w_new < w_min] = w_min
-            w_new[w_new > w_max] = w_max
-            u_new[u_new < u_min] = u_min
-            u_new[u_new > u_max] = u_max
-            v_new[v_new < v_min] = v_min
-            v_new[v_new > v_max] = v_max
+            w_new[w_new < w_min] = wmin
+            w_new[w_new > w_max] = wmax
+            u_new[u_new < u_min] = umin
+            u_new[u_new > u_max] = umax
+            v_new[v_new < v_min] = vmin
+            v_new[v_new > v_max] = vmax
 
         # Record the current RMSE.
         rmse = sqrt(E/n)
@@ -471,12 +484,30 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type = int,
                         default = default_seed,
                         help = 'Random number generator seed')
+    parser.add_argument('--umax', type = float,
+                        default = default_umax,
+                        help = 'Maximum initial hidden bias value')
+    parser.add_argument('--umin', type = float,
+                        default = default_umin,
+                        help = 'Minimum initial hidden bias value')
     parser.add_argument('--verbose', '-v',
                         action = 'store_true',
                         default = default_verbose,
                         help = 'Produce verbose output')
     parser.add_argument('--version', action = 'version',
                         version = '%(prog)s 0.0')
+    parser.add_argument('--vmax', type = float,
+                        default = default_vmax,
+                        help = 'Maximum initial output weight value')
+    parser.add_argument('--vmin', type = float,
+                        default = default_vmin,
+                        help = 'Minimum initial output weight value')
+    parser.add_argument('--wmax', type = float,
+                        default = default_wmax,
+                        help = 'Maximum initial hidden weight value')
+    parser.add_argument('--wmin', type = float,
+                        default = default_wmin,
+                        help = 'Minimum initial hidden weight value')
 
     # Fetch and process the arguments from the command line.
     args = parser.parse_args()
@@ -494,7 +525,13 @@ if __name__ == '__main__':
     randomize = args.randomize
     rmseout = args.rmseout
     seed = args.seed
+    umax = args.umax
+    umin = args.umin
     verbose = args.verbose
+    vmax = args.vmax
+    vmin = args.vmin
+    wmax = args.wmax
+    wmin = args.wmin
     if debug: print('clamp =', clamp)
     if debug: print('debug =', debug)
     if debug: print('eta =', eta)
@@ -506,7 +543,13 @@ if __name__ == '__main__':
     if debug: print('randomize =', randomize)
     if debug: print('rmseout =', rmseout)
     if debug: print('seed =', seed)
+    if debug: print('umax =', umax)
+    if debug: print('umin =', umin)
     if debug: print('verbose =', verbose)
+    if debug: print('vmax =', vmax)
+    if debug: print('vmin =', vmin)
+    if debug: print('wmax =', wmax)
+    if debug: print('wmin =', wmin)
 
     # Perform basic sanity checks on the command-line options.
     assert eta > 0
@@ -517,6 +560,9 @@ if __name__ == '__main__':
     assert pde
     assert rmseout
     assert seed >= 0
+    assert vmin < vmax
+    assert wmin < wmax
+    assert umin < umax
 
     #----------------------------------------------------------------------------
 
@@ -578,6 +624,12 @@ if __name__ == '__main__':
         eta = eta,             # Learning rate
         clamp = clamp,         # Turn on/off parameter clamping
         randomize = randomize, # Randomize training sample order
+        vmax = vmax,           # Maximum initial output weight value
+        vmin = vmin,           # Minimum initial output weight value
+        wmax = wmax,           # Maximum initial hidden weight value
+        wmin = wmin,           # Minimum initial hidden weight value
+        umax = umax,           # Maximum initial hidden bias value
+        umin = umin,           # Minimum initial hidden bias value
         rmseout = rmseout,     # Output file for PDE RMS error
         debug = debug,
         verbose = verbose
