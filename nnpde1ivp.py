@@ -409,29 +409,13 @@ def nnpde1ivp(
     np.savetxt(rmseout, rmse_history)
 
     # Save the parameter history.
-    with open('w0.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % w_history[epoch][0][k])
-            f.write('\n')
-    with open('w1.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % w_history[epoch][1][k])
-            f.write('\n')
-    with open('u.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % u_history[epoch][k])
-            f.write('\n')
-    with open('v.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % v_history[epoch][k])
-            f.write('\n')
+    np.savetxt('w0.dat', w_history[:,0,:])
+    np.savetxt('w1.dat', w_history[:,1,:])
+    np.savetxt('v.dat', v_history)
+    np.savetxt('u.dat', u_history)
 
     # Return the final solution.
-    return (Yt, dYt_dx)
+    return (Yt, dYt_dx, v, u, w)
 
 #--------------------------------------------------------------------------------
 
@@ -612,7 +596,7 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the 1st-order PDE solution using the neural network.
-    (Yt, delYt) = nnpde1ivp(
+    (Yt, delYt, v, u, w) = nnpde1ivp(
         pdemod.Gf,             # 2-variable, 1st-order PDE IVP to solve
         pdemod.dG_dYf,         # Partial of G wrt Y
         pdemod.dG_ddelYf,      # Partials of G wrt del Y
