@@ -97,6 +97,7 @@ def nnode1(
     if debug: print('eta =', eta)
     if debug: print('clamp =', clamp)
     if debug: print('randomize =', randomize)
+    if debug: print('rmseout =', rmseout)
     if debug: print('vmin =', vmin)
     if debug: print('vmax =', vmax)
     if debug: print('wmin =', wmin)
@@ -115,6 +116,7 @@ def nnode1(
     assert nhid > 0
     assert maxepochs > 0
     assert eta > 0
+    assert rmseout
     assert vmin < vmax
     assert wmin < wmax
     assert umin < umax
