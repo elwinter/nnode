@@ -298,10 +298,10 @@ def nnode1(
         w = w_new
 
     # Save the error and parameter history.
-    np.savetxt(rmseout, rmse_history)
-    np.savetxt('w.dat', w_history)
-    np.savetxt('v.dat', v_history)
-    np.savetxt('u.dat', u_history)
+    np.savetxt(rmseout, rmse_history, fmt = '%.6E', header = 'rmse')
+    np.savetxt('v.dat', v_history, fmt = '%.6E', header = 'v')
+    np.savetxt('w.dat', w_history, fmt = '%.6E', header = 'w')
+    np.savetxt('u.dat', u_history, fmt = '%.6E', header = 'u')
 
     # Return the final solution, and the network parameters.
     return (yt, dyt_dx, v, w, u)
@@ -310,7 +310,7 @@ def nnode1(
 
 # Run the network using the specified parameters.
 
-def run(v, w, u, x):
+def run_net(v, w, u, x):
 
     # Compute the input to and output from each hidden node.
     z = w*x + u
@@ -320,6 +320,21 @@ def run(v, w, u, x):
     N = np.dot(v, s)
 
     return N
+
+#--------------------------------------------------------------------------------
+
+# Run the derivative network using the specified parameters.
+
+def run_derivative_net(v, w, u, x):
+
+    # Compute the input to and output from each hidden node.
+    z = w*x + u
+    s = np.vectorize(sigma)(z)
+
+    # Compute the network output.
+    dN_dx = s.dot(v*w)
+
+    return dN_dx
 
 #--------------------------------------------------------------------------------
 
@@ -472,41 +487,43 @@ if __name__ == '__main__':
     assert seed >= 0
     assert testout
     assert trainout
+    assert umin < umax
     assert vmin < vmax
     assert wmin < wmax
-    assert umin < umax
 
     #----------------------------------------------------------------------------
 
     # Initialize the random number generator to ensure repeatable results.
-    if verbose: print('Seeding random number generator with value %d.' % seed)
+    if verbose:
+        print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
 
     # Import the specified ODE module.
     if verbose:
         print('Importing ODE module %s.' % ode)
     odemod = import_module(ode)
-    assert odemod.Gf
-    assert odemod.ic != None
-    assert odemod.dG_dyf
-    assert odemod.dG_dydxf
-    assert odemod.yaf
-    assert odemod.dya_dxf
+    assert odemod.Gf           # Function for the ODE as a whole
+    assert odemod.ic != None   # Initial condition at x=0
+    assert odemod.dG_dyf       # Function for derivative of G wrt y
+    assert odemod.dG_dydxf     # Function for derivative of G wrt dy/dx
+    assert odemod.yaf          # Function for analytical solution ya
+    assert odemod.dya_dxf      # Function for analytical derivative dya/dx
 
     # Create the array of evenly-spaced training points.
-    if verbose: print('Computing training points in domain [0,1].')
-    xt = np.linspace(0, 1, ntrain)
-    if debug: print('xt =', xt)
+    if verbose:
+        print('Computing training points in domain [0,1].')
+    x_train = np.linspace(0, 1, ntrain)
+    if debug: print('x_train =', x_train)
 
     #----------------------------------------------------------------------------
 
     # Compute the 1st-order ODE solution using the neural network.
-    (yt, dyt_dx, v, w, u) = nnode1(
+    (yt_train, dyt_dx_train, v, w, u) = nnode1(
         odemod.Gf,             # 1st-order ODE IVP to solve
         odemod.ic,             # IC for ODE
         odemod.dG_dyf,         # Partial of G(x,y,dy/dx) wrt y
         odemod.dG_dydxf,       # Partial of G(x,y,dy/dx) wrt dy/dx
-        xt,                    # x-values for training points
+        x_train,               # x-values for training points
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
@@ -526,52 +543,72 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    ya = np.vectorize(odemod.yaf)(xt)
-    if debug: print('ya =', ya)
-
-    # Compute the analytical derivative at the training points.
-    dya_dx = np.vectorize(odemod.dya_dxf)(xt)
-    if debug: print('dya_dx =', dya_dx)
+    ya_train = np.vectorize(odemod.yaf)(x_train)
+    if debug: print('ya_train =', ya_train)
 
     # Compute the RMS error of the trial solution.
-    y_err = yt - ya
-    if debug: print('y_err =', y_err)
-    rmse_y = sqrt(np.sum(y_err**2)/ntrain)
-    if debug: print('rmse_y =', rmse_y)
+    rmse_y_train = sqrt(np.sum((yt_train - ya_train)**2)/ntrain)
+    if debug: print('rmse_y_train =', rmse_y_train)
+
+    # Compute the analytical derivative at the training points.
+    dya_dx_train = np.vectorize(odemod.dya_dxf)(x_train)
+    if debug: print('dya_dx_train =', dya_dx_train)
 
     # Compute the RMS error of the trial derivative.
-    dy_dx_err = dyt_dx - dya_dx
-    if debug: print('dy_dx_err =', dy_dx_err)
-    rmse_dy_dx = sqrt(np.sum(dy_dx_err**2)/ntrain)
-    if debug: print('rmse_dy_dx =', rmse_dy_dx)
-
-    # Print the report.
-    # print('    xt       yt       ya      dyt_dx    dya_dx')
-    # for i in range(ntrain):
-    #     print('%f %f %f %f %f' % (xt[i], yt[i], ya[i], dyt_dx[i], dya_dx[i]))
-    # print('RMSE     %f          %f' % (rmse_y, rmse_dy_dx))
-    print(rmse_y)
+    rmse_dy_dx_train = sqrt(np.sum((dyt_dx_train - dya_dx_train)**2)/ntrain)
+    if debug: print('rmse_dy_dx_train =', rmse_dy_dx_train)
 
     # Save the trained and analytical values at the training points.
-    np.savetxt(trainout, list(zip(xt, yt, ya)))
+    np.savetxt(trainout,
+               list(zip(x_train, yt_train, ya_train,
+                        dyt_dx_train, dya_dx_train)),
+               header = 'x_train yt_train ya_train dyt_dx_train dya_dx_train',
+               fmt = '%.6E'
+    )
 
-    # Compute the value of the analytical and trained solution at the
-    # test points.
-    xtest = np.linspace(0, 1, ntest)
-    ytest = np.zeros(ntest)
-    yatest = np.zeros(ntest)
+    #----------------------------------------------------------------------------
+
+    # Compute the array of test points.
+    x_test = np.linspace(0, 1, ntest)
+    if debug: print('x_test =', x_test)
+
+    # Compute the trained and analytical solution at the test points.
+    yt_test = np.zeros(ntest)
+    ya_test = np.zeros(ntest)
+    dyt_dx_test = np.zeros(ntest)
+    dya_dx_test = np.zeros(ntest)
     A = odemod.ic
-    for i, x in enumerate(xtest):
-        N = run(v, w, u, x)
-        ytest[i] = ytf(A, x, N)
-        yatest[i] = odemod.yaf(x)
+    for i, x in enumerate(x_test):
+        N = run_net(v, w, u, x)
+        dN_dx = run_derivative_net(v, w, u, x)
+        yt_test[i] = ytf(A, x, N)
+        ya_test[i] = odemod.yaf(x)
+        dyt_dx_test[i] = dyt_dxf(x, N, dN_dx)
+        dya_dx_test[i] = odemod.dya_dxf(x)
+    if debug: print('yt_test =', yt_test)
+    if debug: print('ya_test =', ya_test)
+    if debug: print('dyt_dx_test =', dyt_dx_test)
+    if debug: print('dya_dx_test =', dya_dx_test)
 
     # Save the trained and analytical values at the test points.
-    np.savetxt(testout, list(zip(xtest, ytest, yatest)))
+    np.savetxt(testout,
+               list(zip(x_test, yt_test, ya_test, dyt_dx_test, dya_dx_test)),
+               header = 'x_test yt_test ya_test dyt_dx_test dya_dx_test',
+               fmt = '%.6E'
+    )
 
     # Compute the RMS error of the solution at the test points.
-    ytest_err = ytest - yatest
-    if debug: print('ytest_err =', ytest_err)
-    rmse_ytest = sqrt(np.sum(ytest_err**2)/ntest)
-    if debug: print('rmse_ytest =', rmse_ytest)
-    print(rmse_ytest)
+    rmse_y_test = sqrt(np.sum((yt_test - ya_test)**2)/ntest)
+    if debug: print('rmse_y_test =', rmse_y_test)
+
+    # Compute the RMS error of the derivative at the test points.
+    rmse_dy_dx_test = sqrt(np.sum((dyt_dx_test - dya_dx_test)**2)/ntest)
+    if debug: print('rmse_dy_dx_test =', rmse_dy_dx_test)
+
+    #----------------------------------------------------------------------------
+
+    # Print the report.
+    print('rmse_y_train ', rmse_y_train)
+    print('rmse_y_test ', rmse_y_test)
+    print('rmse_dy_dx_train ', rmse_dy_dx_train)
+    print('rmse_dy_dx_test ', rmse_dy_dx_test)
