@@ -14,7 +14,7 @@ from math import exp, pi, sin
 # G(x,t,Y,delY,deldelY) = dY_dt - D*d2Y_dx2 = 0
 
 # Diffusion coefficient
-D = 1
+D = 0.001
 
 # Define the original differential equation.
 def Gf(xt, Y, delY, deldelY):
