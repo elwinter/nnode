@@ -786,13 +786,13 @@ if __name__ == '__main__':
     # Create the list of training points.
     #((x0,y0),(x1,y0),(x2,y0),...
     # (x0,y1),(x1,y1),(x2,y1),...
-    x = np.zeros((ntrain, ndim))
+    x_train = np.zeros((ntrain, ndim))
     for j in range(nyt):
         for i in range(nxt):
             k = j*nxt + i
-            x[k,0] = xt[i]
-            x[k,1] = yt[j]
-    if debug: print('x =', x)
+            x_train[k,0] = xt[i]
+            x_train[k,1] = yt[j]
+    if debug: print('x_train =', x_train)
 
     #----------------------------------------------------------------------------
 
@@ -805,7 +805,7 @@ if __name__ == '__main__':
         pdemod.bcf,            # BC functions
         pdemod.bcdf,           # BC function derivatives
         pdemod.bcd2f,          # BC function 2nd derivatives
-        x,                     # Training points as pairs
+        x_train,               # Training points as pairs
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
@@ -826,10 +826,10 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    Ya = np.zeros(ntrain)
+    Ya_train = np.zeros(ntrain)
     for i in range(ntrain):
-        Ya[i] = pdemod.Yaf(x[i])
-    if debug: print('Ya =', Ya)
+        Ya_train[i] = pdemod.Yaf(x_train[i])
+    if debug: print('Ya_train =', Ya_train)
 
     # Compute the analytical gradient at the training points.
     # delYa = np.zeros((ntrain, len(x[1])))
@@ -847,7 +847,7 @@ if __name__ == '__main__':
     # if debug: print('deldelYa =', deldelYa)
 
     # Compute the RMSE of the trial solution.
-    Yerr = Yt_train - Ya
+    Yerr = Yt_train - Ya_train
     if debug: print('Yerr =', Yerr)
     rmseY = sqrt(sum(Yerr**2)/ntrain)
     if debug: print('rmseY =', rmseY)
@@ -880,3 +880,8 @@ if __name__ == '__main__':
     # for i in range(ntrain)):
     #     print('%.6f %.6f %.6f %.6f' % (x[i,0], x[i,1], Yt_train[i], Ya[i]))
     # print(rmseY)
+    np.savetxt(trainout,
+               list(zip(x_train[:,0], x_train[:,1], Yt_train, Ya_train)),
+               header = 'x_train t_train Yt_train Ya_train',
+               fmt = '%.6E'
+    )
