@@ -5,15 +5,15 @@
 
 from math import exp, pi, sin
 
-# The equation is defined on the domain [[0,1],[0,1]], fixed BC at
-# x=0,1, and a linear profile.
+# The equation is defined on the domain [[0,1],[0,1]]. The profile starts flat
+# at Y=0. The value at x=0 then linearly increases with time.
 
 # The analytical form of the equation is:
 
 # G(x,t,Y,delY,deldelY) = dY_dt - D*d2Y_dx2 = 0
 
 # Diffusion coefficient
-D = 1
+D = 0.01
 
 # Define the original differential equation.
 def Gf(xt, Y, delY, deldelY):
@@ -79,14 +79,15 @@ def Y0f(x):
 def dY0_dxf(x):
     return 0
 
-# Boundary conditions for x at 0,1
+# Boundary conditions for x at 0,1: Ramp up linearly in time to K.
+K = 0.1
 def f0f(t):
-    return t
+    return K*t
 
 def f1f(t):
     return 0
 
-# Boundary conditions for t=0
+# Boundary conditions for t=0, no BC at t=1
 def g0f(x):
     return Y0f(x)
 
@@ -98,7 +99,7 @@ bcf = ((f0f, g0f), (f1f, g1f))
 
 # 1st t derivative of BC functions for x at x = 0, 1
 def df0_dtf(t):
-    return 1
+    return K
 
 def df1_dtf(t):
     return 0
@@ -133,7 +134,7 @@ bcd2f = ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f))
 # Analytical solution is the same as the starting profile.
 def Yaf(xt):
     (x, t) = xt
-    Ya = t*(1 - x)
+    Ya = K*t*(1 - x)
     for k in range(1,101):
-        Ya -= 2*(1 - exp(-pi**2*t*D*k**2))*sin(pi*k*x)/k**3/pi**3 
+        Ya -= 2*K*(1 - exp(-pi**2*t*D*k**2))*sin(pi*k*x)/k**3/pi**3
     return Ya
