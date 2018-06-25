@@ -174,6 +174,11 @@ def nnode2bvp(
     v_history = np.zeros((maxepochs, H))
 
     #----------------------------------------------------------------------------
+    # Vectorize the functions used by the network.
+    sigma_v = np.vectorize(sigma)
+    dsigma_dz_v = np.vectorize(dsigma_dz)
+    d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
+    d3sigma_dz3_v = np.vectorize(d3sigma_dz3)
 
     # Run the network.
     for epoch in range(maxepochs):
@@ -191,18 +196,11 @@ def nnode2bvp(
 
         # Compute the input, the sigmoid function and its derivatives,
         # for each hidden node.
-        z = np.zeros((n, H))
-        s = np.zeros((n, H))
-        s1 = np.zeros((n, H))
-        s2 = np.zeros((n, H))
-        s3 = np.zeros((n, H))
-        for i in range(n):
-            for k in range(H):
-                z[i,k] = w[k]*x[i] + u[k]
-                s[i,k] = sigma(z[i,k])
-                s1[i,k] = dsigma_dz(z[i,k])
-                s2[i,k] = d2sigma_dz2(z[i,k])
-                s3[i,k] = d3sigma_dz3(z[i,k])
+        z = np.outer(x, w) + u
+        s = sigma_v(z)
+        s1 = dsigma_dz_v(z)
+        s2 = d2sigma_dz2_v(z)
+        s3 = d3sigma_dz3_v(z)
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -211,34 +209,18 @@ def nnode2bvp(
 
         # Compute the network output and its derivatives, for each
         # training point.
-        N = np.zeros(n)
-        dN_dx = np.zeros(n)
-        dN_dv = np.zeros((n, H))
-        dN_du = np.zeros((n, H))
-        dN_dw = np.zeros((n, H))
-        d2N_dvdx = np.zeros((n, H))
-        d2N_dudx = np.zeros((n, H))
-        d2N_dwdx = np.zeros((n, H))
-        d2N_dx2 = np.zeros(n)
-        d3N_dvdx2 = np.zeros((n, H))
-        d3N_dudx2 = np.zeros((n, H))
-        d3N_dwdx2 = np.zeros((n, H))
-        for i in range(n):
-            for k in range(H):
-                N[i] += v[k]*s[i,k]
-                dN_dx[i] += v[k]*s1[i,k]*w[k]
-                dN_dv[i,k] = s[i,k]
-                dN_du[i,k] = v[k]*s1[i,k]
-                dN_dw[i,k] = v[k]*s1[i,k]*x[i]
-                d2N_dvdx[i,k] = s1[i,k]*w[k]
-                d2N_dudx[i,k] = v[k]*s2[i,k]*w[k]
-                d2N_dwdx[i,k] = v[k]*(s1[i,k] + s2[i,k]*w[k]*x[i])
-                d2N_dx2[i] += v[k]*s2[i,k]*w[k]**2
-                d3N_dvdx2[i,k] = s2[i,k]*w[k]**2
-                d3N_dudx2[i,k] = v[k]*s3[i,k]*w[k]**2
-                d3N_dwdx2[i,k] = (
-                    v[k]*(2*s2[i,k]*w[k] + s3[i,k]*w[k]**2*x[i])
-                )
+        N = s.dot(v)
+        dN_dx = s1.dot(v*w)
+        dN_dv = s
+        dN_du = s1*v
+        dN_dw = s1*np.outer(x, v)
+        d2N_dvdx = s1*w
+        d2N_dudx = v*s2*w
+        d2N_dwdx = v*(s1 + s2*np.outer(x, w))
+        d2N_dx2 = s2.dot(v*w**2)
+        d3N_dvdx2 = s2*w**2
+        d3N_dudx2 = s3*v*w**2
+        d3N_dwdx2 = v*(2*s2*w + s3*np.outer(x, w**2))
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
         if debug: print('dN_dv =', dN_dv)
@@ -412,7 +394,7 @@ def nnode2bvp(
 
 # Run the network using the specified parameters.
 
-def run(v, w, u, x):
+def run_net(v, w, u, x):
 
     # Compute the input to and output from each hidden node.
     z = w*x + u
@@ -425,11 +407,43 @@ def run(v, w, u, x):
 
 #--------------------------------------------------------------------------------
 
+# Run the derivative network using the specified parameters.
+
+def run_derivative_net(v, w, u, x):
+
+    # Compute the input to and output from each hidden node.
+    z = w*x + u
+    s = np.vectorize(sigma)(z)
+
+    # Compute the network output.
+    dN_dx = s.dot(v*w)
+
+    return dN_dx
+
+#--------------------------------------------------------------------------------
+
+# Run the 2nd derivative network using the specified parameters.
+
+# def run_derivative2_net(v, w, u, x):
+
+#     DIE HERE
+    
+#     # Compute the input to and output from each hidden node.
+#     z = w*x + u
+#     s2 = np.vectorize(dsigma_dz)(z)
+
+#     # Compute the network output.
+#     dN_dx = s.dot(v*w)
+
+#     return dN_dx
+
+#--------------------------------------------------------------------------------
+
 def create_argument_parser():
 
     # Create the argument parser.
     parser = argparse.ArgumentParser(
-        description = 'Solve a 1st-order ODE IVP with a neural net',
+        description = 'Solve a 2nd-order ODE BVP with a neural net',
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
         epilog = 'Experiment with the settings to find what works.'
     )
@@ -574,46 +588,48 @@ if __name__ == '__main__':
     assert seed >= 0
     assert testout
     assert trainout
+    assert umin < umax
     assert vmin < vmax
     assert wmin < wmax
-    assert umin < umax
 
     #----------------------------------------------------------------------------
 
     # Initialize the random number generator to ensure repeatable results.
-    if verbose: print('Seeding random number generator with value %d.' % seed)
+    if verbose:
+        print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
 
     # Import the specified ODE module.
     if verbose:
         print('Importing ODE module %s.' % ode)
     odemod = importlib.import_module(ode)
-    assert odemod.Gf
-    assert odemod.bc0 != None
-    assert odemod.bc1 != None
-    assert odemod.dG_dyf
-    assert odemod.dG_dydxf
-    assert odemod.dG_d2ydx2f
-    assert odemod.yaf
-    assert odemod.dya_dxf
-    assert odemod.d2ya_dx2f
+    assert odemod.Gf           # Function for the ODE as a whole
+    assert odemod.bc0 != None  # Boundary condition y(0)
+    assert odemod.bc1 != None  # Boundary condition y(1)
+    assert odemod.dG_dyf       # Function for derivative of G wrt y
+    assert odemod.dG_dydxf     # Function for derivative of G wrt dy/dx
+    assert odemod.dG_d2ydx2f   # Function for derivative of G wrt d2y/dx2
+    assert odemod.yaf          # Function for analytical solution ya
+    assert odemod.dya_dxf      # Function for analytical derivative dya/dx
+    assert odemod.d2ya_dx2f    # Function for analytical derivative d2ya/dx2
 
     # Create the array of evenly-spaced training points.
-    if verbose: print('Computing training points in domain [0,1].')
-    xt = np.linspace(0, 1, ntrain)
-    if debug: print('xt =', xt)
+    if verbose:
+        print('Computing training points in domain [0,1].')
+    x_train = np.linspace(0, 1, ntrain)
+    if debug: print('x_train =', x_train)
 
     #----------------------------------------------------------------------------
 
     # Compute the 2nd-order ODE solution using the neural network.
-    (yt, dyt_dx, d2yt_dx2, v, u, w) = nnode2bvp(
+    (yt_train, dyt_dx_train, d2yt_dx2_train, v, u, w) = nnode2bvp(
         odemod.Gf,             # 2nd-order ODE BVP to solve
         odemod.bc0,            # BC at x=0
         odemod.bc1,            # BC at x=1
         odemod.dG_dyf,         # Partial of G(x,y,dy/dx,d2y_dx2) wrt y
         odemod.dG_dydxf,       # Partial of G(x,y,dy/dx,d2y_dx2) wrt dy/dx
         odemod.dG_d2ydx2f,     # Partial of G(x,y,dy/dx,d2y_dx2) wrt d2y/dx2
-        xt,                    # x-values for training points
+        x_train,               # x-values for training points
         nhid = nhid,           # Node count in hidden layer
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
@@ -632,68 +648,79 @@ if __name__ == '__main__':
 
     #----------------------------------------------------------------------------
 
+    # debug = True
+
     # Compute the analytical solution at the training points.
-    ya = np.vectorize(odemod.yaf)(xt)
-    if debug: print('ya =', ya)
+    ya_train = np.vectorize(odemod.yaf)(x_train)
+    if debug: print('ya_train =', ya_train)
 
-    # Compute the 1st analytical derivative at the training points.
-    dya_dx = np.vectorize(odemod.dya_dxf)(xt)
-    if debug: print('dya_dx =', dya_dx)
+    # Compute the RMS error of the solution at the training points.
+    rmse_y_train = sqrt(np.sum((yt_train - ya_train)**2)/ntrain)
+    if debug: print('rmse_y_train =', rmse_y_train)
+    print(rmse_y_train)
 
-    # Compute the 2nd analytical derivative at the training points.
-    d2ya_dx2 = np.vectorize(odemod.d2ya_dx2f)(xt)
-    if debug: print('d2ya_dx2 =', d2ya_dx2)
+    # Compute the analytical 1st derivative at the training points.
+    # dya_dx_train = np.vectorize(odemod.dya_dxf)(x_train)
+    # if debug: print('dya_dx_train =', dya_dx_train)
 
-    # Compute the RMS error of the trial solution.
-    y_err = yt - ya
-    if debug: print('y_err =', y_err)
-    rmse_y = sqrt(np.sum(y_err**2)/ntrain)
-    if debug: print('rmse_y =', rmse_y)
+    # Compute the RMS error of the 1st derivative at the training points.
+    # rmse_dy_dx_train = sqrt(np.sum((dyt_dx_train - dya_dx_train)**2)/ntrain)
+    # if debug: print('rmse_dy_dx_train =', rmse_dy_dx_train)
 
-    # Compute the RMS error of the 1st trial derivative.
-    dy_dx_err = dyt_dx - dya_dx
-    if debug: print('dy_dx_err =', dy_dx_err)
-    rmse_dy_dx = sqrt(np.sum(dy_dx_err**2)/ntrain)
-    if debug: print('rmse_dy_dx =', rmse_dy_dx)
+    # Compute the analytical 2nd derivative at the training points.
+    # d2ya_dx2_train = np.vectorize(odemod.d2ya_dx2f)(x_train)
+    # if debug: print('d2ya_dx2_train =', d2ya_dx2_train)
 
-    # Compute the RMS error of the 2nd trial derivative.
-    d2y_dx2_err = d2yt_dx2 - d2ya_dx2
-    if debug: print('d2y_dx2_err =', d2y_dx2_err)
-    rmse_d2y_dx2 = sqrt(np.sum(d2y_dx2_err**2)/ntrain)
-    if debug: print('rmse_d2y_dx2 =', rmse_d2y_dx2)
-
-    # Print the report.
-    # print('    xt       yt       ya     dyt_dx   dya_dx  d2yt_dx2  d2ya_dx2')
-    # for i in range(ntrain):
-    #     print('%f %f %f %f %f %f %f' %
-    #           (xt[i], yt[i], ya[i],
-    #            dyt_dx[i], dya_dx[i],
-    #            d2yt_dx2[i], d2ya_dx2[i]))
-    # print('RMSE     %f          %f          %f' %
-    #       (rmse_y, rmse_dy_dx, rmse_d2y_dx2))
-    print(rmse_y)
+    # Compute the RMS error of the 2nd derivative at the training points.
+    # rmse_d2y_dx2_train = sqrt(np.sum((d2yt_dx2_train - d2ya_dx2_train)**2)
+    #                           /ntrain)
+    # if debug: print('rmse_d2y_dx2_train =', rmse_d2y_dx2_train)
 
     # Save the trained and analytical values at the training points.
-    np.savetxt(trainout, list(zip(xt, yt, ya)))
+    # np.savetxt(trainout,
+    #            list(zip(x_train, yt_train, ya_train,
+    #                     dyt_dx_train, dya_dx_train,
+    #                     d2yt_dx2_train, d2ya_dx2_train)),
+    #            header = 'x_train yt_train ya_train dyt_dx_train dya_dx_train d2yt_dx2_train d2ya_dx2_train',
+    #            fmt = '%.6E'
+    # )
 
-    # Compute the value of the analytical and trained solution at the
-    # test points.
-    xtest = np.linspace(0, 1, ntest)
-    ytest = np.zeros(ntest)
-    yatest = np.zeros(ntest)
-    A = odemod.bc0
-    B = odemod.bc1
-    for i, x in enumerate(xtest):
-        N = run(v, w, u, x)
-        ytest[i] = ytf(A, B, x, N)
-        yatest[i] = odemod.yaf(x)
+    #----------------------------------------------------------------------------
+
+    # Compute the array of test points.
+    # x_test = np.linspace(0, 1, ntest)
+    # if debug: print('x_test =', x_test)
+
+    # Compute the trained and analytical solution at the test points.
+    # yt_test = np.zeros(ntest)
+    # ya_test = np.zeros(ntest)
+    # dyt_dx_test = np.zeros(ntest)
+    # dya_dx_test = np.zeros(ntest)
+    # A = odemod.bc0
+    # B = odemod.bc1
+    # for i, x in enumerate(x_test):
+    #     N = run_net(v, w, u, x)
+    #     dN_dx = run_derivative_net(v, w, u, x)
+    #     # yt_test[i] = ytf(A, x, N)
+        # ya_test[i] = odemod.yaf(x)
+        # dyt_dx_test[i] = dyt_dxf(x, N, dN_dx)
+        # dya_dx_test[i] = odemod.dya_dxf(x)
+    # if debug: print('yt_test =', yt_test)
+    # if debug: print('ya_test =', ya_test)
+    # if debug: print('dyt_dx_test =', dyt_dx_test)
+    # if debug: print('dya_dx_test =', dya_dx_test)
 
     # Save the trained and analytical values at the test points.
-    np.savetxt(testout, list(zip(xtest, ytest, yatest)))
+    # np.savetxt(testout,
+    #            list(zip(x_test, yt_test, ya_test, dyt_dx_test, dya_dx_test)),
+    #            header = 'x_test yt_test ya_test dyt_dx_test dya_dx_test',
+    #            fmt = '%.6E'
+    # )
 
     # Compute the RMS error of the solution at the test points.
-    ytest_err = ytest - yatest
-    if debug: print('ytest_err =', ytest_err)
-    rmse_ytest = sqrt(np.sum(ytest_err**2)/ntest)
-    if debug: print('rmse_ytest =', rmse_ytest)
-    print(rmse_ytest)
+    # rmse_y_test = sqrt(np.sum((yt_test - ya_test)**2)/ntest)
+    # if debug: print('rmse_y_test =', rmse_y_test)
+
+    # Compute the RMS error of the derivative at the test points.
+    # rmse_dy_dx_test = sqrt(np.sum((dyt_dx_test - dya_dx_test)**2)/ntest)
+    # if debug: print('rmse_dy_dx_test =', rmse_dy_dx_test)
