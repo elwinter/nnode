@@ -566,8 +566,8 @@ def nnpde2bvp(
     # Save the error and parameter history.
     np.savetxt(rmseout, rmse_history, fmt = '%.6E', header = 'rmse')
     np.savetxt('v.dat', v_history, fmt = '%.6E', header = 'v')
-    np.savetxt('w0.dat', w_history[:,0,:], fmt = '%.6E', header = 'w')
-    np.savetxt('w1.dat', w_history[:,1,:], fmt = '%.6E', header = 'w')
+    np.savetxt('w0.dat', w_history[:,0,:], fmt = '%.6E', header = 'w0')
+    np.savetxt('w1.dat', w_history[:,1,:], fmt = '%.6E', header = 'w1')
     np.savetxt('u.dat', u_history, fmt = '%.6E', header = 'u')
 
     # Return the final solution.
