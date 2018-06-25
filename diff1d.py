@@ -761,34 +761,10 @@ if __name__ == '__main__':
         assert len(pdemod.bcd2f[j]) == ndim
     assert pdemod.Yaf
 
-    # FIND A BETTER WAY TO MAKE THIS SET OF POINTS.
-
-    # Create the array of evenly-spaced training points. Use the same
-    # values of the training points for each dimension.
-    if verbose: print('Computing training points in [[0,1],[0,1]].')
-    xt = np.linspace(0, 1, ntrain)
-    if debug: print('xt =', xt)
-    yt = xt
-    if debug: print('yt =', yt)
-
-    # Compute the total number of training points, replacing ntrain.
-    nxt = len(xt)
-    if debug: print('nxt =', nxt)
-    nyt = len(yt)
-    if debug: print('nyt =', nyt)
-    ntrain = nxt*nyt
-    if debug: print('ntrain =', ntrain)
-
-    # Create the list of training points.
-    #((x0,y0),(x1,y0),(x2,y0),...
-    # (x0,y1),(x1,y1),(x2,y1),...
-    x_train = np.zeros((ntrain, ndim))
-    for j in range(nyt):
-        for i in range(nxt):
-            k = j*nxt + i
-            x_train[k,0] = xt[i]
-            x_train[k,1] = yt[j]
-    if debug: print('x_train =', x_train)
+    # Create the array of evenly-spaced training points.
+    xt = np.tile(np.linspace(0, 1, ntrain), ntrain)
+    yt = np.linspace(0, 1, ntrain).repeat(ntrain)
+    x_train = np.array(list(zip(xt, yt)))
 
     #----------------------------------------------------------------------------
 
@@ -822,6 +798,7 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
+    ntrain = len(Yt_train)
     Ya_train = np.zeros(ntrain)
     for i in range(ntrain):
         Ya_train[i] = pdemod.Yaf(x_train[i])
