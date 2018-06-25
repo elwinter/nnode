@@ -313,11 +313,10 @@ def nnpde2bvp(
 
         # Compute the network output and its derivatives, for each
         # training point.
-        # N = np.zeros(n)
         N = s.dot(v)
         dN_dx = np.zeros((n, m))
-        dN_dv = np.zeros((n, H))
-        dN_du = np.zeros((n, H))
+        dN_dv = s
+        dN_du = s1*v
         dN_dw = np.zeros((n, m, H))
         d2N_dvdx = np.zeros((n, m, H))
         d2N_dudx = np.zeros((n, m, H))
@@ -328,9 +327,6 @@ def nnpde2bvp(
         d3N_dwdxdy = np.zeros((n, m, m, m, H))
         for i in range(n):
             for k in range(H):
-                # N[i] += v[k]*s[i,k]
-                dN_dv[i,k] = s[i,k]
-                dN_du[i,k] = v[k]*s1[i,k]
                 for j in range(m):
                     dN_dx[i,j] += v[k]*s1[i,k]*w[j,k]
                     dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
