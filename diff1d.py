@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 
-# Use a neural network to solve a 2-variable, 2nd-order PDE BVP with
-# Dirichlet BC. Note that any 2-variable 2nd-order PDE BVP can be
-# mapped to a corresponding BVP of this type, so this is the only
-# solution form needed.
+# Use a neural network to solve a 1-D diffusion problem:
 
-# The general form of such equations is, for Y = Y(x,y):
-
-# G(x[], Y, delY[], del2Y[]) = 0
+# dY/dt = -D del2(Y)
 
 # Notation notes:
 
@@ -17,7 +12,7 @@
 # which represents a derivative.
 
 # 3. Names beginning with 'del' are gradients of another function, in
-# the form of function lists.
+# the form of function lists. Similarly for del2.
 
 #********************************************************************************
 
@@ -27,8 +22,6 @@ import argparse
 from importlib import import_module
 from math import sqrt
 import numpy as np
-import sys
-
 from kdelta import kdelta
 from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
 
@@ -38,11 +31,17 @@ from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
 default_clamp = False
 default_debug = False
 default_eta = 0.01
+default_lambdamom = 0
 default_maxepochs = 1000
 default_nhid = 10
+default_ntest = 10
 default_ntrain = 10
 default_pde = 'diffusion1d'
+default_randomize = False
+default_rmseout = 'rmse.dat'
 default_seed = 0
+default_testout = 'testpoints.dat'
+default_trainout = 'trainpoints.dat'
 default_umax = 1
 default_umin = -1
 default_verbose = False
@@ -53,7 +52,7 @@ default_wmin = -1
 
 #********************************************************************************
 
-# The domain of the trial solution is assumed to be [[0, 1], [0, 1]].
+# The domain of the trial solution is assumed to be [[0,1],[0,1]].
 
 # Define the coefficient functions for the trial solution, and their derivatives.
 def Af(xt, bcf):
@@ -165,12 +164,15 @@ def nnpde2bvp(
         maxepochs = default_maxepochs, # Max training epochs
         eta = default_eta,             # Learning rate
         clamp = default_clamp,         # Turn on/off parameter clamping
+        randomize = default_randomize, # Randomize training sample order
         vmax = default_vmax,           # Maximum initial output weight value
         vmin = default_vmin,           # Minimum initial output weight value
         wmax = default_wmax,           # Maximum initial hidden weight value
         wmin = default_wmin,           # Minimum initial hidden weight value
         umax = default_umax,           # Maximum initial hidden bias value
         umin = default_umin,           # Minimum initial hidden bias value
+        lambdamom = default_lambdamom, # Momentum coefficient
+        rmseout = default_rmseout,     # Output file for ODE RMS error
         debug = default_debug,
         verbose = default_verbose
 ):
@@ -186,36 +188,40 @@ def nnpde2bvp(
     if debug: print('maxepochs =', maxepochs)
     if debug: print('eta =', eta)
     if debug: print('clamp =', clamp)
+    if debug: print('randomize =', randomize)
     if debug: print('vmin =', vmin)
     if debug: print('vmax =', vmax)
     if debug: print('wmin =', wmin)
     if debug: print('wmax =', wmax)
     if debug: print('umin =', umin)
     if debug: print('umax =', umax)
+    if debug: print('lambdamom =', lambdamom)
+    if debug: print('rmseout =', rmseout)
     if debug: print('debug =', debug)
     if debug: print('verbose =', verbose)
 
     # Sanity-check arguments. UPDATE THESE CHECKS!
     assert Gf
     assert dG_dYf
-    assert len(dG_ddelYf) > 0
     ndim = len(dG_ddelYf)
+    assert ndim == 2
     assert len(dG_ddeldelYf) == ndim
     for j in range(ndim):
         assert len(dG_ddeldelYf[j]) == ndim
     assert len(bcf) == ndim
     for j in range(ndim):
-        assert len(bcf[j]) == 2  # 0 and 1
+        assert len(bcf[j]) == ndim
     assert len(bcdf) == ndim
     for j in range(ndim):
-        assert len(bcdf[j]) == 2  # 0 and 1
+        assert len(bcdf[j]) == ndim
     assert len(bcd2f) == ndim
     for j in range(ndim):
-        assert len(bcd2f[j]) == 2  # 0 and 1
-
-    # <HACK> ndim must be 2!
-    assert ndim == 2
-    # </HACK>
+        assert len(bcd2f[j]) == ndim
+    assert nhid > 0
+    assert maxepochs > 0
+    assert eta > 0
+    assert lambdamom >= 0
+    assert rmseout
     assert vmin < vmax
     assert wmin < wmax
     assert umin < umax
@@ -253,12 +259,24 @@ def nnpde2bvp(
     v = np.random.uniform(vmin, vmax, H)
     if debug: print('v =', v)
 
-    # Create arrays to hold parameter history.
-    w_history = np.zeros((maxepochs, 2, H))
+    # Create arrays to hold RMSE and parameter history.
+    rmse_history = np.zeros(maxepochs)
+    w_history = np.zeros((maxepochs, m, H))
     u_history = np.zeros((maxepochs, H))
     v_history = np.zeros((maxepochs, H))
 
     #----------------------------------------------------------------------------
+
+    # Vectorize the functions used by the network.
+    sigma_v = np.vectorize(sigma)
+    dsigma_dz_v = np.vectorize(dsigma_dz)
+    d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
+    d3sigma_dz3_v = np.vectorize(d3sigma_dz3)
+
+    # Initialize the momentum terms.
+    delta_v_old = np.zeros(H)
+    delta_w_old = np.zeros((m, H))
+    delta_u_old = np.zeros(H)
 
     # 0 <= i < n (n = # of sample points)
     # 0 <= j,jj,jjj < m (m = # independent variables)
@@ -273,22 +291,18 @@ def nnpde2bvp(
         u_history[epoch] = u
         v_history[epoch] = v
 
+        # If the randomize flag is set, shuffle the order of the training points.
+        if randomize:
+            if debug: print('Randomizing training sample order.')
+            np.random.shuffle(x)
+
         # Compute the net input, the sigmoid function and its derivatives,
         # for each hidden node and each training point.
-        z =  np.zeros((n, H))
-        s =  np.zeros((n, H))
-        s1 = np.zeros((n, H))
-        s2 = np.zeros((n, H))
-        s3 = np.zeros((n, H))
-        for i in range(n):
-            for k in range(H):
-                z[i,k] = u[k]
-                for j in range(m):
-                    z[i,k] += w[j,k]*x[i,j]
-                s[i,k] = sigma(z[i,k])
-                s1[i,k] = dsigma_dz(z[i,k])
-                s2[i,k] = d2sigma_dz2(z[i,k])
-                s3[i,k] = d3sigma_dz3(z[i,k])
+        z = u + x.dot(w)
+        s = sigma_v(z)
+        s1 = dsigma_dz_v(z)
+        s2 = d2sigma_dz2_v(z)
+        s3 = d3sigma_dz3_v(z)
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
@@ -299,7 +313,8 @@ def nnpde2bvp(
 
         # Compute the network output and its derivatives, for each
         # training point.
-        N = np.zeros(n)
+        # N = np.zeros(n)
+        N = s.dot(v)
         dN_dx = np.zeros((n, m))
         dN_dv = np.zeros((n, H))
         dN_du = np.zeros((n, H))
@@ -313,7 +328,7 @@ def nnpde2bvp(
         d3N_dwdxdy = np.zeros((n, m, m, m, H))
         for i in range(n):
             for k in range(H):
-                N[i] += v[k]*s[i,k]
+                # N[i] += v[k]*s[i,k]
                 dN_dv[i,k] = s[i,k]
                 dN_du[i,k] = v[k]*s1[i,k]
                 for j in range(m):
@@ -508,18 +523,26 @@ def nnpde2bvp(
 
         #------------------------------------------------------------------------
 
+        # Compute the current deltas.
+        delta_v = -eta*dE_dv + lambdamom*delta_v_old
+        delta_u = -eta*dE_du + lambdamom*delta_u_old
+        delta_w = -eta*dE_dw + lambdamom*delta_w_old
+        if debug: print('delta_v =', delta_v)
+        if debug: print('delta_u =', delta_u)
+        if debug: print('delta_w =', delta_w)
+    
         # Compute the new values of the network parameters.
-        v_new = np.zeros(H)
-        u_new = np.zeros(H)
-        w_new = np.zeros((m, H))
-        for k in range(H):
-            v_new[k] = v[k] - eta*dE_dv[k]
-            u_new[k] = u[k] - eta*dE_du[k]
-            for j in range(m):
-                w_new[j,k] = w[j,k] - eta*dE_dw[j,k]
+        v_new = v + delta_v
+        u_new = u + delta_u
+        w_new = w + delta_w
         if debug: print('v_new =', v_new)
         if debug: print('u_new =', u_new)
         if debug: print('w_new =', w_new)
+
+        # Save the current deltas.
+        delta_v_old = delta_v
+        delta_u_old = delta_u
+        delta_w_old = delta_w
 
         # Clamp the values at +/-1.
         if clamp:
@@ -532,6 +555,7 @@ def nnpde2bvp(
 
         # Compute the RMS error in the differential equation.
         rmse = sqrt(E/n)
+        rmse_history[epoch] = rmse
         if verbose: print(epoch, rmse)
 
         # Save the new weights and biases.
@@ -539,50 +563,33 @@ def nnpde2bvp(
         u = u_new
         w = w_new
 
-    # Save the parameter history.
-    with open('w0.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % w_history[epoch][0][k])
-            f.write('\n')
-    with open('w1.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % w_history[epoch][1][k])
-            f.write('\n')
-    with open('u.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % u_history[epoch][k])
-            f.write('\n')
-    with open('v.dat', 'w') as f:
-        for epoch in range(maxepochs):
-            for k in range(H):
-                f.write('%f ' % v_history[epoch][k])
-            f.write('\n')
+    # Save the error and parameter history.
+    np.savetxt(rmseout, rmse_history, fmt = '%.6E', header = 'rmse')
+    np.savetxt('v.dat', v_history, fmt = '%.6E', header = 'v')
+    np.savetxt('w0.dat', w_history[:,0,:], fmt = '%.6E', header = 'w')
+    np.savetxt('w1.dat', w_history[:,1,:], fmt = '%.6E', header = 'w')
+    np.savetxt('u.dat', u_history, fmt = '%.6E', header = 'u')
 
     # Return the final solution.
-    return (Yt, dYt_dx, d2Yt_dxdy)
+    return (Yt, dYt_dx, d2Yt_dxdy, v, w, u)
 
 #--------------------------------------------------------------------------------
 
-# Begin main program.
-
-if __name__ == '__main__':
+def create_argument_parser():
 
     # Create the argument parser.
     parser = argparse.ArgumentParser(
-        description = 'Solve a 2-variable, 2nd-order PDE BVP with a neural net',
+        description = 'Solve a 1-D diffusion problem with a neural net',
         formatter_class = argparse.ArgumentDefaultsHelpFormatter,
         epilog = 'Experiment with the settings to find what works.'
     )
-    # print('parser =', parser)
+    assert parser
 
-    # Add command-line options.
+    # Add command line arguments.
     parser.add_argument('--clamp', '-c',
                         action = 'store_true',
                         default = default_clamp,
-                        help = 'Clamp parameter values at +/- 1.')
+                        help = 'Clamp parameter values at limits.')
     parser.add_argument('--debug', '-d',
                         action = 'store_true',
                         default = default_debug,
@@ -590,21 +597,40 @@ if __name__ == '__main__':
     parser.add_argument('--eta', type = float,
                         default = default_eta,
                         help = 'Learning rate for parameter adjustment')
+    parser.add_argument('--lambdamom', type = float,
+                        default = default_lambdamom,
+                        help = 'Momentum coefficient for parameter adjustment')
     parser.add_argument('--maxepochs', type = int,
                         default = default_maxepochs,
                         help = 'Maximum number of training epochs')
     parser.add_argument('--nhid', type = int,
                         default = default_nhid,
                         help = 'Number of hidden-layer nodes to use')
+    parser.add_argument('--ntest', type = int,
+                        default = default_ntest,
+                        help = 'Number of evenly-spaced test points to use in (x,t)')
     parser.add_argument('--ntrain', type = int,
                         default = default_ntrain,
-                        help = 'Number of evenly-spaced training points to use along each dimension')
+                        help = 'Number of evenly-spaced training points to use in (x,t)')
     parser.add_argument('--pde', type = str,
                         default = default_pde,
                         help = 'Name of module containing PDE to solve')
+    parser.add_argument('--randomize', '-r',
+                        action = 'store_true',
+                        default = default_randomize,
+                        help = 'Randomize training sample order')
+    parser.add_argument('--rmseout', type = str,
+                        default = default_rmseout,
+                        help = 'Name of file to hold ODE RMS error')
     parser.add_argument('--seed', type = int,
                         default = default_seed,
                         help = 'Random number generator seed')
+    parser.add_argument('--testout', type = str,
+                        default = default_testout,
+                        help = 'Name of file to hold results at test points')
+    parser.add_argument('--trainout', type = str,
+                        default = default_trainout,
+                        help = 'Name of file to hold results at training points')
     parser.add_argument('--umax', type = float,
                         default = default_umax,
                         help = 'Maximum initial hidden bias value')
@@ -615,7 +641,8 @@ if __name__ == '__main__':
                         action = 'store_true',
                         default = default_verbose,
                         help = 'Produce verbose output')
-    parser.add_argument('--version', action = 'version',
+    parser.add_argument('--version',
+                        action = 'version',
                         version = '%(prog)s 0.0')
     parser.add_argument('--vmax', type = float,
                         default = default_vmax,
@@ -630,7 +657,20 @@ if __name__ == '__main__':
                         default = default_wmin,
                         help = 'Minimum initial hidden weight value')
 
-    # Fetch and process the arguments from the command line.
+    # Return the argument parser.
+    return parser
+
+#--------------------------------------------------------------------------------
+
+# Begin main program.
+
+if __name__ == '__main__':
+
+    # Create the command line parser.
+    parser = create_argument_parser()
+    assert parser
+
+    # Process the command line.
     args = parser.parse_args()
     if args.debug: print('args =', args)
 
@@ -638,11 +678,17 @@ if __name__ == '__main__':
     clamp = args.clamp
     debug = args.debug
     eta = args.eta
+    lambdamom = args.lambdamom
     maxepochs = args.maxepochs
     nhid = args.nhid
+    ntest = args.ntest
     ntrain = args.ntrain
     pde = args.pde
+    randomize = args.randomize
+    rmseout = args.rmseout
     seed = args.seed
+    testout = args.testout
+    trainout = args.trainout
     umax = args.umax
     umin = args.umin
     verbose = args.verbose
@@ -653,11 +699,17 @@ if __name__ == '__main__':
     if debug: print('clamp =', clamp)
     if debug: print('debug =', debug)
     if debug: print('eta =', eta)
+    if debug: print('lambdamom =', lambdamom)
     if debug: print('maxepochs =', maxepochs)
     if debug: print('nhid =', nhid)
+    if debug: print('ntest =', ntest)
     if debug: print('ntrain =', ntrain)
     if debug: print('pde =', pde)
+    if debug: print('randomize =', randomize)
+    if debug: print('rmseout =', rmseout)
     if debug: print('seed =', seed)
+    if debug: print('testout =', testout)
+    if debug: print('trainout =', trainout)
     if debug: print('umax =', umax)
     if debug: print('umin =', umin)
     if debug: print('verbose =', verbose)
@@ -668,16 +720,25 @@ if __name__ == '__main__':
 
     # Perform basic sanity checks on the command-line options.
     assert eta > 0
+    assert lambdamom >= 0
     assert maxepochs > 0
     assert nhid > 0
+    assert ntest > 0
     assert ntrain > 0
     assert pde
+    assert rmseout
     assert seed >= 0
+    assert testout
+    assert trainout
+    assert umin < umax
+    assert vmin < vmax
+    assert wmin < wmax
 
     #----------------------------------------------------------------------------
 
     # Initialize the random number generator to ensure repeatable results.
-    if verbose: print('Seeding random number generator with value %d.' % seed)
+    if verbose:
+        print('Seeding random number generator with value %d.' % seed)
     np.random.seed(seed)
 
     # Import the specified PDE module.
@@ -688,29 +749,23 @@ if __name__ == '__main__':
     # Validate the module contents.
     assert pdemod.Gf
     assert pdemod.dG_dYf
-    assert len(pdemod.dG_ddelYf) > 0
     ndim = len(pdemod.dG_ddelYf)
+    assert ndim == 2
     assert len(pdemod.dG_ddeldelYf) == ndim
     for j in range(ndim):
         assert len(pdemod.dG_ddeldelYf[j]) == ndim
     assert len(pdemod.bcf) == ndim
     for j in range(ndim):
-        assert len(pdemod.bcf[j]) == 2  # 0 and 1
+        assert len(pdemod.bcf[j]) == ndim
     assert len(pdemod.bcdf) == ndim
     for j in range(ndim):
-        assert len(pdemod.bcdf[j]) == 2  # 0 and 1
+        assert len(pdemod.bcdf[j]) == ndim
     assert len(pdemod.bcd2f) == ndim
     for j in range(ndim):
-        assert len(pdemod.bcd2f[j]) == 2  # 0 and 1
+        assert len(pdemod.bcd2f[j]) == ndim
     assert pdemod.Yaf
-    # assert len(pdemod.delYaf) == ndim
-    # assert len(pdemod.deldelYaf) == ndim
-    # for j in range(ndim):
-    #     assert len(pdemod.deldelYaf[j]) == ndim
 
-    # <HACK> ndim must be 2!
-    assert ndim == 2
-    # </HACK>
+    # FIND A BETTER WAY TO MAKE THIS SET OF POINTS.
 
     # Create the array of evenly-spaced training points. Use the same
     # values of the training points for each dimension.
@@ -742,7 +797,7 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the 2nd-order PDE solution using the neural network.
-    (Yt, delYt, deldelYt) = nnpde2bvp(
+    (Yt_train, delYt_train, deldelYt_train, v, w, u) = nnpde2bvp(
         pdemod.Gf,             # 2-variable, 2nd-order PDE BVP to solve
         pdemod.dG_dYf,         # Partial of G wrt Y
         pdemod.dG_ddelYf,      # Partials of G wrt del Y (wrt gradient)
@@ -755,12 +810,15 @@ if __name__ == '__main__':
         maxepochs = maxepochs, # Max training epochs
         eta = eta,             # Learning rate
         clamp = clamp,         # Turn on/off parameter clamping
+        randomize = randomize, # Randomize training sample order
         vmax = vmax,           # Maximum initial output weight value
         vmin = vmin,           # Minimum initial output weight value
         wmax = wmax,           # Maximum initial hidden weight value
         wmin = wmin,           # Minimum initial hidden weight value
         umax = umax,           # Maximum initial hidden bias value
         umin = umin,           # Minimum initial hidden bias value
+        lambdamom = lambdamom, # Momentum coefficient
+        rmseout = rmseout,     # Output file for ODE RMS error
         debug = debug,
         verbose = verbose
     )
@@ -789,7 +847,7 @@ if __name__ == '__main__':
     # if debug: print('deldelYa =', deldelYa)
 
     # Compute the RMSE of the trial solution.
-    Yerr = Yt - Ya
+    Yerr = Yt_train - Ya
     if debug: print('Yerr =', Yerr)
     rmseY = sqrt(sum(Yerr**2)/ntrain)
     if debug: print('rmseY =', rmseY)
@@ -818,7 +876,7 @@ if __name__ == '__main__':
     # if debug: print('rmsedeldelY =', rmsedeldelY)
 
     # Print the report.
-    print('    x        t       Yt      Ya')
-    for i in range(len(Yt)):
-        print('%.6f %.6f %.6f %.6f' % (x[i,0], x[i,1], Yt[i], Ya[i]))
-    print(rmseY)
+    # print('    x        t       Yt_train      Ya')
+    # for i in range(ntrain)):
+    #     print('%.6f %.6f %.6f %.6f' % (x[i,0], x[i,1], Yt_train[i], Ya[i]))
+    # print(rmseY)
