@@ -206,7 +206,7 @@ def nnode1(
         dN_dw = s1*np.outer(x,v)
         d2N_dvdx = s1*w
         d2N_dudx = v*s2*w
-        d2N_dwdx = v*(s1 + s2*np.outer(x,w))
+        d2N_dwdx = v*(s1 + s2*np.outer(x, w))
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
         if debug: print('dN_dv =', dN_dv)
@@ -546,15 +546,15 @@ if __name__ == '__main__':
     ya_train = np.vectorize(odemod.yaf)(x_train)
     if debug: print('ya_train =', ya_train)
 
-    # Compute the RMS error of the trial solution.
+    # Compute the RMS error of the solution at the training points.
     rmse_y_train = sqrt(np.sum((yt_train - ya_train)**2)/ntrain)
     if debug: print('rmse_y_train =', rmse_y_train)
 
-    # Compute the analytical derivative at the training points.
+    # Compute the analytical 1st derivative at the training points.
     dya_dx_train = np.vectorize(odemod.dya_dxf)(x_train)
     if debug: print('dya_dx_train =', dya_dx_train)
 
-    # Compute the RMS error of the trial derivative.
+    # Compute the RMS error of the 1st derivative at the training points.
     rmse_dy_dx_train = sqrt(np.sum((dyt_dx_train - dya_dx_train)**2)/ntrain)
     if debug: print('rmse_dy_dx_train =', rmse_dy_dx_train)
 
