@@ -43,6 +43,8 @@ default_pde = 'pde00'
 default_randomize = False
 default_rmseout = 'rmse.dat'
 default_seed = 0
+default_testout = 'testpoints.dat'
+default_trainout = 'trainpoints.dat'
 default_umax = 1
 default_umin = -1
 default_verbose = False
@@ -468,6 +470,12 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type = int,
                         default = default_seed,
                         help = 'Random number generator seed')
+    parser.add_argument('--testout', type = str,
+                        default = default_testout,
+                        help = 'Name of file to hold results at test points')
+    parser.add_argument('--trainout', type = str,
+                        default = default_trainout,
+                        help = 'Name of file to hold results at training points')
     parser.add_argument('--umax', type = float,
                         default = default_umax,
                         help = 'Maximum initial hidden bias value')
@@ -509,6 +517,8 @@ if __name__ == '__main__':
     randomize = args.randomize
     rmseout = args.rmseout
     seed = args.seed
+    testout = args.testout
+    trainout = args.trainout
     umax = args.umax
     umin = args.umin
     verbose = args.verbose
@@ -527,6 +537,8 @@ if __name__ == '__main__':
     if debug: print('randomize =', randomize)
     if debug: print('rmseout =', rmseout)
     if debug: print('seed =', seed)
+    if debug: print('testout =', testout)
+    if debug: print('trainout =', trainout)
     if debug: print('umax =', umax)
     if debug: print('umin =', umin)
     if debug: print('verbose =', verbose)
@@ -544,6 +556,8 @@ if __name__ == '__main__':
     assert pde
     assert rmseout
     assert seed >= 0
+    assert testout
+    assert trainout
     assert vmin < vmax
     assert wmin < wmax
     assert umin < umax
@@ -664,3 +678,28 @@ if __name__ == '__main__':
     # print('RMSE              %f          %f          %f' %
     #       (rmse_Y, rmse_delY[0], rmse_delY[1]))
     print(rmse_Y)
+
+    # Save the trained and analytical values at the training points.
+    np.savetxt(trainout, list(zip(x[:,0], x[:,1], Yt, Ya)))
+
+    # Create the list of test points.
+    # xt = np.linspace(0, 1, ntest)
+    # yt = xt
+    # xtest = np.zeros((ntrain, 2))
+    # for j in range(ntest):
+    #     for i in range(ntest):
+    #         k = j*ntest + i
+    #         xtest[k,0] = xt[i]
+    #         xtest[k,1] = yt[j]
+    # if debug: print('xtest =', xtest)
+
+    # Compute the value of the analytical and trained solution at the
+    # test points.
+    # ytest = np.zeros(ntest*ntest)
+    # yatest = np.zeros(ntest*ntest)
+    # A = odemod.ic
+    # Ap = odemod.ic1
+    # for i, x in enumerate(xtest):
+    #     N = run(v, w, u, x)
+    #     ytest[i] = ytf(A, Ap, x, N)
+    #     yatest[i] = odemod.yaf(x)

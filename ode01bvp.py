@@ -12,7 +12,7 @@
 def Gf(x, y, dy_dx, d2y_dx2):
     return d2y_dx2 - dy_dx + 2*x - 1
 
-# Initial conditions
+# Boundary conditions at 0 and 1
 bc0 = 1
 bc1 = 3
 
