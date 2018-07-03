@@ -66,8 +66,6 @@ class NNODE1IVP(SLFFNN):
               verbose = default_verbose
     ):
         """Train the network to solve a 1st-order ODE IVP. """
-        # ode1ivp = self.ode1ivp
-        # if debug: print('ode1ivp =', ode1ivp)
         if debug: print('x =', x)
         if debug: print('maxepochs =', maxepochs)
         if debug: print('eta =', eta)
@@ -352,7 +350,6 @@ class NNODE1IVP(SLFFNN):
         z = x*self.w + self.u
         s = np.vectorize(sigma)(z)
         N = np.dot(self.v, s)
-        print('N =', N)
         yt = ytf(self.ode1ivp.ic, x, N)
         return yt
 
