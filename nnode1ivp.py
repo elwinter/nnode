@@ -231,9 +231,10 @@ class NNODE1IVP(SLFFNN):
             #--------------------------------------------------------------------
 
             # Compute the input, the sigmoid function, and its
-            # derivatives, for each hidden node k, for each training point
-            # i. Each hidden node has 1 weight w[k] (since there is only 1
-            # input x[i] per training sample) and 1 bias u[k].
+            # derivatives, for each hidden node k, for each training
+            # point i. Each hidden node has 1 weight w[k] (since there
+            # is only 1 input x[i] per training sample) and 1 bias
+            # u[k].
 
             # The weighted input to each hidden node is just z=w*x+u.
             # Since x and w are 1-D ndarray objects, np.outer() is used so
@@ -1516,6 +1517,7 @@ if __name__ == '__main__':
 
     # Create the network.
     net = NNODE1IVP(ode1ivp)
+    print('net =', net)
 
     # Test each training algorithm.
 
