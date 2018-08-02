@@ -9,7 +9,7 @@
 from math import exp, sin, cos
 
 # Define the original differential equation, assumed to be in the form
-# G(x,y,dy/dx) = d2y_dx2 + 1/5*dy_dx + y + 1/5*exp(-x/5)*cos(x) = 0
+# G(x,y,dy/dx,d2y/dx2) = d2y_dx2 + 1/5*dy_dx + y + 1/5*exp(-x/5)*cos(x) = 0
 # Solution is y(x) = y(x) = exp(-x/5)*sin(x)
 def Gf(x, y, dy_dx, d2y_dx2):
     return d2y_dx2 + 1/5*dy_dx + y + 1/5*exp(-x/5)*cos(x)

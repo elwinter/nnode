@@ -762,14 +762,9 @@ if __name__ == '__main__':
     assert pdemod.Yaf
 
     # Create the array of evenly-spaced training points.
-    nx = 10
-    nt = 100
-    xt = np.tile(np.linspace(0, 1, nx), nt)
-    if debug: print('xt =', xt)
-    yt = np.linspace(0, 1, nt).repeat(nx)
-    if debug: print('yt =', yt)
+    xt = np.tile(np.linspace(0, 1, ntrain), ntrain)
+    yt = np.linspace(0, 1, ntrain).repeat(ntrain)
     x_train = np.array(list(zip(xt, yt)))
-    if debug: print('x_train =', x_train)
 
     #----------------------------------------------------------------------------
 
