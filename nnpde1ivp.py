@@ -57,7 +57,8 @@ default_wmin = -1
 
 # The domain of the trial solution is assumed to be [[0, 1], [0, 1]].
 
-# Define the coefficient functions for the trial solution, and their derivatives.
+# Define the coefficient functions for the trial solution, and their
+# derivatives.
 def Af(xy, bcf):
     (x, y) = xy
     (f0f, g0f) = bcf
@@ -224,54 +225,42 @@ def nnpde1ivp(
 
         # Compute the input, the sigmoid function and its derivatives,
         # for each hidden node.
-        z = np.zeros((n, H))
-        s = np.zeros((n, H))
-        s1 = np.zeros((n, H))
-        s2 = np.zeros((n, H))
-        for i in range(n):
-            for k in range(H):
-                z[i,k] = u[k]
-                for j in range(m):
-                    z[i,k] += w[j,k]*x[i,j]
-                s[i,k] = sigma(z[i,k])
-                s1[i,k] = dsigma_dz(z[i,k])
-                s2[i,k] = d2sigma_dz2(z[i,k])
+        z = np.broadcast_to(u,(n,H)) + np.dot(x,w)
+        s = np.vectorize(sigma)(z)
+        s1 = np.vectorize(dsigma_dz)(z)
+        s2 = np.vectorize(d2sigma_dz2)(z)
         if debug: print('z =', z)
         if debug: print('s =', s)
         if debug: print('s1 =', s1)
         if debug: print('s2 =', s2)
 
+        # These arrays are broadcast ('_b' suffix) to the same shape
+        # (all are shape (n,m,H)) to facilitate calculations done
+        # later.
+        x_b = np.broadcast_to(x.T, (H,m,n)).T
+        w_b = np.broadcast_to(w, (n, m, H))
+        v_b = np.broadcast_to(np.broadcast_to(v,(m,H)),(n,m,H))
+        s1_b = np.broadcast_to(np.expand_dims(s1,axis=1),(n,m,H))
+        s2_b = np.broadcast_to(np.expand_dims(s2,axis=1),(n,m,H))
+        
         # Compute the network output and its derivatives, for each
         # training point.
-        N = np.zeros(n)
-        dN_dx = np.zeros((n, m))
-        dN_dv = np.zeros((n, H))
-        dN_du = np.zeros((n, H))
-        dN_dw = np.zeros((n, m, H))
-        d2N_dvdx = np.zeros((n, m, H))
-        d2N_dudx = np.zeros((n, m, H))
-        d2N_dwdx = np.zeros((n, m, H))
-        for i in range(n):
-            for k in range(H):
-                N[i] += v[k]*s[i,k]
-                dN_dv[i,k] = s[i,k]
-                dN_du[i,k] = v[k]*s1[i,k]
-                for j in range(m):
-                    dN_dx[i,j] += v[k]*s1[i,k]*w[j,k]
-                    dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
-                    d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
-                    d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
-                    d2N_dwdx[i,j,k] = (
-                        v[k]*s1[i,k] + v[k]*s2[i,k]*w[j,k]*x[i,j]
-                    )
+        N = s.dot(v)
+        dN_dx = np.sum(v_b*s1_b*w_b, axis = 2)
+        dN_dw = v_b*s1_b*x_b
+        dN_du = s1*v
+        dN_dv = s
+        d2N_dwdx = v_b*s1_b + v_b*s2_b*w_b*x_b
+        d2N_dudx = v_b*s2_b*w_b
+        d2N_dvdx = s1_b*w_b
         if debug: print('N =', N)
         if debug: print('dN_dx =', dN_dx)
-        if debug: print('dN_dv =', dN_dv)
-        if debug: print('dN_du =', dN_du)
         if debug: print('dN_dw =', dN_dw)
-        if debug: print('d2N_dvdx =', d2N_dvdx)
-        if debug: print('d2N_dudx =', d2N_dudx)
+        if debug: print('dN_du =', dN_du)
+        if debug: print('dN_dv =', dN_dv)
         if debug: print('d2N_dwdx =', d2N_dwdx)
+        if debug: print('d2N_dudx =', d2N_dudx)
+        if debug: print('d2N_dvdx =', d2N_dvdx)
 
         #------------------------------------------------------------------------
 
@@ -281,47 +270,41 @@ def nnpde1ivp(
         P = np.zeros(n)
         dP_dx = np.zeros((n, m))
         Yt = np.zeros(n)
-        dYt_dx = np.zeros((n, m))
-        dYt_dv = np.zeros((n, H))
-        dYt_du = np.zeros((n, H))
-        dYt_dw = np.zeros((n, m, H))
-        d2Yt_dvdx = np.zeros((n, m, H))
         d2Yt_dudx = np.zeros((n, m, H))
-        d2Yt_dwdx = np.zeros((n, m, H))
+        d2Yt_dvdx = np.zeros((n, m, H))
         for i in range(n):
             P[i] = Pf(x[i])
             Yt[i] = Ytf(x[i], N[i], bcf)
             for j in range(m):
                 dA_dx[i,j] = delAf[j](x[i], bcf, bcdf)
                 dP_dx[i,j] = delPf[j](x[i])
-                dYt_dx[i,j] = (
-                    dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
-                )
             for k in range(H):
-                dYt_dv[i,k] = P[i]*dN_dv[i,k]
-                dYt_du[i,k] = P[i]*dN_du[i,k]
                 for j in range(m):
-                    dYt_dw[i,j,k] = P[i]*dN_dw[i,j,k]
                     d2Yt_dvdx[i,j,k] = (
                         P[i]*d2N_dvdx[i,j,k] + dP_dx[i,j]*dN_dv[i,k]
                     )
                     d2Yt_dudx[i,j,k] = (
                         P[i]*d2N_dudx[i,j,k] + dP_dx[i,j]*dN_du[i,k]
                     )
-                    d2Yt_dwdx[i,j,k] = (
-                        P[i]*d2N_dwdx[i,j,k] + dP_dx[i,j]*dN_dw[i,j,k]
-                    )
+        P_b = np.tile(P, (2, 1)).T
+        N_b = np.tile(N, (2, 1)).T
+        dYt_dx = dA_dx + dN_dx*P_b + N_b*dP_dx
+        dYt_dw = dN_dw*np.broadcast_to(P.T, (H, m, n)).T
+        dYt_du = dN_du*np.broadcast_to(P.T, (H, n)).T
+        dYt_dv = dN_dv*np.broadcast_to(P.T, (H, n)).T
+        d2Yt_dwdx = np.broadcast_to(P.T, (H, m, n)).T*d2N_dwdx + \
+                    np.broadcast_to(dP_dx.T, (H, m, n)).T*dN_dw
         if debug: print('dA_dx =', dA_dx)
         if debug: print('P =', P)
         if debug: print('dP_dx =', dP_dx)
         if debug: print('Yt =', Yt)
         if debug: print('dYt_dx =', dYt_dx)
-        if debug: print('dYt_dv =', dYt_dv)
-        if debug: print('dYt_du =', dYt_du)
         if debug: print('dYt_dw =', dYt_dw)
-        if debug: print('d2Yt_dvdx =', d2Yt_dvdx)
-        if debug: print('d2Yt_dudx =', d2Yt_dudx)
+        if debug: print('dYt_du =', dYt_du)
+        if debug: print('dYt_dv =', dYt_dv)
         if debug: print('d2Yt_dwdx =', d2Yt_dwdx)
+        if debug: print('d2Yt_dudx =', d2Yt_dudx)
+        if debug: print('d2Yt_dvdx =', d2Yt_dvdx)
 
         # Compute the value of the original differential equation
         # for each training point, and its derivatives.
@@ -354,7 +337,7 @@ def nnpde1ivp(
         if debug: print('dG_dw =', dG_dw)
 
         # Compute the error function for this epoch.
-        E = sum(G**2)
+        E = np.sum(G**2)
         if debug: print('E =', E)
 
         # Compute the partial derivatives of the error with respect to the
@@ -408,13 +391,13 @@ def nnpde1ivp(
         w = w_new
 
     # Save the error and parameter history.
-    np.savetxt(rmseout, rmse_history)
+    # np.savetxt(rmseout, rmse_history)
 
     # Save the parameter history.
-    np.savetxt('w0.dat', w_history[:,0,:])
-    np.savetxt('w1.dat', w_history[:,1,:])
-    np.savetxt('v.dat', v_history)
-    np.savetxt('u.dat', u_history)
+    # np.savetxt('w0.dat', w_history[:,0,:])
+    # np.savetxt('w1.dat', w_history[:,1,:])
+    # np.savetxt('v.dat', v_history)
+    # np.savetxt('u.dat', u_history)
 
     # Return the final solution.
     return (Yt, dYt_dx, v, u, w)
@@ -636,34 +619,34 @@ if __name__ == '__main__':
     #----------------------------------------------------------------------------
 
     # Compute the analytical solution at the training points.
-    Ya = np.zeros(len(x))
-    for i in range(len(x)):
-        Ya[i] = pdemod.Yaf(x[i])
-    if debug: print('Ya =', Ya)
+    # Ya = np.zeros(len(x))
+    # for i in range(len(x)):
+    #     Ya[i] = pdemod.Yaf(x[i])
+    # if debug: print('Ya =', Ya)
 
     # Compute the analytical derivative at the training points.
-    delYa = np.zeros((len(x), len(x[1])))
-    for i in range(len(x)):
-        for j in range(len(x[0])):
-            delYa[i,j] = pdemod.delYaf[j](x[i])
-    if debug: print('delYa =', delYa)
+    # delYa = np.zeros((len(x), len(x[1])))
+    # for i in range(len(x)):
+    #     for j in range(len(x[0])):
+    #         delYa[i,j] = pdemod.delYaf[j](x[i])
+    # if debug: print('delYa =', delYa)
 
     # Compute the RMSE of the trial solution.
-    Y_err = Yt - Ya
-    if debug: print('Y_err =', Y_err)
-    rmse_Y = sqrt(sum(Y_err**2) / len(x))
-    if debug: print('rmse_Y =', rmse_Y)
+    # Y_err = Yt - Ya
+    # if debug: print('Y_err =', Y_err)
+    # rmse_Y = sqrt(sum(Y_err**2) / len(x))
+    # if debug: print('rmse_Y =', rmse_Y)
 
     # Compute the MSE of the trial derivative.
-    delY_err = delYt - delYa
-    if debug: print('delY_err =', delY_err)
-    rmse_delY = np.zeros(len(x[0]))
-    e2sum = np.zeros(len(x[0]))
-    for j in range(len(x[0])):
-        for i in range(len(x)):
-            e2sum[j] += delY_err[i,j]**2
-        rmse_delY[j] = sqrt(e2sum[j] / len(x))
-    if debug: print('rmse_delY =', rmse_delY)
+    # delY_err = delYt - delYa
+    # if debug: print('delY_err =', delY_err)
+    # rmse_delY = np.zeros(len(x[0]))
+    # e2sum = np.zeros(len(x[0]))
+    # for j in range(len(x[0])):
+    #     for i in range(len(x)):
+    #         e2sum[j] += delY_err[i,j]**2
+    #     rmse_delY[j] = sqrt(e2sum[j] / len(x))
+    # if debug: print('rmse_delY =', rmse_delY)
 
     # Print the report.
     # print('    x        y      Ya     Yt   dYa_dx dYt_dx dYa_dy dYt_dy')
@@ -677,10 +660,10 @@ if __name__ == '__main__':
     #     )
     # print('RMSE              %f          %f          %f' %
     #       (rmse_Y, rmse_delY[0], rmse_delY[1]))
-    print(rmse_Y)
+    # print(rmse_Y)
 
     # Save the trained and analytical values at the training points.
-    np.savetxt(trainout, list(zip(x[:,0], x[:,1], Yt, Ya)))
+    # np.savetxt(trainout, list(zip(x[:,0], x[:,1], Yt, Ya)))
 
     # Create the list of test points.
     # xt = np.linspace(0, 1, ntest)
