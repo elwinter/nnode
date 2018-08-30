@@ -2,15 +2,11 @@
 
 from math import sqrt, sin, cos
 
-# A reasonable solution can be found using the following settings:
-# All defaults
-
 # The equation is defined on the domain [0,1], with the boundary
 # conditions defined at x=0.
 
-# Define the original differential equation, assumed to be in the form
-# G(x,y,dy/dx) = dy/dx - cos(x) = 0, y(0) = 0
-# Solution is y(x) = sin(x)
+# The analytical form of the equation is:
+# G(x,y,dy/dx) = dy/dx - cos(x) = 0
 def Gf(x, y, dy_dx):
     return dy_dx - cos(x)
 

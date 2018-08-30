@@ -13,7 +13,7 @@ from math import exp, pi, sin, cos
 # G(x,t,Y,delY,deldelY) = dY_dt - D*d2Y_dx2 = 0
 
 # Diffusion coefficient
-D = 0.001
+D = 1
 
 # Define the original differential equation.
 def Gf(xt, Y, delY, deldelY):
@@ -72,40 +72,35 @@ def dG_d2Y_dtdtf(xt, Y, delY, deldelY):
 dG_ddeldelYf = ((dG_d2Y_dxdxf, dG_d2Y_dxdtf),
                 (dG_d2Y_dtdxf, dG_d2Y_dtdtf))
 
-# Define the initial profile and its spatial derivative.
-def Y0f(x):
-    return sin(pi*x)
-
-def dY0_dxf(x):
-    return pi*cos(pi*x)
-
-# Boundary conditions for x at 0,1
+# (x,t) = (0,t)
 def f0f(t):
     return 0
 
+# (x,t) = (1,t)
 def f1f(t):
     return 0
 
-# Boundary conditions for t=0, no BC at t=1
+# (x,t) = (x,0)
 def g0f(x):
-    return Y0f(x)
+    return sin(pi*x)
 
+# (x,t) = (x,1) NOT USED
 def g1f(x):
     return None
 
 # Array of BC functions
 bcf = ((f0f, g0f), (f1f, g1f))
 
-# 1st t derivative of BC functions for x at x = 0, 1
+# 1st t derivative of BC functions for x at x = 0,1
 def df0_dtf(t):
     return 0
 
 def df1_dtf(t):
     return 0
 
-# 1st x derivative of BC functions for t at t = 0, 1
+# 1st x derivative of BC functions for t at t = 0,1
 def dg0_dxf(x):
-    return dY0_dxf(x)
+    return pi*cos(pi*x)
 
 def dg1_dxf(x):
     return None
@@ -120,9 +115,9 @@ def d2f0_dt2f(t):
 def d2f1_dt2f(t):
     return 0
 
-# 2nd derivatives of BC functions for y at 0 and 1
+# 2nd derivatives of BC functions for t at 0 and 1
 def d2g0_dx2f(x):
-    return 0
+    return -pi**2*sin(pi*x)
 
 def d2g1_dx2f(x):
     return None
@@ -130,7 +125,7 @@ def d2g1_dx2f(x):
 # Array of BC 2nd derivatives
 bcd2f = ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f))
 
-# Analytical solution is the same as the starting profile.
+# Analytical solution
 def Yaf(xt):
     (x, t) = xt
     Ya = exp(-pi**2*D*t)*sin(pi*x)

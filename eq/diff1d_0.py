@@ -1,12 +1,9 @@
 # 1-D diffusion PDE
 
-# A reasonable solution can be found using the following settings:
-#
-
-from math import exp, pi, sin
-
-# The equation is defined on the domain [[0,1],[0,1]], fixed BC at
-# x=0,1, and a linear profile.
+# The equation is defined on the domain [[0,1],[0,1]]. The initial
+# profile is flat (Y(x,0)=0), and the BC at x=0,1 are fixed at
+# Y(0,t)=Y(1,t)=0. The analytical solution is the same as the starting
+# profile.
 
 # The analytical form of the equation is:
 
@@ -72,40 +69,35 @@ def dG_d2Y_dtdtf(xt, Y, delY, deldelY):
 dG_ddeldelYf = ((dG_d2Y_dxdxf, dG_d2Y_dxdtf),
                 (dG_d2Y_dtdxf, dG_d2Y_dtdtf))
 
-# Define the initial profile and its spatial derivative.
-def Y0f(x):
-    return 1 - x
-
-def dY0_dxf(x):
-    return -1
-
-# Boundary conditions for x at 0,1
+# (x,t) = (0,t)
 def f0f(t):
-    return 1 - t
+    return 0
 
+# (x,t) = (1,t)
 def f1f(t):
     return 0
 
-# Boundary conditions for t=0
+# (x,t) = (x,0)
 def g0f(x):
-    return Y0f(x)
+    return 0
 
+# (x,t) = (x,1) NOT USED
 def g1f(x):
     return None
 
 # Array of BC functions
 bcf = ((f0f, g0f), (f1f, g1f))
 
-# 1st t derivative of BC functions for x at x = 0, 1
+# 1st t derivative of BC functions for x at x = 0,1
 def df0_dtf(t):
-    return -1
+    return 0
 
 def df1_dtf(t):
     return 0
 
-# 1st x derivative of BC functions for t at t = 0, 1
+# 1st x derivative of BC functions for t at t = 0,1
 def dg0_dxf(x):
-    return dY0_dxf(x)
+    return 0
 
 def dg1_dxf(x):
     return None
@@ -133,8 +125,4 @@ bcd2f = ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f))
 # Analytical solution is the same as the starting profile.
 def Yaf(xt):
     (x, t) = xt
-    Ya = (t - 1)*(x - 1)
-    for k in range(1,101):
-        Ya += 2*(1 - exp(-pi**2*t*D*k**2))*sin(pi*k*x)/k**3/pi**3
-        Ya -= 2*exp(-pi**2*t*D*k**2)*sin(pi*k*x)/k/pi
-    return Ya
+    return 0

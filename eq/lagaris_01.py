@@ -2,17 +2,13 @@
 
 from math import exp
 
-# A reasonable solution can be found using the following settings:
-# All defaults
-
 # The equation is defined on the domain [0,1], with the initial
 # condition defined at x=0.
 
-# Define the original differential equation, assumed to be in the form:
+# The analytical form of the equation is:
 # G(x,y,dy/dx) = dy/dx + (x + (1 + 3*x**2)/(1 + x + x**3))*y
 #                - x**3 - 2*x - x**2*(1 + 3*x**2)/(1 + x + x**3)
 #              = 0
-# Solution is y(x) = exp(-x**2/2) / (1 + x * x**3) + x**2
 def Gf(x, y, dy_dx):
     return (
         dy_dx + (x + (1 + 3*x**2)/(1 + x + x**3))*y
