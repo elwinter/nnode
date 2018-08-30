@@ -60,20 +60,6 @@ DEFAULT_OPTS = {
     'wmin':      DEFAULT_WMIN
     }
 
-# Trial solution for a 1st-order ODE IVP
-def ytf(x, N, eq):
-    """Trial function"""
-    return eq.ic + x*N
-
-# 1st trial derivative.
-def dyt_dxf(x, N, dN_dx, eq):
-    """First derivative of trial function"""
-    return x*dN_dx + N
-
-# Vectorize the trial solution and derivative.
-ytf_v = np.vectorize(ytf)
-dyt_dxf_v = np.vectorize(dyt_dxf)
-
 # Vectorize sigma functions.
 sigma_v = np.vectorize(sigma)
 dsigma_dz_v = np.vectorize(dsigma_dz)
@@ -116,7 +102,7 @@ class NNODE1IVP(SLFFNN):
         z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         N = s.dot(self.v)
-        yt = ytf(x, N, self.eq)
+        yt = self.__ytf(x, N)
         return yt
 
     def run_derivative(self, x):
@@ -126,10 +112,18 @@ class NNODE1IVP(SLFFNN):
         s1 = dsigma_dz_v(z)
         N = s.dot(self.v)
         dN_dx = s1.dot(self.v*self.w)
-        dyt_dx = dyt_dxf(x, N, dN_dx, self.eq)
+        dyt_dx = self.dyt_dxf(x, N, dN_dx)
         return dyt_dx
 
     # Internal methods below this point
+
+    def __ytf(self, x, N):
+        """Trial function"""
+        return self.eq.ic + x*N
+
+    def dyt_dxf(self, x, N, dN_dx):
+        """First derivative of trial function"""
+        return x*dN_dx + N
 
     def __train_delta(self, x, opts=DEFAULT_OPTS):
         """Train the network using the delta method. """
@@ -148,6 +142,8 @@ class NNODE1IVP(SLFFNN):
         Gf_v = np.vectorize(self.eq.Gf)
         dG_dyf_v = np.vectorize(self.eq.dG_dyf)
         dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
+        ytf_v = np.vectorize(self.__ytf)
+        dyt_dxf_v = np.vectorize(self.dyt_dxf)
 
         # Determine the number of training points, and change notation for
         # convenience.
@@ -195,8 +191,8 @@ class NNODE1IVP(SLFFNN):
 
             # Compute the value of the trial solution and its derivatives,
             # for each training point.
-            yt = ytf_v(x, N, self.eq)
-            dyt_dx = dyt_dxf_v(x, N, dN_dx, eq)
+            yt = ytf_v(x, N)
+            dyt_dx = dyt_dxf_v(x, N, dN_dx)
             dyt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
             dyt_du = np.broadcast_to(x, (H, n)).T*dN_du
             dyt_dv = np.broadcast_to(x, (H, n)).T*dN_dv
@@ -278,9 +274,9 @@ class NNODE1IVP(SLFFNN):
         s = sigma_v(z)
         s1 = dsigma_dz_v(z)
         N = s.dot(v)
-        yt = ytf_v(x, N, self.eq)
+        yt = np.vectorize(self.__ytf)(x, N)
         dN_dx = s1.dot(v*w)
-        dyt_dx = dyt_dxf_v(x, N, dN_dx, self.eq)
+        dyt_dx = np.vectorize(self.dyt_dxf)(x, N, dN_dx)
         G = np.vectorize(self.eq.Gf)(x, yt, dyt_dx)
         E = sqrt(np.sum(G**2))
         return E
@@ -311,8 +307,8 @@ class NNODE1IVP(SLFFNN):
         d2N_dwdx = v*(s1 + s2*np.outer(x, w))
         d2N_dudx = v*s2*w
         d2N_dvdx = s1*w
-        yt = ytf_v(x, N, self.eq)
-        dyt_dx = dyt_dxf_v(x, N, dN_dx, self.eq)
+        yt = np.vectorize(self.__ytf)(x, N)
+        dyt_dx = np.vectorize(self.dyt_dxf)(x, N, dN_dx)
         dyt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
         dyt_du = np.broadcast_to(x, (H, n)).T*dN_du
         dyt_dv = np.broadcast_to(x, (H, n)).T*dN_dv
