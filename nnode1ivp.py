@@ -257,14 +257,14 @@ class NNODE1IVP(SLFFNN):
         elif trainalg in ('Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
             jac = self.__compute_error_gradient
         res = minimize(self.__compute_error, p, method=trainalg, jac=jac,
-                       args=(x, self.eq.ic))
+                       args=(x))
 
         # Unpack the optimized network parameters.
         self.w = res.x[0:H]
         self.u = res.x[H:2*H]
         self.v = res.x[2*H:3*H]
 
-    def __compute_error(self, p, x, A):
+    def __compute_error(self, p, x):
         """Compute the error function using the current parameter values."""
 
         # Unpack the network parameters.
@@ -285,7 +285,7 @@ class NNODE1IVP(SLFFNN):
         E = sqrt(np.sum(G**2))
         return E
 
-    def __compute_error_gradient(self, p, x, A):
+    def __compute_error_gradient(self, p, x):
         """Compute the gradient of the error function wrt network
         parameters."""
 
@@ -365,7 +365,6 @@ if __name__ == '__main__':
         for trainalg in ('delta', 'BFGS', 'L-BFGS-B'):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE1IVP(ode1ivp)
-            print(net)
             np.random.seed(0)
             try:
                 net.train(x_train, trainalg=trainalg)
