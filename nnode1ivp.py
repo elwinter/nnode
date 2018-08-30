@@ -98,21 +98,21 @@ class NNODE1IVP(SLFFNN):
             exit(0)
 
     def run(self, x):
-        """Compute the trained solution."""
-        z = np.outer(x, self.w) + self.u
+        """Compute the trained solution for a single input point."""
+        z = x*self.w + self.u
         s = sigma_v(z)
         N = s.dot(self.v)
         yt = self.__ytf(x, N)
         return yt
 
     def run_derivative(self, x):
-        """Compute the trained derivative."""
-        z = np.outer(x, self.w) + self.u
+        """Compute the trained derivative for a single input point."""
+        z = x*self.w + self.u
         s = sigma_v(z)
         s1 = dsigma_dz_v(z)
         N = s.dot(self.v)
         dN_dx = s1.dot(self.v*self.w)
-        dyt_dx = self.dyt_dxf(x, N, dN_dx)
+        dyt_dx = self.__dyt_dxf(x, N, dN_dx)
         return dyt_dx
 
     # Internal methods below this point
@@ -121,7 +121,7 @@ class NNODE1IVP(SLFFNN):
         """Trial function"""
         return self.eq.ic + x*N
 
-    def dyt_dxf(self, x, N, dN_dx):
+    def __dyt_dxf(self, x, N, dN_dx):
         """First derivative of trial function"""
         return x*dN_dx + N
 
@@ -143,7 +143,7 @@ class NNODE1IVP(SLFFNN):
         dG_dyf_v = np.vectorize(self.eq.dG_dyf)
         dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
         ytf_v = np.vectorize(self.__ytf)
-        dyt_dxf_v = np.vectorize(self.dyt_dxf)
+        dyt_dxf_v = np.vectorize(self.__dyt_dxf)
 
         # Determine the number of training points, and change notation for
         # convenience.
@@ -276,7 +276,7 @@ class NNODE1IVP(SLFFNN):
         N = s.dot(v)
         yt = np.vectorize(self.__ytf)(x, N)
         dN_dx = s1.dot(v*w)
-        dyt_dx = np.vectorize(self.dyt_dxf)(x, N, dN_dx)
+        dyt_dx = np.vectorize(self.__dyt_dxf)(x, N, dN_dx)
         G = np.vectorize(self.eq.Gf)(x, yt, dyt_dx)
         E = sqrt(np.sum(G**2))
         return E
@@ -308,7 +308,7 @@ class NNODE1IVP(SLFFNN):
         d2N_dudx = v*s2*w
         d2N_dvdx = s1*w
         yt = np.vectorize(self.__ytf)(x, N)
-        dyt_dx = np.vectorize(self.dyt_dxf)(x, N, dN_dx)
+        dyt_dx = np.vectorize(self.__dyt_dxf)(x, N, dN_dx)
         dyt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
         dyt_du = np.broadcast_to(x, (H, n)).T*dN_du
         dyt_dv = np.broadcast_to(x, (H, n)).T*dN_dv
@@ -339,9 +339,9 @@ if __name__ == '__main__':
     x_train = np.linspace(0, 1, nx)
 
     # Test each training algorithm on each equation.
-#    for eq in ('ode1_00', 'ode1_01', 'ode1_02', 'ode1_03', 'ode1_04',
-#                'lagaris_01', 'lagaris_02'):
-    for eq in ('ode1_00',):
+    for eq in ('ode1_00', 'ode1_01', 'ode1_02', 'ode1_03', 'ode1_04',
+                'lagaris_01', 'lagaris_02'):
+#    for eq in ('ode1_00',):
         print('Examining %s.' % eq)
         ode1ivp = ODE1IVP(eq)
         print(ode1ivp)
@@ -356,9 +356,9 @@ if __name__ == '__main__':
         print()
 
         # Create and train the networks.
-#        for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
-#                         'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-        for trainalg in ('delta', 'BFGS', 'L-BFGS-B'):
+        for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
+                         'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
+#        for trainalg in ('delta', 'BFGS', 'L-BFGS-B'):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE1IVP(ode1ivp)
             np.random.seed(0)
@@ -371,8 +371,8 @@ if __name__ == '__main__':
                 continue
             print('The optimized network is:')
             print(net)
-            yt = net.run(x_train)
-            dyt_dx = net.run_derivative(x_train)
+            yt = np.vectorize(net.run)(x_train)
+            dyt_dx = np.vectorize(net.run_derivative)(x_train)
             print('The trained solution is:')
             print('yt =', yt)
             print('The trained derivative is:')
