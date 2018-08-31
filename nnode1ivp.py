@@ -23,7 +23,7 @@ Methods:
 
 Todo:
     * Expand base functionality.
-    * Combine arror and gradient code into a single function for speed.
+    * Combine error and gradient code into a single function for speed.
 """
 
 from math import sqrt
@@ -82,8 +82,6 @@ class NNODE1IVP(SLFFNN):
         self.Gf_v = np.vectorize(self.eq.Gf)
         self.dG_dyf_v = np.vectorize(self.eq.dG_dyf)
         self.dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
-        self.ytf_v = np.vectorize(self.__ytf)
-        self.dyt_dxf_v = np.vectorize(self.__dyt_dxf)
 
     def __str__(self):
         s = ''
@@ -316,8 +314,8 @@ class NNODE1IVP(SLFFNN):
         d2N_dwdx = v*(s1 + s2*np.outer(x, w))
         d2N_dudx = v*s2*w
         d2N_dvdx = s1*w
-        yt = self.ytf_v(x, N)
-        dyt_dx = self.dyt_dxf_v(x, N, dN_dx)
+        yt = self.__ytf(x, N)
+        dyt_dx = self.__dyt_dxf(x, N, dN_dx)
         dyt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
         dyt_du = np.broadcast_to(x, (H, n)).T*dN_du
         dyt_dv = np.broadcast_to(x, (H, n)).T*dN_dv

@@ -24,6 +24,7 @@ Methods:
 
 Todo:
     * Expand base functionality.
+    * Combine error and gradient code into a single function for speed.
 """
 
 from math import sqrt
@@ -61,26 +62,6 @@ DEFAULT_OPTS = {
     'wmin':      DEFAULT_WMIN
     }
 
-# Define the trial solution for a 2nd-order ODE BVP.
-def ytf(x, N, eq):
-    """Trial function"""
-    return eq.bc0*(1 - x) + eq.bc1*x + x*(1 - x)*N
-
-# Define the 1st trial derivative.
-def dyt_dxf(x, N, dN_dx, eq):
-    """First derivative of trial function"""
-    return -eq.bc0 + eq.bc1 + x*(1 - x)*dN_dx + (1 - 2*x)*N
-
-# Define the 2nd trial derivative.
-def d2yt_dx2f(A, Ap, x, N, dN_dx, d2N_dx2):
-    """2nd derivative of trial function"""
-    return x*(1 - x)*d2N_dx2 + 2*(1 - 2*x)*dN_dx - 2*N
-
-# Vectorize the trial solution and derivatives.
-ytf_v = np.vectorize(ytf)
-dyt_dxf_v = np.vectorize(dyt_dxf)
-d2yt_dx2f_v = np.vectorize(d2yt_dx2f)
-
 # Vectorize sigma functions.
 sigma_v = np.vectorize(sigma)
 dsigma_dz_v = np.vectorize(dsigma_dz)
@@ -99,6 +80,11 @@ class NNODE2BVP(SLFFNN):
         self.u = np.zeros(nhid)
         self.v = np.zeros(nhid)
 
+        # Pre-vectorize functions for efficiency.
+#        self.Gf_v = np.vectorize(self.eq.Gf)
+#        self.dG_dyf_v = np.vectorize(self.eq.dG_dyf)
+#        self.dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
+
     def __str__(self):
         s = ''
         s += "NNODE2BVP:\n"
@@ -110,11 +96,13 @@ class NNODE2BVP(SLFFNN):
 
     def train(self, x, trainalg=DEFAULT_TRAINALG, opts=DEFAULT_OPTS):
         """Train the network to solve a 1st-order ODE IVP. """
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
         if trainalg == 'delta':
-            self.__train_delta(x, opts)
+            self.__train_delta(x, my_opts)
         elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS',
                           'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-            self.__train_minimize(x, trainalg, opts)
+            self.__train_minimize(x, trainalg, my_opts)
         else:
             print('ERROR: Invalid training algorithm (%s)!' % trainalg)
             exit(0)
@@ -124,7 +112,7 @@ class NNODE2BVP(SLFFNN):
         z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         N = s.dot(self.v)
-        yt = ytf(x, N, self.eq)
+        yt = self.__ytf(x, N)
         return yt
 
     def run_derivative(self, x):
@@ -134,7 +122,7 @@ class NNODE2BVP(SLFFNN):
         s1 = dsigma_dz_v(z)
         N = s.dot(self.v)
         dN_dx = s1.dot(self.v*self.w)
-        dyt_dx = dyt_dxf(x, N, dN_dx, self.eq)
+        dyt_dx = self.__dyt_dxf(x, N, dN_dx)
         return dyt_dx
 
     def run_2nd_derivative(self, x):
@@ -146,10 +134,22 @@ class NNODE2BVP(SLFFNN):
         N = s.dot(self.v)
         dN_dx = s1.dot(self.v*self.w)
         d2N_dx2 = s2.dot(self.v*self.w**2)
-        d2yt_dx2 = d2yt_dx2f(self.eq.bc0, self.eq.bc1, x, N, dN_dx, d2N_dx2)
+        d2yt_dx2 = self.__d2yt_dx2f(x, N, dN_dx, d2N_dx2)
         return d2yt_dx2
 
     # Internal methods below this point
+
+    def __ytf(self, x, N):
+        """Trial function"""
+        return self.eq.bc0*(1 - x) + self.eq.bc1*x + x*(1 - x)*N
+
+    def __dyt_dxf(self, x, N, dN_dx):
+        """First derivative of trial function"""
+        return -self.eq.bc0 + self.eq.bc1 + x*(1 - x)*dN_dx + (1 - 2*x)*N
+
+    def __d2yt_dx2f(self, x, N, dN_dx, d2N_dx2):
+        """2nd derivative of trial function"""
+        return x*(1 - x)*d2N_dx2 + 2*(1 - 2*x)*dN_dx - 2*N
 
     def __train_delta(self, x, opts=DEFAULT_OPTS):
         """Train the network to solve a 2nd-order ODE BVP. """
@@ -221,9 +221,9 @@ class NNODE2BVP(SLFFNN):
 
             # Compute the value of the trial solution and its derivatives,
             # for each training point.
-            yt = ytf_v(x, N, self.eq)
-            dyt_dx = dyt_dxf_v(x, N, dN_dx, self.eq)
-            d2yt_dx2 = d2yt_dx2f_v(self.eq.bc0, self.eq.bc1, x, N, dN_dx, d2N_dx2)
+            yt = self.__ytf(x, N)
+            dyt_dx = self.__dyt_dxf(x, N, dN_dx)
+            d2yt_dx2 = self.__d2yt_dx2f(x, N, dN_dx, d2N_dx2)
             dyt_dw = np.broadcast_to(x**2, (H, n)).T*dN_dw
             dyt_du = np.broadcast_to(x**2, (H, n)).T*dN_du
             dyt_dv = np.broadcast_to(x**2, (H, n)).T*dN_dv
@@ -323,11 +323,11 @@ class NNODE2BVP(SLFFNN):
         s1 = dsigma_dz_v(z)
         s2 = d2sigma_dz2_v(z)
         N = s.dot(v)
-        yt = ytf_v(x, N, self.eq)
+        yt = self.__ytf(x, N)
         dN_dx = s1.dot(v*w)
         d2N_dx2 = s2.dot(v*w**2)
-        dyt_dx = dyt_dxf_v(x, N, dN_dx, self.eq)
-        d2yt_dx2 = d2yt_dx2f_v(self.eq.bc0, self.eq.bc1, x, N, dN_dx, d2N_dx2)
+        dyt_dx = self.__dyt_dxf(x, N, dN_dx)
+        d2yt_dx2 = self.__d2yt_dx2f(x, N, dN_dx, d2N_dx2)
         G = np.vectorize(self.eq.Gf)(x, yt, dyt_dx, d2yt_dx2)
         E = sqrt(np.sum(G**2))
         return E
@@ -363,9 +363,9 @@ class NNODE2BVP(SLFFNN):
         d3N_dwdx2 = v*(2*s2*w + s3*w**2*x)
         d3N_dudx2 = v*s3*w**2
         d3N_dvdx2 = s2*w**2
-        yt = ytf_v(x, N, self.eq)
-        dyt_dx = dyt_dxf_v(x, N, dN_dx, self.eq)
-        d2yt_dx2 = d2yt_dx2f_v(self.eq.bc0, self.eq.bc1, x, N, dN_dx, d2N_dx2)
+        yt = self.__ytf(x, N)
+        dyt_dx = self.__dyt_dxf(x, N, dN_dx)
+        d2yt_dx2 = self.__d2yt_dx2f(x, N, dN_dx, d2N_dx2)
         dyt_dw = np.broadcast_to(x**2, (H, n)).T*dN_dw
         dyt_du = np.broadcast_to(x**2, (H, n)).T*dN_du
         dyt_dv = np.broadcast_to(x**2, (H, n)).T*dN_dv
