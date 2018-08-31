@@ -23,6 +23,7 @@ Methods:
 
 Todo:
     * Expand base functionality.
+    * Combine arror and gradient code into a single function for speed.
 """
 
 from math import sqrt
@@ -76,6 +77,13 @@ class NNODE1IVP(SLFFNN):
         self.w = np.zeros(nhid)
         self.u = np.zeros(nhid)
         self.v = np.zeros(nhid)
+        
+        # Pre-vectorize functions for efficiency.
+        self.Gf_v = np.vectorize(self.eq.Gf)
+        self.dG_dyf_v = np.vectorize(self.eq.dG_dyf)
+        self.dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
+        self.ytf_v = np.vectorize(self.__ytf)
+        self.dyt_dxf_v = np.vectorize(self.__dyt_dxf)
 
     def __str__(self):
         s = ''
@@ -101,15 +109,15 @@ class NNODE1IVP(SLFFNN):
 
     def run(self, x):
         """Compute the trained solution for a single input point."""
-        z = x*self.w + self.u
+        z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         N = s.dot(self.v)
         yt = self.__ytf(x, N)
         return yt
 
     def run_derivative(self, x):
-        """Compute the trained derivative for a single input point."""
-        z = x*self.w + self.u
+        """Compute the trained derivative for an array of points."""
+        z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         s1 = dsigma_dz_v(z)
         N = s.dot(self.v)
@@ -142,13 +150,6 @@ class NNODE1IVP(SLFFNN):
         assert opts['umin'] < opts['umax']
 
         #------------------------------------------------------------------------
-
-        # Vectorize equations for local use in the training loop.
-        Gf_v = np.vectorize(self.eq.Gf)
-        dG_dyf_v = np.vectorize(self.eq.dG_dyf)
-        dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
-        ytf_v = np.vectorize(self.__ytf)
-        dyt_dxf_v = np.vectorize(self.__dyt_dxf)
 
         # Determine the number of training points, and change notation for
         # convenience.
@@ -196,8 +197,8 @@ class NNODE1IVP(SLFFNN):
 
             # Compute the value of the trial solution and its derivatives,
             # for each training point.
-            yt = ytf_v(x, N)
-            dyt_dx = dyt_dxf_v(x, N, dN_dx)
+            yt = self.__ytf(x, N)
+            dyt_dx = self.__dyt_dxf(x, N, dN_dx)
             dyt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
             dyt_du = np.broadcast_to(x, (H, n)).T*dN_du
             dyt_dv = np.broadcast_to(x, (H, n)).T*dN_dv
@@ -207,9 +208,9 @@ class NNODE1IVP(SLFFNN):
 
             # Compute the value of the original differential equation for
             # each training point, and its derivatives.
-            G = Gf_v(x, yt, dyt_dx)
-            dG_dyt = dG_dyf_v(x, yt, dyt_dx)
-            dG_dytdx = dG_dydxf_v(x, yt, dyt_dx)
+            G = self.Gf_v(x, yt, dyt_dx)
+            dG_dyt = self.dG_dyf_v(x, yt, dyt_dx)
+            dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx)
             dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw + \
                     np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx
             dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du + \
@@ -282,10 +283,10 @@ class NNODE1IVP(SLFFNN):
         s = sigma_v(z)
         s1 = dsigma_dz_v(z)
         N = s.dot(v)
-        yt = np.vectorize(self.__ytf)(x, N)
+        yt = self.__ytf(x, N)
         dN_dx = s1.dot(v*w)
-        dyt_dx = np.vectorize(self.__dyt_dxf)(x, N, dN_dx)
-        G = np.vectorize(self.eq.Gf)(x, yt, dyt_dx)
+        dyt_dx = self.__dyt_dxf(x, N, dN_dx)
+        G = self.Gf_v(x, yt, dyt_dx)
         E = sqrt(np.sum(G**2))
         return E
 
@@ -315,17 +316,17 @@ class NNODE1IVP(SLFFNN):
         d2N_dwdx = v*(s1 + s2*np.outer(x, w))
         d2N_dudx = v*s2*w
         d2N_dvdx = s1*w
-        yt = np.vectorize(self.__ytf)(x, N)
-        dyt_dx = np.vectorize(self.__dyt_dxf)(x, N, dN_dx)
+        yt = self.ytf_v(x, N)
+        dyt_dx = self.dyt_dxf_v(x, N, dN_dx)
         dyt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
         dyt_du = np.broadcast_to(x, (H, n)).T*dN_du
         dyt_dv = np.broadcast_to(x, (H, n)).T*dN_dv
         d2yt_dwdx = np.broadcast_to(x, (H, n)).T*d2N_dwdx + dN_dw
         d2yt_dudx = np.broadcast_to(x, (H, n)).T*d2N_dudx + dN_du
         d2yt_dvdx = np.broadcast_to(x, (H, n)).T*d2N_dvdx + dN_dv
-        G = np.vectorize(self.eq.Gf)(x, yt, dyt_dx)
-        dG_dyt = np.vectorize(self.eq.dG_dyf)(x, yt, dyt_dx)
-        dG_dytdx = np.vectorize(self.eq.dG_dydxf)(x, yt, dyt_dx)
+        G = self.Gf_v(x, yt, dyt_dx)
+        dG_dyt = self.dG_dyf_v(x, yt, dyt_dx)
+        dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx)
         dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw + \
                 np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx
         dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du + \
@@ -377,8 +378,8 @@ if __name__ == '__main__':
                 continue
             print('The optimized network is:')
             print(net)
-            yt = np.vectorize(net.run)(x_train)
-            dyt_dx = np.vectorize(net.run_derivative)(x_train)
+            yt = net.run(x_train)
+            dyt_dx = net.run_derivative(x_train)
             print('The trained solution is:')
             print('yt =', yt)
             print('The trained derivative is:')
