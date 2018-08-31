@@ -88,11 +88,13 @@ class NNODE1IVP(SLFFNN):
 
     def train(self, x, trainalg=DEFAULT_TRAINALG, opts=DEFAULT_OPTS):
         """Train the network to solve a 1st-order ODE IVP. """
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
         if trainalg == 'delta':
-            self.__train_delta(x, opts)
+            self.__train_delta(x, my_opts)
         elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS',
                           'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-            self.__train_minimize(x, trainalg, opts)
+            self.__train_minimize(x, trainalg, my_opts)
         else:
             print('ERROR: Invalid training algorithm (%s)!' % trainalg)
             exit(0)
@@ -127,6 +129,9 @@ class NNODE1IVP(SLFFNN):
 
     def __train_delta(self, x, opts=DEFAULT_OPTS):
         """Train the network using the delta method. """
+
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
 
         # Sanity-check arguments.
         assert x.any()
@@ -228,6 +233,9 @@ class NNODE1IVP(SLFFNN):
 
     def __train_minimize(self, x, trainalg, opts=DEFAULT_OPTS):
         """Train the network using the SciPy minimize() function. """
+
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
 
         # Sanity-check arguments.
         assert x.any()
@@ -340,8 +348,7 @@ if __name__ == '__main__':
 
     # Test each training algorithm on each equation.
     for eq in ('ode1_00', 'ode1_01', 'ode1_02', 'ode1_03', 'ode1_04',
-                'lagaris_01', 'lagaris_02'):
-#    for eq in ('ode1_00',):
+               'lagaris_01', 'lagaris_02'):
         print('Examining %s.' % eq)
         ode1ivp = ODE1IVP(eq)
         print(ode1ivp)
@@ -358,7 +365,6 @@ if __name__ == '__main__':
         # Create and train the networks.
         for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
                          'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-#        for trainalg in ('delta', 'BFGS', 'L-BFGS-B'):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE1IVP(ode1ivp)
             np.random.seed(0)
