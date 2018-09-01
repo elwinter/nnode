@@ -65,9 +65,6 @@ class ODE2BVP(ODE2):
             # dya_dxf is the optional function for analytical derivative dya/dx
             # d2ya_dx2f is the optional function for analytical derivative
             # d2ya/dx2
-            assert odemod.yaf         # Function for analytical solution ya
-            assert odemod.dya_dxf     # Function for analytical derivative dya/dx
-            assert odemod.d2ya_dx2f   # Function for analytical derivative dya/dx
             self.Gf = odemod.Gf
             self.bc0 = odemod.bc0
             self.bc1 = odemod.bc1

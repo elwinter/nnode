@@ -96,7 +96,7 @@ class NNODE2BVP(SLFFNN):
         return s.rstrip()
 
     def train(self, x, trainalg=DEFAULT_TRAINALG, opts=DEFAULT_OPTS):
-        """Train the network to solve a 1st-order ODE IVP. """
+        """Train the network. """
         my_opts = dict(DEFAULT_OPTS)
         my_opts.update(opts)
         if trainalg == 'delta':
@@ -153,7 +153,7 @@ class NNODE2BVP(SLFFNN):
         return x*(1 - x)*d2N_dx2 + 2*(1 - 2*x)*dN_dx - 2*N
 
     def __train_delta(self, x, opts=DEFAULT_OPTS):
-        """Train the network to solve a 2nd-order ODE BVP. """
+        """Train the network with the delta method. """
 
         my_opts = dict(DEFAULT_OPTS)
         my_opts.update(opts)
@@ -272,7 +272,7 @@ class NNODE2BVP(SLFFNN):
                 print(epoch, rmse)
 
     def __train_minimize(self, x, trainalg, opts=DEFAULT_OPTS):
-        """Train the network to solve a 2nd-order ODE BVP. """
+        """Train the network with minimize(). """
 
         my_opts = dict(DEFAULT_OPTS)
         my_opts.update(opts)
@@ -432,7 +432,6 @@ if __name__ == '__main__':
         # Create and train the networks.
         for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
                          'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-#        for trainalg in ('delta',):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE2BVP(ode2bvp)
             np.random.seed(0)
