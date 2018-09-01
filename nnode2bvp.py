@@ -81,9 +81,10 @@ class NNODE2BVP(SLFFNN):
         self.v = np.zeros(nhid)
 
         # Pre-vectorize functions for efficiency.
-#        self.Gf_v = np.vectorize(self.eq.Gf)
-#        self.dG_dyf_v = np.vectorize(self.eq.dG_dyf)
-#        self.dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
+        self.Gf_v = np.vectorize(self.eq.Gf)
+        self.dG_dyf_v = np.vectorize(self.eq.dG_dyf)
+        self.dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
+        self.dG_d2ydx2f_v = np.vectorize(self.eq.dG_dydxf)
 
     def __str__(self):
         s = ''
@@ -108,7 +109,7 @@ class NNODE2BVP(SLFFNN):
             exit(0)
 
     def run(self, x):
-        """x is a single input value."""
+        """Compute the trained solution."""
         z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         N = s.dot(self.v)
@@ -116,7 +117,7 @@ class NNODE2BVP(SLFFNN):
         return yt
 
     def run_derivative(self, x):
-        """x is a single input value."""
+        """Compute the trained derivative."""
         z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         s1 = dsigma_dz_v(z)
@@ -126,7 +127,7 @@ class NNODE2BVP(SLFFNN):
         return dyt_dx
 
     def run_2nd_derivative(self, x):
-        """x is a single input value."""
+        """Compute the trained 2nd derivative."""
         z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         s1 = dsigma_dz_v(z)
@@ -140,19 +141,22 @@ class NNODE2BVP(SLFFNN):
     # Internal methods below this point
 
     def __ytf(self, x, N):
-        """Trial function"""
+        """Trial function, x and N are 1xn arrays"""
         return self.eq.bc0*(1 - x) + self.eq.bc1*x + x*(1 - x)*N
 
     def __dyt_dxf(self, x, N, dN_dx):
-        """First derivative of trial function"""
+        """First derivative of trial function, all are 1xn arrays"""
         return -self.eq.bc0 + self.eq.bc1 + x*(1 - x)*dN_dx + (1 - 2*x)*N
 
     def __d2yt_dx2f(self, x, N, dN_dx, d2N_dx2):
-        """2nd derivative of trial function"""
+        """2nd derivative of trial function, all are 1xn arrays"""
         return x*(1 - x)*d2N_dx2 + 2*(1 - 2*x)*dN_dx - 2*N
 
     def __train_delta(self, x, opts=DEFAULT_OPTS):
         """Train the network to solve a 2nd-order ODE BVP. """
+
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
 
         # Sanity-check arguments.
         assert x.any()
@@ -163,12 +167,6 @@ class NNODE2BVP(SLFFNN):
         assert opts['umin'] < opts['umax']
 
         #------------------------------------------------------------------------
-
-        # Vectorize equations for local use in the training loop.
-        Gf_v = np.vectorize(self.eq.Gf)
-        dG_dyf_v = np.vectorize(self.eq.dG_dyf)
-        dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
-        dG_d2ydx2f_v = np.vectorize(self.eq.dG_d2ydx2f)
 
         # Determine the number of training points, and change notation for
         # convenience.
@@ -198,7 +196,7 @@ class NNODE2BVP(SLFFNN):
             # Compute the input, the sigmoid function, and its
             # derivatives, for each hidden node k, for each training
             # point i.
-            z = np.outer(x, self.w) + self.u
+            z = np.outer(x, self.w) + self.u  # n x H array
             s = sigma_v(z)
             s1 = dsigma_dz_v(z)
             s2 = d2sigma_dz2_v(z)
@@ -208,14 +206,14 @@ class NNODE2BVP(SLFFNN):
             # training point.
             N = s.dot(self.v)
             dN_dx = s1.dot(self.v*self.w)
+            d2N_dx2 = s2.dot(self.v*self.w**2)
             dN_dw = s1*np.outer(x, self.v)
             dN_du = s1*self.v
             dN_dv = s
             d2N_dwdx = self.v*(s1 + s2*np.outer(x, self.w))
             d2N_dudx = self.v*s2*self.w
             d2N_dvdx = s1*self.w
-            d2N_dx2 = s2.dot(self.v*self.w**2)
-            d3N_dwdx2 = self.v*(2*s2*self.w + s3*self.w**2*x)
+            d3N_dwdx2 = self.v*(2*s2*self.w + s3*np.outer(x, self.w**2))
             d3N_dudx2 = self.v*s3*self.w**2
             d3N_dvdx2 = s2*self.w**2
 
@@ -245,10 +243,10 @@ class NNODE2BVP(SLFFNN):
 
             # Compute the value of the original differential equation for
             # each training point, and its derivatives.
-            G = Gf_v(x, yt, dyt_dx, d2yt_dx2)
-            dG_dyt = dG_dyf_v(x, yt, dyt_dx, d2yt_dx2)
-            dG_dytdx = dG_dydxf_v(x, yt, dyt_dx, d2yt_dx2)
-            dG_d2ytdx2 = dG_d2ydx2f_v(x, yt, dyt_dx, d2yt_dx2)
+            G = self.Gf_v(x, yt, dyt_dx, d2yt_dx2)
+            dG_dyt = self.dG_dyf_v(x, yt, dyt_dx, d2yt_dx2)
+            dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx, d2yt_dx2)
+            dG_d2ytdx2 = self.dG_d2ydx2f_v(x, yt, dyt_dx, d2yt_dx2)
             dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw \
                     + np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx \
                     + np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dwdx2
@@ -260,7 +258,7 @@ class NNODE2BVP(SLFFNN):
                     + np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dvdx2
 
             # Compute the error function for this epoch.
-            E = sum(G**2)
+            E = np.sum(G**2)
 
             # Compute the partial derivatives of the error with respect to
             # the network parameters.
@@ -275,6 +273,9 @@ class NNODE2BVP(SLFFNN):
 
     def __train_minimize(self, x, trainalg, opts=DEFAULT_OPTS):
         """Train the network to solve a 2nd-order ODE BVP. """
+
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
 
         # Sanity-check arguments.
         assert x.any()
@@ -292,7 +293,6 @@ class NNODE2BVP(SLFFNN):
 
         # Assemble the network parameters into a single 1-D vector for
         # use by the minimize() method.
-        # p = [w, u, v]
         p = np.hstack((self.w, self.u, self.v))
 
         # Minimize the error function to get the new parameter values.
@@ -309,7 +309,7 @@ class NNODE2BVP(SLFFNN):
         self.v = res.x[2*H:3*H]
 
     def __compute_error(self, p, x):
-        """Compute the error function for 1 forward pass."""
+        """Compute the error function using the current parameter values."""
 
         # Unpack the network parameters.
         H = len(self.w)
@@ -323,14 +323,14 @@ class NNODE2BVP(SLFFNN):
         s1 = dsigma_dz_v(z)
         s2 = d2sigma_dz2_v(z)
         N = s.dot(v)
-        yt = self.__ytf(x, N)
         dN_dx = s1.dot(v*w)
         d2N_dx2 = s2.dot(v*w**2)
+        yt = self.__ytf(x, N)
         dyt_dx = self.__dyt_dxf(x, N, dN_dx)
         d2yt_dx2 = self.__d2yt_dx2f(x, N, dN_dx, d2N_dx2)
-        G = np.vectorize(self.eq.Gf)(x, yt, dyt_dx, d2yt_dx2)
-        E = sqrt(np.sum(G**2))
-        return E
+        G = self.Gf_v(x, yt, dyt_dx, d2yt_dx2)
+        E2 = np.sum(G**2)
+        return E2
 
     def __compute_error_gradient(self, p, x):
         """Compute the gradient of the error function wrt network
@@ -360,7 +360,7 @@ class NNODE2BVP(SLFFNN):
         d2N_dwdx = v*(s1 + s2*np.outer(x, w))
         d2N_dudx = v*s2*w
         d2N_dvdx = s1*w
-        d3N_dwdx2 = v*(2*s2*w + s3*w**2*x)
+        d3N_dwdx2 = v*(2*s2*w + s3*np.outer(x, w**2))
         d3N_dudx2 = v*s3*w**2
         d3N_dvdx2 = s2*w**2
         yt = self.__ytf(x, N)
@@ -384,10 +384,10 @@ class NNODE2BVP(SLFFNN):
         d3yt_dvdx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dvdx2 + \
                      4*np.broadcast_to(x, (H, n)).T*d2N_dvdx + \
                      2*dN_dv
-        G = np.vectorize(self.eq.Gf)(x, yt, dyt_dx, d2yt_dx2)
-        dG_dyt = np.vectorize(self.eq.dG_dyf)(x, yt, dyt_dx, d2yt_dx2)
-        dG_dytdx = np.vectorize(self.eq.dG_dydxf)(x, yt, dyt_dx, d2yt_dx2)
-        dG_d2ytdx2 = np.vectorize(self.eq.dG_d2ydx2f)(x, yt, dyt_dx, d2yt_dx2)
+        G = self.Gf_v(x, yt, dyt_dx, d2yt_dx2)
+        dG_dyt = self.dG_dyf_v(x, yt, dyt_dx, d2yt_dx2)
+        dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx, d2yt_dx2)
+        dG_d2ytdx2 = self.dG_d2ydx2f_v(x, yt, dyt_dx, d2yt_dx2)
         dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw + \
                 np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx + \
                 np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dwdx2
@@ -408,7 +408,7 @@ class NNODE2BVP(SLFFNN):
 if __name__ == '__main__':
 
     # Create training data.
-    nx = 10
+    nx = 11
     x_train = np.linspace(0, 1, nx)
 
     # Test each training algorithm on each equation.
@@ -432,12 +432,13 @@ if __name__ == '__main__':
         # Create and train the networks.
         for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
                          'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
+#        for trainalg in ('delta',):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE2BVP(ode2bvp)
             np.random.seed(0)
             try:
                 net.train(x_train, trainalg=trainalg)
-            except (OverflowError, ValueError) as e:
+            except (OverflowError,) as e:
                 print('Error using %s algorithm on %s!' % (trainalg, ode))
                 print(e)
                 print()

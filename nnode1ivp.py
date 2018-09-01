@@ -106,7 +106,7 @@ class NNODE1IVP(SLFFNN):
             exit(0)
 
     def run(self, x):
-        """Compute the trained solution for a single input point."""
+        """Compute the trained solution."""
         z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         N = s.dot(self.v)
@@ -114,7 +114,7 @@ class NNODE1IVP(SLFFNN):
         return yt
 
     def run_derivative(self, x):
-        """Compute the trained derivative for an array of points."""
+        """Compute the trained derivative."""
         z = np.outer(x, self.w) + self.u
         s = sigma_v(z)
         s1 = dsigma_dz_v(z)
@@ -285,8 +285,8 @@ class NNODE1IVP(SLFFNN):
         dN_dx = s1.dot(v*w)
         dyt_dx = self.__dyt_dxf(x, N, dN_dx)
         G = self.Gf_v(x, yt, dyt_dx)
-        E = sqrt(np.sum(G**2))
-        return E
+        E2 = np.sum(G**2)
+        return E2
 
     def __compute_error_gradient(self, p, x):
         """Compute the gradient of the error function wrt network
