@@ -66,6 +66,7 @@ sigma_v = np.vectorize(sigma)
 dsigma_dz_v = np.vectorize(dsigma_dz)
 d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
 
+
 class NNODE1IVP(SLFFNN):
     """Solve a 1st-order ODE IVP with a neural network."""
 
@@ -77,7 +78,7 @@ class NNODE1IVP(SLFFNN):
         self.w = np.zeros(nhid)
         self.u = np.zeros(nhid)
         self.v = np.zeros(nhid)
-        
+
         # Pre-vectorize functions for efficiency.
         self.Gf_v = np.vectorize(self.eq.Gf)
         self.dG_dyf_v = np.vectorize(self.eq.dG_dyf)
@@ -147,7 +148,7 @@ class NNODE1IVP(SLFFNN):
         assert opts['wmin'] < opts['wmax']
         assert opts['umin'] < opts['umax']
 
-        #------------------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         # Determine the number of training points, and change notation for
         # convenience.
@@ -210,11 +211,11 @@ class NNODE1IVP(SLFFNN):
             dG_dyt = self.dG_dyf_v(x, yt, dyt_dx)
             dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx)
             dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw + \
-                    np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx
+                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx
             dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du + \
-                    np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx
+                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx
             dG_dv = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dv + \
-                    np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx
+                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx
 
             # Compute the error function for this epoch.
             E = np.sum(G**2)
@@ -242,7 +243,7 @@ class NNODE1IVP(SLFFNN):
         assert opts['wmin'] < opts['wmax']
         assert opts['umin'] < opts['umax']
 
-        #------------------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         # Create the hidden node weights, biases, and output node weights.
         H = opts['nhid']
@@ -326,18 +327,19 @@ class NNODE1IVP(SLFFNN):
         dG_dyt = self.dG_dyf_v(x, yt, dyt_dx)
         dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx)
         dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw + \
-                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx
+            np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx
         dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du + \
-                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx
+            np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx
         dG_dv = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dv + \
-                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx
+            np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx
         dE_dw = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_dw, axis=0)
         dE_du = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_du, axis=0)
         dE_dv = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_dv, axis=0)
         jac = np.hstack((dE_dw, dE_du, dE_dv))
         return jac
 
-#--------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
 
 if __name__ == '__main__':
 
