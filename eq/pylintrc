@@ -1,0 +1,4 @@
+[MESSAGES CONTROL]
+# C0103: Function name doesn't conform to snake_case naming style
+# W0613: Unused argument
+disable=C0103,W0613
