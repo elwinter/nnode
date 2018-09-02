@@ -68,6 +68,7 @@ dsigma_dz_v = np.vectorize(dsigma_dz)
 d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
 d3sigma_dz3_v = np.vectorize(d3sigma_dz3)
 
+
 class NNODE2IVP(SLFFNN):
     """Solve a 2nd-order ODE IVP with a neural network."""
 
@@ -84,7 +85,7 @@ class NNODE2IVP(SLFFNN):
         self.Gf_v = np.vectorize(self.eq.Gf)
         self.dG_dyf_v = np.vectorize(self.eq.dG_dyf)
         self.dG_dydxf_v = np.vectorize(self.eq.dG_dydxf)
-        self.dG_d2ydx2f_v = np.vectorize(self.eq.dG_dydxf)
+        self.dG_d2ydx2f_v = np.vectorize(self.eq.dG_d2ydx2f)
 
     def __str__(self):
         s = ''
@@ -166,7 +167,7 @@ class NNODE2IVP(SLFFNN):
         assert opts['wmin'] < opts['wmax']
         assert opts['umin'] < opts['umax']
 
-        #------------------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         # Determine the number of training points, and change notation for
         # convenience.
@@ -225,21 +226,18 @@ class NNODE2IVP(SLFFNN):
             dyt_dw = np.broadcast_to(x**2, (H, n)).T*dN_dw
             dyt_du = np.broadcast_to(x**2, (H, n)).T*dN_du
             dyt_dv = np.broadcast_to(x**2, (H, n)).T*dN_dv
-            d2yt_dwdx = np.broadcast_to(x**2, (H, n)).T*d2N_dwdx \
-                        + 2*np.broadcast_to(x, (H, n)).T*dN_dw
-            d2yt_dudx = np.broadcast_to(x**2, (H, n)).T*d2N_dudx \
-                        + 2*np.broadcast_to(x, (H, n)).T*dN_du
-            d2yt_dvdx = np.broadcast_to(x**2, (H, n)).T*d2N_dvdx \
-                        + 2*np.broadcast_to(x, (H, n)).T*dN_dv
-            d3yt_dwdx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dwdx2 \
-                         + 4*np.broadcast_to(x, (H, n)).T*d2N_dwdx \
-                         + 2*dN_dw
-            d3yt_dudx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dudx2 \
-                         + 4*np.broadcast_to(x, (H, n)).T*d2N_dudx \
-                         + 2*dN_du
-            d3yt_dvdx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dvdx2 \
-                         + 4*np.broadcast_to(x, (H, n)).T*d2N_dvdx \
-                         + 2*dN_dv
+            d2yt_dwdx = np.broadcast_to(x**2, (H, n)).T*d2N_dwdx + \
+                2*np.broadcast_to(x, (H, n)).T*dN_dw
+            d2yt_dudx = np.broadcast_to(x**2, (H, n)).T*d2N_dudx + \
+                2*np.broadcast_to(x, (H, n)).T*dN_du
+            d2yt_dvdx = np.broadcast_to(x**2, (H, n)).T*d2N_dvdx + \
+                2*np.broadcast_to(x, (H, n)).T*dN_dv
+            d3yt_dwdx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dwdx2 + \
+                4*np.broadcast_to(x, (H, n)).T*d2N_dwdx + 2*dN_dw
+            d3yt_dudx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dudx2 + \
+                4*np.broadcast_to(x, (H, n)).T*d2N_dudx + 2*dN_du
+            d3yt_dvdx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dvdx2 + \
+                4*np.broadcast_to(x, (H, n)).T*d2N_dvdx + 2*dN_dv
 
             # Compute the value of the original differential equation for
             # each training point, and its derivatives.
@@ -247,15 +245,15 @@ class NNODE2IVP(SLFFNN):
             dG_dyt = self.dG_dyf_v(x, yt, dyt_dx, d2yt_dx2)
             dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx, d2yt_dx2)
             dG_d2ytdx2 = self.dG_d2ydx2f_v(x, yt, dyt_dx, d2yt_dx2)
-            dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw \
-                    + np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx \
-                    + np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dwdx2
-            dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du \
-                    + np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx \
-                    + np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dudx2
-            dG_dv = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dv \
-                    + np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx \
-                    + np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dvdx2
+            dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw + \
+                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx + \
+                np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dwdx2
+            dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du + \
+                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx + \
+                np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dudx2
+            dG_dv = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dv + \
+                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx + \
+                np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dvdx2
 
             # Compute the error function for this epoch.
             E = np.sum(G**2)
@@ -283,7 +281,7 @@ class NNODE2IVP(SLFFNN):
         assert opts['wmin'] < opts['wmax']
         assert opts['umin'] < opts['umax']
 
-        #------------------------------------------------------------------------
+        # ---------------------------------------------------------------------
 
         # Create the hidden node weights, biases, and output node weights.
         H = opts['nhid']
@@ -370,40 +368,38 @@ class NNODE2IVP(SLFFNN):
         dyt_du = np.broadcast_to(x**2, (H, n)).T*dN_du
         dyt_dv = np.broadcast_to(x**2, (H, n)).T*dN_dv
         d2yt_dwdx = np.broadcast_to(x**2, (H, n)).T*d2N_dwdx + \
-                    2*np.broadcast_to(x, (H, n)).T*dN_dw
+            2*np.broadcast_to(x, (H, n)).T*dN_dw
         d2yt_dudx = np.broadcast_to(x**2, (H, n)).T*d2N_dudx + \
-                    2*np.broadcast_to(x, (H, n)).T*dN_du
+            2*np.broadcast_to(x, (H, n)).T*dN_du
         d2yt_dvdx = np.broadcast_to(x**2, (H, n)).T*d2N_dvdx + \
-                    2*np.broadcast_to(x, (H, n)).T*dN_dv
+            2*np.broadcast_to(x, (H, n)).T*dN_dv
         d3yt_dwdx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dwdx2 + \
-                     4*np.broadcast_to(x, (H, n)).T*d2N_dwdx + \
-                     2*dN_dw
+            4*np.broadcast_to(x, (H, n)).T*d2N_dwdx + 2*dN_dw
         d3yt_dudx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dudx2 + \
-                     4*np.broadcast_to(x, (H, n)).T*d2N_dudx + \
-                     2*dN_du
+            4*np.broadcast_to(x, (H, n)).T*d2N_dudx + 2*dN_du
         d3yt_dvdx2 = np.broadcast_to(x**2, (H, n)).T*d3N_dvdx2 + \
-                     4*np.broadcast_to(x, (H, n)).T*d2N_dvdx + \
-                     2*dN_dv
+            4*np.broadcast_to(x, (H, n)).T*d2N_dvdx + 2*dN_dv
         G = self.Gf_v(x, yt, dyt_dx, d2yt_dx2)
         dG_dyt = self.dG_dyf_v(x, yt, dyt_dx, d2yt_dx2)
         dG_dytdx = self.dG_dydxf_v(x, yt, dyt_dx, d2yt_dx2)
         dG_d2ytdx2 = self.dG_d2ydx2f_v(x, yt, dyt_dx, d2yt_dx2)
         dG_dw = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dw + \
-                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx + \
-                np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dwdx2
+            np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dwdx + \
+            np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dwdx2
         dG_du = np.broadcast_to(dG_dyt, (H, n)).T*dyt_du + \
-                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx + \
-                np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dudx2
+            np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dudx + \
+            np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dudx2
         dG_dv = np.broadcast_to(dG_dyt, (H, n)).T*dyt_dv + \
-                np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx + \
-                np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dvdx2
+            np.broadcast_to(dG_dytdx, (H, n)).T*d2yt_dvdx + \
+            np.broadcast_to(dG_d2ytdx2, (H, n)).T*d3yt_dvdx2
         dE_dw = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_dw, axis=0)
         dE_du = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_du, axis=0)
         dE_dv = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_dv, axis=0)
         jac = np.hstack((dE_dw, dE_du, dE_dv))
         return jac
 
-#--------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
 
 if __name__ == '__main__':
 
