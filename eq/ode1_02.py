@@ -1,7 +1,7 @@
 """Sample 1st-order ODE IVP
 
-The equation is defined on the domain [0,1], with the initial condition
-defined at x=0.
+The equation is defined on the domain [0,1], with initial conditions defined
+at x=0.
 
 The analytical form of the equation is:
     G(x,y,dy/dx) = dy/dx - y + x**2 - 1 = 0
@@ -56,4 +56,3 @@ if __name__ == '__main__':
     assert yaf(0) == ic
     print()
     print('dya_dxf(0) = ', dya_dxf(0))
-    print()

@@ -71,4 +71,3 @@ if __name__ == '__main__':
     assert dya_dxf(0) == ic1
     print()
     print('d2ya_dx2f(0) = ', d2ya_dx2f(0))
-    print()
