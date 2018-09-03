@@ -32,6 +32,7 @@ def dG_dydxf(x, y, dy_dx, d2y_dx2):
 
 def dG_d2ydx2f(x, y, dy_dx, d2y_dx2):
     """Derivative of G wrt d2y/dx2"""
+    return 1
 
 
 def yaf(x):
