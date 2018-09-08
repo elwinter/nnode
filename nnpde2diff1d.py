@@ -924,6 +924,7 @@ class NNPDE2DIFF1D(SLFFNN):
 
         return dYt_dx
 
+
 if __name__ == '__main__':
 
     # Create training data.
@@ -936,7 +937,9 @@ if __name__ == '__main__':
     n = len(x_train)
 
     # Test each training algorithm on each equation.
-    for pde in ('diff1d_decrease',):
+    for pde in ('diff1d_0', 'diff1d_flat', 'diff1d_rampup', 'diff1d_rampdown',
+                'diff1d_sine', 'diff1d_triangle', 'diff1d_increase',
+                'diff1d_decrease', 'diff1d_sinewave'):
         print('Examining %s.' % pde)
         pde2diff1d = PDE2DIFF1D(pde)
         print(pde2diff1d)
@@ -951,7 +954,6 @@ if __name__ == '__main__':
         print()
         for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
                          'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-#        for trainalg in ('L-BFGS-B',):
             print('Training using %s algorithm.' % trainalg)
             np.random.seed(0)
             try:
@@ -963,5 +965,8 @@ if __name__ == '__main__':
                 continue
             Yt = net.run(x_train)
             print('The trained solution is:')
-            print('Yt =', Yt.reshape(nx, nt))
+            print('Yt =', Yt.reshape(nt, nx))
+            print()
+            print('The error in the trained solution is:')
+            print('Yt - Ya =', (Yt - Ya).reshape(nt, nx))
             print()
