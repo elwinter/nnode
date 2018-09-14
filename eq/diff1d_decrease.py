@@ -110,7 +110,7 @@ def g1f(x):
     return None
 
 
-bcf = ((f0f, g0f), (f1f, g1f))
+bcf = ((f0f, f1f), (g0f, g1f))
 
 
 def df0_dtf(t):
@@ -133,7 +133,7 @@ def dg1_dxf(x):
     return None
 
 
-bcdf = ((df0_dtf, dg0_dxf), (df1_dtf, dg1_dxf))
+bcdf = ((df0_dtf, df1_dtf), (dg0_dxf, dg1_dxf))
 
 
 def d2f0_dt2f(t):
@@ -156,7 +156,7 @@ def d2g1_dx2f(x):
     return None
 
 
-bcd2f = ((d2f0_dt2f, d2g0_dx2f), (d2f1_dt2f, d2g1_dx2f))
+bcd2f = ((d2f0_dt2f, d2f1_dt2f), (d2g0_dx2f, d2g1_dx2f))
 
 
 def Yaf(xt):
