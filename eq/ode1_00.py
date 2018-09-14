@@ -52,6 +52,6 @@ if __name__ == '__main__':
     print()
     print(getsource(yaf))
     print('yaf(0) = ', yaf(0))
-    assert yaf(0) == ic
     print()
     print('dya_dxf(0) = ', dya_dxf(0))
+    assert yaf(0) == ic

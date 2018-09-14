@@ -1,4 +1,5 @@
-"""Problem 3 in Lagaris et al (2nd order ODE IVP)
+"""
+Problem 3 in Lagaris et al (2nd order ODE IVP)
 
 The equation is defined on the domain [0,1], with initial conditions defined
 at x=0.
@@ -10,6 +11,7 @@ The analytical form of the equation is:
 
 from inspect import getsource
 from math import exp, sin, cos
+import numpy as np
 
 
 ic = 0
@@ -66,9 +68,9 @@ if __name__ == '__main__':
     print()
     print(getsource(yaf))
     print('yaf(0) = ', yaf(0))
-    assert yaf(0) == ic
     print()
     print('dya_dxf(0) = ', dya_dxf(0))
-    assert dya_dxf(0) == ic1
     print()
     print('d2ya_dx2f(0) = ', d2ya_dx2f(0))
+    assert np.isclose(yaf(0), ic)
+    assert np.isclose(dya_dxf(0), ic1)

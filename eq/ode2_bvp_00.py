@@ -1,4 +1,4 @@
-"""Sample 2nd-order ODE IVP
+"""Sample 2nd-order ODE BVP
 
 The equation is defined on the domain [0,1], with boundary conditions defined
 at x=0 and x=1.
@@ -65,9 +65,9 @@ if __name__ == '__main__':
     print()
     print(getsource(yaf))
     print('yaf(0) = ', yaf(0))
-    assert yaf(0) == bc0
-    assert yaf(1) == bc1
     print()
     print('dya_dxf(0) = ', dya_dxf(0))
     print()
     print('d2ya_dx2f(0) = ', d2ya_dx2f(0))
+    assert yaf(0) == bc0
+    assert yaf(1) == bc1
