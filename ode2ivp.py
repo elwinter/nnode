@@ -32,10 +32,12 @@ Todo:
     * Expand base functionality.
 """
 
+
 from importlib import import_module
 from inspect import getsource
 
 from ode2 import ODE2
+
 
 class ODE2IVP(ODE2):
     """Base class for all 2nd-order ordinary differential equation initial-
@@ -58,9 +60,9 @@ class ODE2IVP(ODE2):
             assert odemod.Gf          # Function for the ODE as a whole
             assert odemod.ic is not None   # y(0)
             assert odemod.ic1 is not None  # dy/dx (0)
-            assert odemod.dG_dyf      # Function for derivative of G wrt y
-            assert odemod.dG_dydxf    # Function for derivative of G wrt dy/dx
-            assert odemod.dG_d2ydx2f  # Function for derivative of G wrt d2y/dx2
+            assert odemod.dG_dyf      # Function for deriv of G wrt y
+            assert odemod.dG_dydxf    # Function for deriv of G wrt dy/dx
+            assert odemod.dG_d2ydx2f  # Function for deriv of G wrt d2y/dx2
             # yaf() is the optional function for analytical solution ya
             # dya_dxf is the optional function for analytical derivative dya/dx
             # d2ya_dx2f is the optional function for analytical derivative
@@ -82,19 +84,20 @@ class ODE2IVP(ODE2):
         s = ''
         s += 'ODE2BVP:\n'
         s += "name = %s\n" % self.name
-        s += "Gf = %s\n"  % (getsource(self.Gf).rstrip() if self.Gf else None)
-        s += "dG_dyf = %s\n"  % (getsource(self.dG_dyf).rstrip()
-                                 if self.dG_dydxf else None)
-        s += "dG_dydxf = %s\n"  % (getsource(self.dG_dydxf).rstrip()
-                                   if self.dG_dydxf else None)
-        s += "ic0 = %s\n"  % (self.ic if self.ic is not None else None)
-        s += "ic1 = %s\n"  % (self.ic1 if self.ic1 is not None else None)
-        s += "yaf = %s\n"  % (getsource(self.yaf).rstrip() if self.yaf else None)
-        s += "dya_dxf = %s\n"  % (getsource(self.dya_dxf).rstrip()
-                                  if self.dya_dxf else None)
-        s += "d2ya_dx2f = %s\n"  % (getsource(self.d2ya_dx2f).rstrip()
-                                    if self.d2ya_dx2f else None)
+        s += "Gf = %s\n" % (getsource(self.Gf).rstrip() if self.Gf else None)
+        s += "dG_dyf = %s\n" % (getsource(self.dG_dyf).rstrip()
+                                if self.dG_dyf else None)
+        s += "dG_dydxf = %s\n" % (getsource(self.dG_dydxf).rstrip()
+                                  if self.dG_dydxf else None)
+        s += "ic = %s\n" % (self.ic if self.ic is not None else None)
+        s += "ic1 = %s\n" % (getsource(self.yaf).rstrip()
+                             if self.yaf else None)
+        s += "dya_dxf = %s\n" % (getsource(self.dya_dxf).rstrip()
+                                 if self.dya_dxf else None)
+        s += "d2ya_dx2f = %s\n" % (getsource(self.d2ya_dx2f).rstrip()
+                                   if self.d2ya_dx2f else None)
         return s.rstrip()  # Strip trailing newline if any.
+
 
 if __name__ == '__main__':
     ode2ivp = ODE2IVP()

@@ -18,12 +18,15 @@ Todo:
     * Expand base functionality.
 """
 
+
 from ode import ODE
+
 
 class ODE1(ODE):
     """Base class for all 1st-order ordinary differential equation objects"""
     pass
 
+
 if __name__ == '__main__':
-    deq = ODE1()
-    print(deq)
+    ode1 = ODE1()
+    print(ode1)

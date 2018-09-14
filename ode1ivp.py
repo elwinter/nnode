@@ -28,10 +28,12 @@ Todo:
     * Expand base functionality.
 """
 
+
 from importlib import import_module
 from inspect import getsource
 
 from ode1 import ODE1
+
 
 class ODE1IVP(ODE1):
     """Base class for all 1st-order ordinary differential equation initial-
@@ -67,17 +69,19 @@ class ODE1IVP(ODE1):
         s = ''
         s += 'ODE1IVP:\n'
         s += "name = %s\n" % self.name
-        s += "Gf = %s\n"  % (getsource(self.Gf).rstrip() if self.Gf else None)
-        s += "dG_dyf = %s\n"  % (getsource(self.dG_dyf).rstrip()
-                                 if self.dG_dydxf else None)
-        s += "dG_dydxf = %s\n"  % (getsource(self.dG_dydxf).rstrip()
-                                   if self.dG_dydxf else None)
-        s += "ic = %s\n"  % (self.ic if self.ic is not None else None)
-        s += "yaf = %s\n"  % (getsource(self.yaf).rstrip() if self.yaf else None)
-        s += "dya_dxf = %s\n"  % (getsource(self.dya_dxf).rstrip()
-                                  if self.dya_dxf else None)
+        s += "Gf = %s\n" % (getsource(self.Gf).rstrip() if self.Gf else None)
+        s += "dG_dyf = %s\n" % (getsource(self.dG_dyf).rstrip()
+                                if self.dG_dydxf else None)
+        s += "dG_dydxf = %s\n" % (getsource(self.dG_dydxf).rstrip()
+                                  if self.dG_dydxf else None)
+        s += "ic = %s\n" % (self.ic if self.ic is not None else None)
+        s += "yaf = %s\n" % (getsource(self.yaf).rstrip()
+                             if self.yaf else None)
+        s += "dya_dxf = %s\n" % (getsource(self.dya_dxf).rstrip()
+                                 if self.dya_dxf else None)
         return s.rstrip()  # Strip trailing newline if any.
 
+
 if __name__ == '__main__':
-    deq = ODE1IVP()
-    print(deq)
+    ode1ivp = ODE1IVP()
+    print(ode1ivp)

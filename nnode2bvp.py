@@ -437,7 +437,7 @@ if __name__ == '__main__':
             np.random.seed(0)
             try:
                 net.train(x_train, trainalg=trainalg)
-            except (OverflowError,) as e:
+            except (OverflowError, ValueError) as e:
                 print('Error using %s algorithm on %s!' % (trainalg, ode))
                 print(e)
                 print()

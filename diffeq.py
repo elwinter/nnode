@@ -18,10 +18,12 @@ Todo:
     * Expand base functionality.
 """
 
+
 class DiffEq:
     """Base class for all differential equation objects"""
     pass
 
+
 if __name__ == '__main__':
-    deq = DiffEq()
-    print(deq)
+    diffeq = DiffEq()
+    print(diffeq)

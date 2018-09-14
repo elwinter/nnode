@@ -18,12 +18,15 @@ Todo:
     * Expand base functionality.
 """
 
+
 from diffeq import DiffEq
+
 
 class ODE(DiffEq):
     """Base class for all ordinary differential equation objects"""
     pass
 
+
 if __name__ == '__main__':
-    deq = ODE()
-    print(deq)
+    ode = ODE()
+    print(ode)

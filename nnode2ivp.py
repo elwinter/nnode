@@ -154,7 +154,7 @@ class NNODE2IVP(SLFFNN):
         return x**2*d2N_dx2 + 4*x*dN_dx + 2*N
 
     def __train_delta(self, x, opts=DEFAULT_OPTS):
-        """Train the network with the delta method. """
+        """Train the network with the delta method."""
 
         my_opts = dict(DEFAULT_OPTS)
         my_opts.update(opts)
@@ -433,7 +433,7 @@ if __name__ == '__main__':
             np.random.seed(0)
             try:
                 net.train(x_train, trainalg=trainalg)
-            except (OverflowError,) as e:
+            except (OverflowError, ValueError) as e:
                 print('Error using %s algorithm on %s!' % (trainalg, ode))
                 print(e)
                 print()
