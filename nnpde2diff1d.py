@@ -18,7 +18,8 @@ Methods:
     __str__
     train
     run
-    run_derivative
+    run_gradient
+    run_hessian
 
 Todo:
     * Expand base functionality.
@@ -61,12 +62,6 @@ DEFAULT_OPTS = {
     'wmax':      DEFAULT_WMAX,
     'wmin':      DEFAULT_WMIN
     }
-
-
-# sigma_v = np.vectorize(sigma)
-# dsigma_dz_v = np.vectorize(dsigma_dz)
-# d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
-# d3sigma_dz3_v = np.vectorize(d3sigma_dz3)
 
 
 class NNPDE2DIFF1D(SLFFNN):
@@ -148,8 +143,8 @@ class NNPDE2DIFF1D(SLFFNN):
 
         return Yt
 
-    def run_derivative(self, x):
-        """Compute the trained derivative."""
+    def run_gradient(self, x):
+        """Compute the trained gradient."""
         n = len(x)
         m = len(x[0])
         H = len(self.w[0])
@@ -206,6 +201,86 @@ class NNPDE2DIFF1D(SLFFNN):
                     delP[i, j]*N[i]
 
         return delYt
+
+    def run_hessian(self, x):
+        """Compute the trained Hessian."""
+        n = len(x)
+        m = len(x[0])
+        H = len(self.w[0])
+        w = self.w
+        u = self.u
+        v = self.v
+
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i, k] = u[k]
+                for j in range(m):
+                    z[i, k] += w[j, k]*x[i, j]
+
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i, k] = sigma(z[i, k])
+
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i, k] = dsigma_dz(z[i, k])
+
+        s2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s2[i, k] = d2sigma_dz2(z[i, k])
+
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += v[k]*s[i, k]
+
+        delN = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    delN[i, j] += v[k]*s1[i, k]*w[j, k]
+
+        deldelN = np.zeros((n, m, m))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        deldelN[i, j, jj] += v[k]*s2[i, k]*w[j, k]*w[jj, k]
+
+        deldelA = np.zeros((n, m, m))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    deldelA[i, j, jj] = self.deldelAf[j][jj](x[i])
+
+        P = np.zeros(n)
+        for i in range(n):
+            P[i] = self.__Pf(x[i])
+
+        delP = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                delP[i, j] = self.delPf[j](x[i])
+
+        deldelP = np.zeros((n, m, m))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    deldelP[i, j, jj] = self.deldelPf[j][jj](x[i])
+
+        deldelYt = np.zeros((n, m, m))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    deldelYt[i, j, jj] = deldelA[i, j, jj] + \
+                        P[i]*deldelN[i, j, jj] + delP[i, jj]*delN[i, j] + \
+                        delP[i, j]*delN[i, jj] + deldelP[i, j, jj]*N[i]
+
+        return deldelYt
 
     # Internal methods below this point
 
@@ -1192,12 +1267,30 @@ if __name__ == '__main__':
         m = len(pde2diff1d.bcdf)
         net = NNPDE2DIFF1D(pde2diff1d)
         print(net)
+
         Ya = np.zeros(n)
         for i in range(n):
             Ya[i] = net.eq.Yaf(x_train[i])
         print('The analytical solution is:')
         print('Ya =', Ya.reshape(nt, nx))
         print()
+        if net.eq.delYaf is not None:
+            delYa = np.zeros((n, m))
+            for i in range(n):
+                for j in range(m):
+                    delYa[i, j] = net.eq.delYaf[j](x_train[i])
+            print('The analytical gradient is:')
+            print('delYa =', delYa.reshape(nt, nx, m))
+            print()
+        if net.eq.deldelYaf is not None:
+            deldelYa = np.zeros((n, m, m))
+            for i in range(n):
+                for j in range(m):
+                    for jj in range(m):
+                        deldelYa[i, j] = net.eq.deldelYaf[j][jj](x_train[i])
+            print('The analytical Hessian is:')
+            print('deldelYa =', deldelYa.reshape(nt, nx, m, m))
+            print()
         for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
                          'Newton-CG'):
             print('Training using %s algorithm.' % trainalg)
@@ -1217,3 +1310,19 @@ if __name__ == '__main__':
             print('The error in the trained solution is:')
             print('Yt - Ya =', (Yt - Ya).reshape(nt, nx))
             print()
+            if net.eq.delYaf is not None:
+                delYt = net.run_gradient(x_train)
+                print('The trained gradient is:')
+                print('delYt =', delYt.reshape(nt, nx, m))
+                print()
+                print('The error in the trained gradient is:')
+                print('delYt - delYa =', (delYt - delYa).reshape(nt, nx, m))
+                print()
+            if net.eq.deldelYaf is not None:
+                deldelYt = net.run_hessian(x_train)
+                print('The trained Hessian is:')
+                print('deldelYt =', deldelYt.reshape(nt, nx, m, m))
+                print()
+                print('The error in the trained Hessian is:')
+                print('deldelYt - deldelYa =',
+                      (deldelYt - deldelYa).reshape(nt, nx, m, m))

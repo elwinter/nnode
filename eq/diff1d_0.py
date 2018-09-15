@@ -165,6 +165,42 @@ def Yaf(xt):
     return 0
 
 
+def dYa_dxf(xt):
+    """Analytical 1st partial wrt x"""
+    return 0
+
+
+def dYa_dtf(xt):
+    """Analytical 1st partial wrt t"""
+    return 0
+
+
+delYaf = (dYa_dxf, dYa_dtf)
+
+
+def d2Ya_dxdxf(xt):
+    """Analytical d2Y/dxdx"""
+    return 0
+
+
+def d2Ya_dxdtf(xt):
+    """Analytical d2Y/dxdt"""
+    return 0
+
+
+def d2Ya_dtdxf(xt):
+    """Analytical d2Y/dtdx"""
+    return 0
+
+
+def d2Ya_dtdtf(xt):
+    """Analytical d2Y/dtdt"""
+    return 0
+
+
+deldelYaf = ((d2Ya_dxdxf, d2Ya_dxdtf), (d2Ya_dtdxf, d2Ya_dtdtf))
+
+
 if __name__ == '__main__':
     print(getsource(Gf))
     print('Gf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
@@ -236,6 +272,25 @@ if __name__ == '__main__':
     print()
     print(getsource(Yaf))
     print('Yaf([0, 0]) = ', Yaf([0, 0]))
+    print()
+    print(getsource(dYa_dxf))
+    print('dYa_dxf([0, 0]) = ', dYa_dxf([0, 0]))
+    print()
+    print(getsource(dYa_dtf))
+    print('dYa_dtf([0, 0]) = ', dYa_dtf([0, 0]))
+    print()
+    print(getsource(d2Ya_dxdxf))
+    print('d2a_dxdxf([0, 0]) = ', d2Ya_dxdxf([0, 0]))
+    print()
+    print(getsource(d2Ya_dxdtf))
+    print('d2a_dxdtf([0, 0]) = ', d2Ya_dxdtf([0, 0]))
+    print()
+    print(getsource(d2Ya_dtdxf))
+    print('d2a_dtdxf([0, 0]) = ', d2Ya_dtdxf([0, 0]))
+    print()
+    print(getsource(d2Ya_dtdtf))
+    print('d2a_dtdtf([0, 0]) = ', d2Ya_dtdtf([0, 0]))
+
     assert np.isclose(f0f(0), g0f(0))
     assert np.isclose(f1f(0), g0f(1))
     assert np.isclose(Yaf([0, 0]), f0f(0))
