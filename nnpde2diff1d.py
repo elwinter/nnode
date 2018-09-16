@@ -1,14 +1,14 @@
 """
-NNODE2DIFF1D - Class to solve 1-D diffusion problems using a neural network
+NNPDE2DIFF1D - Class to solve 1-D diffusion problems using a neural network
 
 This module provides the functionality to solve 1-D diffusion problems using
 a neural network.
 
 Example:
-    Create an empty NNODE2DIFF1D object.
-        net = NNODE2DIFF1D()
-    Create an NNODE2DIFF1D object for a PDE2DIFF1D object.
-        net = NNODE2DIFF1D(pde2diff1d_obj)
+    Create an empty NNPDE2DIFF1D object.
+        net = NNPDE2DIFF1D()
+    Create an NNPDE2DIFF1D object for a PDE2DIFF1D object.
+        net = NNPDE2DIFF1D(pde2diff1d_obj)
 
 Attributes:
     None
@@ -433,9 +433,15 @@ class NNPDE2DIFF1D(SLFFNN):
                 print('Starting epoch %d.' % epoch)
 
             # Compute the new values of the network parameters.
-            w -= eta*dE_dw
-            u -= eta*dE_du
-            v -= eta*dE_dv
+            for j in range(m):
+                for k in range(H):
+                    w[j, k] -= eta*dE_dw[j, k]
+
+            for k in range(H):
+                u[k] -= eta*dE_du[k]
+
+            for k in range(H):
+                v[k] -= eta*dE_dv[k]
 
             # Compute the net input, the sigmoid function and its derivatives,
             # for each hidden node and each training point.
@@ -808,22 +814,57 @@ class NNPDE2DIFF1D(SLFFNN):
                 print('Starting epoch %d.' % epoch)
 
             # Compute the new values of the network parameters.
-            w -= eta*dE_dw
-            u -= eta*dE_du
-            v -= eta*dE_dv
+            for j in range(m):
+                for k in range(H):
+                    w[j, k] -= eta*dE_dw[j, k]
+
+            for k in range(H):
+                u[k] -= eta*dE_du[k]
+
+            for k in range(H):
+                v[k] -= eta*dE_dv[k]
 
             # Compute the net input, the sigmoid function and its derivatives,
             # for each hidden node and each training point.
-            z = x@w + u
-            s = sigma_v(z)
-            s1 = dsigma_dz_v(z)
-            s2 = d2sigma_dz2_v(z)
-            s3 = d3sigma_dz3_v(z)
+            z = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    z[i, k] = u[k]
+                    for j in range(m):
+                        z[i, k] += w[j, k]*x[i, j]
+
+            s = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s[i, k] = sigma(z[i, k])
+
+            s1 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s1[i, k] = dsigma_dz(z[i, k])
+
+            s2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s2[i, k] = d2sigma_dz2(z[i, k])
+
+            s3 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s3[i, k] = d3sigma_dz3(z[i, k])
 
             # Compute the network output and its derivatives, for each
             # training point.
-            N = s@v
-            delN = s1@(v*w).T
+            N = np.zeros(n)
+            for i in range(n):
+                for k in range(H):
+                    N[i] += v[k]*s[i, k]
+
+            delN = np.zeros((n, m))
+            for i in range(n):
+                for j in range(m):
+                    for k in range(H):
+                        delN[i, j] += v[k]*s1[i, k]*w[j, k]
 
             deldelN = np.zeros((n, m, m))
             for i in range(n):
@@ -1094,7 +1135,7 @@ class NNPDE2DIFF1D(SLFFNN):
                 for i in range(n):
                     dE_dv[k] += 2*G[i]*dG_dv[i, k]
 
-            # Compute the RMS error for this epoch.
+            # Compute the error function for this epoch.
             E2 = 0
             for i in range(n):
                 E2 += G[i]**2
@@ -1139,7 +1180,8 @@ class NNPDE2DIFF1D(SLFFNN):
         # Use Jacobian for relevant methods.
         jac = None
         if trainalg in ('CG', 'BFGS', 'Newton-CG'):
-            jac = self.__compute_error_gradient
+#            jac = self.__compute_error_gradient
+            jac = None
         res = minimize(self.__compute_error, p, method=trainalg, args=(x),
                        jac=jac, options=options, callback=callback)
         if my_opts['verbose']:
@@ -1613,10 +1655,9 @@ if __name__ == '__main__':
     opts['verbose'] = True
 
     # Test each training algorithm on each equation.
-#    for pde in ('diff1d_0', 'diff1d_flat', 'diff1d_rampup', 'diff1d_rampdown',
-#                'diff1d_sine', 'diff1d_triangle', 'diff1d_increase',
-#                'diff1d_decrease', 'diff1d_sinewave'):
-    for pde in ('diff1d_sine',):
+    for pde in ('diff1d_0', 'diff1d_flat', 'diff1d_rampup', 'diff1d_rampdown',
+                'diff1d_sine', 'diff1d_triangle', 'diff1d_increase',
+                'diff1d_decrease', 'diff1d_sinewave'):
         print('Examining %s.' % pde)
         pde2diff1d = PDE2DIFF1D(pde)
         print(pde2diff1d)
@@ -1646,9 +1687,8 @@ if __name__ == '__main__':
             print('The analytical Hessian is:')
             print('deldelYa =', deldelYa.reshape(nt, nx, m, m))
             print()
-#        for trainalg in ('delta', 'delta_fast', 'Nelder-Mead', 'Powell',
-#                         'CG', 'BFGS', 'Newton-CG'):
-        for trainalg in ('delta_fast',):
+        for trainalg in ('delta', 'delta_fast', 'Nelder-Mead', 'Powell',
+                         'CG', 'BFGS', 'Newton-CG'):
             print('Training using %s algorithm.' % trainalg)
             np.random.seed(1)
             try:
