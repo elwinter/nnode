@@ -1180,8 +1180,7 @@ class NNPDE2DIFF1D(SLFFNN):
         # Use Jacobian for relevant methods.
         jac = None
         if trainalg in ('CG', 'BFGS', 'Newton-CG'):
-#            jac = self.__compute_error_gradient
-            jac = None
+            jac = self.__compute_error_gradient
         res = minimize(self.__compute_error, p, method=trainalg, args=(x),
                        jac=jac, options=options, callback=callback)
         if my_opts['verbose']:
