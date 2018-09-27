@@ -7,3 +7,4 @@ __pycache__
 runs
 orig
 .spyproject
+.vscode/settings.json
