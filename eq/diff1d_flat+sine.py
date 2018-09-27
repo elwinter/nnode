@@ -15,7 +15,7 @@ import numpy as np
 
 
 # Diffusion coefficient
-D = 0.1
+D = 1
 
 
 def Gf(xt, Y, delY, deldelY):
