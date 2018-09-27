@@ -1,8 +1,9 @@
 """
 1-D diffusion PDE
 
-The equation is defined on the domain [[0,1],[0,1]]. The profile starts as a
-half-sine wave+0.5, with amplitude 0.5, and boundaries at x=0,1 fixed at 0.5.
+The equation is defined on the domain [[0,1],[0,1]]. The initial profile is
+flat at Y(x,t)=0.5. The x=0 boundary is then increased from 0.5 with a fixed
+acceleration.
 
 The analytical form of the equation is:
   G(x,t,Y,delY,deldelY) = dY_dt - D*d2Y_dx2 = 0
@@ -14,8 +15,11 @@ from math import exp, pi, sin
 import numpy as np
 
 
+# Acceleration at x=0
+a = 1
+
 # Diffusion coefficient
-D = 0.1
+D = 1
 
 
 def Gf(xt, Y, delY, deldelY):
@@ -91,7 +95,7 @@ dG_ddeldelYf = ((dG_d2Y_dxdxf, dG_d2Y_dxdtf),
 
 def f0f(t):
     """Boundary condition at (x,t) = (0,t)"""
-    return 0.5*(1 + t)
+    return 0.5 + 0.5*a*t**2
 
 
 def f1f(t):
@@ -114,7 +118,7 @@ bcf = ((f0f, f1f), (g0f, g1f))
 
 def df0_dtf(t):
     """1st derivative of BC function at (x,t) = (0,t)"""
-    return 0.5
+    return a*t
 
 
 def df1_dtf(t):
@@ -137,7 +141,7 @@ bcdf = ((df0_dtf, df1_dtf), (dg0_dxf, dg1_dxf))
 
 def d2f0_dt2f(t):
     """2nd derivative of BC function at (x,t) = (0,t)"""
-    return 0
+    return a
 
 
 def d2f1_dt2f(t):
@@ -161,10 +165,11 @@ bcd2f = ((d2f0_dt2f, d2f1_dt2f), (d2g0_dx2f, d2g1_dx2f))
 def Yaf(xt):
     """Analytical solution"""
     (x, t) = xt
-    Ya = 0.5*(1 + t*(1 - x))
+    Ya = 0.5*(1 + a*t**2*(1 - x))
     kmax = 100
     for k in range(1, kmax + 1):
-        Ya += (exp(-pi**2*t*D*k**2) - 1)*sin(pi*x*k)/(pi**3*k**3)
+        Ya -= 2*a*(exp(-pi**2*t*D*k**2) - 1 + pi**2*t*D*k**2)*sin(pi*x*k) \
+            / (pi**5*D*k**5)
     return Ya
 
 
