@@ -2,8 +2,8 @@
 1-D diffusion PDE
 
 The equation is defined on the domain [[0,1],[0,1]]. The initial
-profile is a linear ramp from Y(0,0)=1 to Y(1,0)=0. The value at x=0 then
-linearly decreases with time.
+profile is flat from Y(0,0)=1 to Y(1,0)=1. The value at x=0 then
+accelerates down with time.
 
 The analytical form of the equation is:
   G(x,t,Y,delY,deldelY) = dY_dt - D*d2Y_dx2 = 0
@@ -14,6 +14,9 @@ from inspect import getsource
 from math import exp, pi, sin
 import numpy as np
 
+
+# Acceleration at x=0
+a = 1
 
 # Diffusion coefficient
 D = 1
@@ -92,17 +95,17 @@ dG_ddeldelYf = ((dG_d2Y_dxdxf, dG_d2Y_dxdtf),
 
 def f0f(t):
     """Boundary condition at (x,t) = (0,t)"""
-    return 1 - t
+    return 1 - 0.5*a*t**2
 
 
 def f1f(t):
     """Boundary condition at (x,t) = (1,t)"""
-    return 0
+    return 1
 
 
 def g0f(x):
     """Boundary condition at (x,t) = (x,0)"""
-    return 1 - x
+    return 1
 
 
 def g1f(x):
@@ -115,7 +118,7 @@ bcf = ((f0f, f1f), (g0f, g1f))
 
 def df0_dtf(t):
     """1st derivative of BC function at (x,t) = (0,t)"""
-    return -1
+    return -a*t
 
 
 def df1_dtf(t):
@@ -125,7 +128,7 @@ def df1_dtf(t):
 
 def dg0_dxf(x):
     """1st derivative of BC function at (x,t) = (x,0)"""
-    return -1
+    return 0
 
 
 def dg1_dxf(x):
@@ -138,7 +141,7 @@ bcdf = ((df0_dtf, df1_dtf), (dg0_dxf, dg1_dxf))
 
 def d2f0_dt2f(t):
     """2nd derivative of BC function at (x,t) = (0,t)"""
-    return 0
+    return -a
 
 
 def d2f1_dt2f(t):
@@ -162,9 +165,11 @@ bcd2f = ((d2f0_dt2f, d2f1_dt2f), (d2g0_dx2f, d2g1_dx2f))
 def Yaf(xt):
     """Analytical solution"""
     (x, t) = xt
-    Ya = (t - 1)*(x - 1)
-    for k in range(1, 101):
-        Ya += 2*(1 - exp(-pi**2*t*D*k**2))*sin(pi*k*x)/k**3/pi**3
+    Ya = 1 + 0.5*a*t**2*(x - 1)
+    kmax = 101
+    for k in range(1, kmax):
+        Ya += 2*a*(exp(-pi**2*t*D*k**2) - 1 + pi**2*t*D*k**2)*sin(pi*k*x) / \
+            (pi**5*D*k**5)
     return Ya
 
 
