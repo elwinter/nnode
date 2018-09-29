@@ -88,5 +88,5 @@ class PDE1IVP(PDE1):
 
 
 if __name__ == '__main__':
-    pde1ivp = PDE1IVP('pde00')
+    pde1ivp = PDE1IVP('pde1_ivp_00')
     print(pde1ivp)
