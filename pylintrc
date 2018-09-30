@@ -2,4 +2,4 @@
 # C0103: Function name doesn't conform to snake_case naming style
 # W0612: Unused variable
 # W0621: Redefining name from outer scope
-disable=C0103,W0612,W0621
+# disable=C0103,W0612,W0621
