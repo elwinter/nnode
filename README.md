@@ -1,12 +1,25 @@
 # nnode
 
-Neural network code for solving ordinary differential equations
-
-This code is my first attempt at implementing the Lagaris et al method
-for using neural networks to solve differential equations.
+Neural network code for solving ordinary differential equations.
 
 Reference: Lagaris et al, IEEE Transactions on Neural Networks 8(5),
-p. 987 (1998
+p. 987 (1998).
+
+## Experiments
+
+### 1-D Diffusion
+
+The main functions for 1-D diffusion are a.py, b.py.
+
+The best results were found using the BFGS method in scipy.optimize.
+
+In the following, `nx=11` and `nt=11`.
+
+* (diff1d_0_BFGS.ipynb)[/notebooks/diff1d_0_BFGS.ipynb] tests the solution using an initial condition of $$\psi=0$$ and boundary conditions of $$\psi(0,t)=\psi(1,t)=0$$.
+* (diff1d_0_BFGS.ipynb)[/notebooks/diff1d_1_BFGS.ipynb] differs from the previous experiment by ...
+
+# Description of Libraries
+
 
 Help for all programs is available using the -h command-line option.
 
@@ -38,6 +51,8 @@ several examples.
 The remaining iPython (*.ipynb) and Mathematica (*.nb) files are
 notebooks used for ensuring the Python and Mathematica code gives the
 same results.
+
+# Contact
 
 Eric Winter
 ewinter@stsci.edu
