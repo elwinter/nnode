@@ -1,59 +1,56 @@
 # nnode
 
-Neural network code for solving ordinary differential equations.
+Neural network code for solving ordinary and partial differential equations.
 
-Reference: Lagaris et al, IEEE Transactions on Neural Networks 8(5),
-p. 987 (1998).
+Reference: Lagaris et al, IEEE Transactions on Neural Networks 8(5), p. 987 (1998).
 
-## Experiments
+## Modules
 
-### 1-D Diffusion
+After cloning this repository, add the code directories to your PYTHONPATH:
 
-The main functions for 1-D diffusion are a.py, b.py.
+* `bash`: `export PYTHONPATH=/path/to/nnode/eq:/path/to/nnode:$PYTHONPATH`
 
-The best results were found using the BFGS method in scipy.optimize.
+* `tcsh`: `setenv PYTHONPATH /path/to/nnode/eq:/path/to/nnode:$PYTHONPATH`
 
-In the following, `nx=11` and `nt=11`.
+*NOTE*: This code assumes the user has a standard Anaconda 3-based environment. Other than the code in this package, no additional Python modules are required.
 
-* (diff1d_0_BFGS.ipynb)[/notebooks/diff1d_0_BFGS.ipynb] tests the solution using an initial condition of $$\psi=0$$ and boundary conditions of $$\psi(0,t)=\psi(1,t)=0$$.
-* (diff1d_0_BFGS.ipynb)[/notebooks/diff1d_1_BFGS.ipynb] differs from the previous experiment by ...
+The following modules are provided:
 
-# Description of Libraries
+* `nnode1ivp.py` - Use a neural network to solve 1st-order ODE IVP.
 
+* `nnode2bvp.py` - Use a neural network to solve 2nd-order ODE BVP.
 
-Help for all programs is available using the -h command-line option.
+* `nnode2ivp.py` - Use a neural network to solve 2nd-order ODE IVP.
 
-The program nnode1.py is used to solve 1st-order ODE IVP. This program
-can process ode00.py, lagaris01.py, and lagaris02.py.
+* `nnpde1ivp.py` - Use a neural network to solve 1st-order PDE IVP.
 
-The program nnode2bvp.py is used to solve 2nd-order ODE BVP. This
-program can process lagaris03bvp.py.
+* `nnpde2bvp.py` - Use a neural network to solve 2nd-order PDE BVP.
 
-The program nnode2ivp.py is used to solve 2nd-order ODE IVP. This
-program can process lagaris03ivp.py.
+* `nnpde2ivp.py` - Use a neural network to solve 2nd-order PDE IVP.
 
-The files lagaris01.py, lagaris02.py define the code needed for
-problems 1 and 2 in the Lagaris et al paper. The files lagaris03bvp.py
-and lagaris03ivp.py define the BVP and IVP versions of Problem 3 in
-Lagaris et al. The file ode00.py is a simple 1st order ODE problem for
-testing nnode1.py.
+* `nnpde2diff1d.py` - Use a neural network to solve the 1-D diffusion equation, with time-varying BC.
 
-The file sigma.py provides code for the sigmoid transfer function and
-its derivatives. The corresponding .nb and .ipynb files are Jupyter
-and Mathematica notebooks for examination of the sigmoid function, and
-to ensure the Python code gives the same results as Mathematica.
+The `eq` subdirectory contains a variety of sample equations to solve. The equations should be used with the following modules (files not listed are not guaranteed to work):
 
-The file nnode1.ipynb, nnode2bvp.ipynb, and nnode3ivp.ipynb are
-detailed walkthroughs of nnode1.py, nnode2bvp.py, and nnode2ivp.py,
-respectively, explaining the algorithms and program options using
-several examples.
+* `nnode1ivp.py` - `lagaris_01.py`, `lagaris_02.py`, `ode1_00.py`, `ode1_01.py`, `ode1_02.py`, `ode1_03.py`, `ode1_04.py`
 
-The remaining iPython (*.ipynb) and Mathematica (*.nb) files are
-notebooks used for ensuring the Python and Mathematica code gives the
-same results.
+* `nnode2bvp.py` - `lagaris_03_bvp.py`, `ode2_bvp_00.py`
 
-# Contact
+* `nnode2ivp.py` - `lagaris_03_ivp.py`, `ode2_ivp_00.py`
 
+* `nnpde1ivp.py` - `pde1_ivp_00.py`
+
+* `nnpde2bvp.py` - `lagaris05.py`
+
+* `nnpde2ivp.py` - No examples available
+
+* `nnpde2diff1d.py` - `diff1d_*`
+
+The `experiments` subdirectory contains another `README.md`, along with a set of Jupyter notebooks that illustrate the use of the `nnpde2diff1d.py` module. Notebooks for other modules will be added in the future.
+
+## Contact
 Eric Winter
+
 ewinter@stsci.edu
-2017-11-02
+
+2018-10-09
