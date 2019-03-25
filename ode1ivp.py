@@ -21,8 +21,6 @@ Attributes:
     dya_dxf - (Optional) function for analytical derivative dy/dx
 
 Methods:
-    __init__
-    __str__
 
 Todo:
     * Expand base functionality.
@@ -54,12 +52,12 @@ class ODE1IVP(ODE1):
             assert odemod.ic is not None  # Initial condition at x=0
             assert odemod.dG_dyf      # Function for derivative of G wrt y
             assert odemod.dG_dydxf    # Function for derivative of G wrt dy/dx
-            # yaf() is the optional function for analytical solution ya
-            # dya_dxf is the optional function for analytical derivative dya/dx
             self.Gf = odemod.Gf
             self.ic = odemod.ic
             self.dG_dyf = odemod.dG_dyf
             self.dG_dydxf = odemod.dG_dydxf
+            # yaf() is the optional function for analytical solution ya
+            # dya_dxf is the optional function for analytical derivative dya/dx
             if odemod.yaf:
                 self.yaf = odemod.yaf
             if odemod.dya_dxf:
@@ -75,10 +73,12 @@ class ODE1IVP(ODE1):
         s += "dG_dydxf = %s\n" % (getsource(self.dG_dydxf).rstrip()
                                   if self.dG_dydxf else None)
         s += "ic = %s\n" % (self.ic if self.ic is not None else None)
-        s += "yaf = %s\n" % (getsource(self.yaf).rstrip()
-                             if self.yaf else None)
-        s += "dya_dxf = %s\n" % (getsource(self.dya_dxf).rstrip()
-                                 if self.dya_dxf else None)
+        if self.yaf:
+            s += "yaf = %s\n" % (getsource(self.yaf).rstrip()
+                                 if self.yaf else None)
+        if self.dya_dxf:
+            s += "dya_dxf = %s\n" % (getsource(self.dya_dxf).rstrip()
+                                     if self.dya_dxf else None)
         return s.rstrip()  # Strip trailing newline if any.
 
 

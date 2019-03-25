@@ -23,7 +23,7 @@ from pde import PDE
 
 
 class PDE2(PDE):
-    """Base class for 1st-order PDEs"""
+    """Base class for 2nd-order PDEs"""
     pass
 
 
