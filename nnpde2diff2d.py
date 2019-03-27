@@ -770,8 +770,11 @@ class NNPDE2DIFF2D(SLFFNN):
 
         # Create the hidden node weights, biases, and output node weights.
         w = np.random.uniform(wmin, wmax, (m, H))
+        # print("w =", w)
         u = np.random.uniform(umin, umax, H)
+        # print("u =", u)
         v = np.random.uniform(vmin, vmax, H)
+        # print("v =", v)
 
         # Initial parameter deltas are 0.
         dE_dw = np.zeros((m, H))
@@ -787,12 +790,18 @@ class NNPDE2DIFF2D(SLFFNN):
             for j in range(m):
                 for k in range(H):
                     w[j, k] -= eta*dE_dw[j, k]
+            # print("w =", w)
+            print("min,max w =", np.amin(w), np.amax(w))
 
             for k in range(H):
                 u[k] -= eta*dE_du[k]
+            # print("u =", u)
+            print("min,max u =", np.amin(u), np.amax(u))
 
             for k in range(H):
                 v[k] -= eta*dE_dv[k]
+            # print("v =", v)
+            print("min,max v =", np.amin(v), np.amax(v))
 
             # Compute the net input, the sigmoid function and its
             # derivatives, for each hidden node and each training point.
@@ -802,26 +811,36 @@ class NNPDE2DIFF2D(SLFFNN):
                     z[i, k] = u[k]
                     for j in range(m):
                         z[i, k] += w[j, k]*x[i, j]
+            # print("z =", z)
+            # print("min,max z =", np.amin(z), np.amax(z))
 
             s = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     s[i, k] = sigma(z[i, k])
+            # print("s =", s)
+            # print("min,max s =", np.amin(s), np.amax(s))
 
             s1 = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     s1[i, k] = dsigma_dz(z[i, k])
+            # print("s1 =", s1)
+            # print("min,max s1 =", np.amin(s1), np.amax(s1))
 
             s2 = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     s2[i, k] = d2sigma_dz2(z[i, k])
+            # print("s2 =", s2)
+            # print("min,max s2 =", np.amin(s2), np.amax(s2))
 
             s3 = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     s3[i, k] = d3sigma_dz3(z[i, k])
+            # print("s3 =", s3)
+            # print("min,max s3 =", np.amin(s3), np.amax(s3))
 
             # Compute the network output and its derivatives, for each
             # training point.
@@ -829,34 +848,46 @@ class NNPDE2DIFF2D(SLFFNN):
             for i in range(n):
                 for k in range(H):
                     N[i] += s[i, k]*v[k]
+            # print("N =", N)
+            # print("min,max N =", np.amin(N), np.amax(N))
 
             delN = np.zeros((n, m))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         delN[i, j] += v[k]*s1[i, k]*w[j, k]
+            # print("delN =", delN)
+            # print("min,max delN =", np.amin(delN), np.amax(delN))
 
             del2N = np.zeros((n, m))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         del2N[i, j] += v[k]*s2[i, k]*w[j, k]**2
+            # print("del2N =", del2N)
+            # print("min,max del2N =", np.amin(del2N), np.amax(del2N))
 
             dN_dw = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         dN_dw[i, j, k] = v[k]*s1[i, k]*x[i, j]
+            # print("dN_dw =", dN_dw)
+            # print("min,max dN_dw =", np.amin(dN_dw), np.amax(dN_dw))
 
             dN_du = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     dN_du[i, k] = v[k]*s1[i, k]
+            # print("dN_du =", dN_du)
+            # print("min,max dN_du =", np.amin(dN_du), np.amax(dN_du))
 
             dN_dv = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     dN_dv[i, k] = s[i, k]
+            # print("dN_dv =", dN_dv)
+            # print("min,max dN_dv =", np.amin(dN_dv), np.amax(dN_dv))
 
             d2N_dwdx = np.zeros((n, m, m, H))
             for i in range(n):
@@ -866,18 +897,24 @@ class NNPDE2DIFF2D(SLFFNN):
                             d2N_dwdx[i, j, jj, k] = \
                                 v[k]*(s1[i, k]*kdelta(j, jj) + \
                                     s2[i, k]*w[jj, k]*x[i, j])
+            # print("d2N_dwdx =", d2N_dwdx)
+            # print("min,max d2N_dwdx =", np.amin(d2N_dwdx), np.amax(d2N_dwdx))
 
             d2N_dudx = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         d2N_dudx[i, j, k] = v[k]*s2[i, k]*w[j, k]
+            # print("d2N_dudx =", d2N_dudx)
+            # print("min,max d2N_dudx =", np.amin(d2N_dudx), np.amax(d2N_dudx))
 
             d2N_dvdx = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         d2N_dvdx[i, j, k] = s1[i, k]*w[j, k]
+            # print("d2N_dvdx =", d2N_dvdx)
+            # print("min,max d2N_dvdx =", np.amin(d2N_dvdx), np.amax(d2N_dvdx))
 
             d3N_dwdx2 = np.zeros((n, m, m, H))
             for i in range(n):
@@ -887,18 +924,24 @@ class NNPDE2DIFF2D(SLFFNN):
                             d3N_dwdx2[i, j, jj, k] = \
                                 v[k]*(2*s2[i, k]*w[jj, k]*kdelta(j, jj) + \
                                     s3[i, k]*w[j, k]**2*x[i, j])
+            # print("d3N_dwdx2 =", d3N_dwdx2)
+            # print("min,max d3N_dwdx2 =", np.amin(d3N_dwdx2), np.amax(d3N_dwdx2))
 
             d3N_dudx2 = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         d3N_dudx2[i, j, k] = v[k]*s3[i, k]*w[j, k]**2
+            # print("d3N_dudx2 =", d3N_dudx2)
+            # print("min,max d3N_dudx2 =", np.amin(d3N_dudx2), np.amax(d3N_dudx2))
 
             d3N_dvdx2 = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         d3N_dvdx2[i, j, k] = s2[i, k]*w[j, k]**2
+            # print("d3N_dvdx2 =", d3N_dvdx2)
+            # print("min,max d3N_dvdx2 =", np.amin(d3N_dvdx2), np.amax(d3N_dvdx2))
 
             # Compute the value of the trial solution, its coefficients,
             # and derivatives, for each training point.
@@ -906,42 +949,60 @@ class NNPDE2DIFF2D(SLFFNN):
             P = np.zeros(n)
             for i in range(n):
                 P[i] = self.tf.Pf(x[i])
+            # print("P =", P)
+            # print("min,max P =", np.amin(P), np.amax(P))
 
             delP = np.zeros((n, m))
             for i in range(n):
                 delP[i] = self.tf.delPf(x[i])
+            # print("delP =", delP)
+            # print("min,max delP =", np.amin(delP), np.amax(delP))
 
             del2P = np.zeros((n, m))
             for i in range(n):
                 del2P[i] = self.tf.del2Pf(x[i])
+            # print("del2P =", del2P)
+            # print("min,max del2P =", np.amin(del2P), np.amax(del2P))
 
             Yt = np.zeros(n)
             for i in range(n):
                 Yt[i] = self.tf.Ytf(x[i], N[i])
+            # print("Yt =", Yt)
+            # print("min,max Yt =", np.amin(Yt), np.amax(Yt))
 
             delYt = np.zeros((n, m))
             for i in range(n):
                 delYt[i] = self.tf.delYtf(x[i], N[i], delN[i])
+            # print("delYt =", delYt)
+            # print("min,max delYt =", np.amin(delYt), np.amax(delYt))
 
             del2Yt = np.zeros((n, m))
             for i in range(n):
                 del2Yt[i] = self.tf.del2Ytf(x[i], N[i], delN[i], del2N[i])
+            # print("del2Yt =", del2Yt)
+            # print("min,max del2Yt =", np.amin(del2Yt), np.amax(del2Yt))
 
             dYt_dw = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
                         dYt_dw[i, j, k] = P[i]*dN_dw[i, j, k]
+            # print("dYt_dw =", dYt_dw)
+            # print("min,max dYt_dw =", np.amin(dYt_dw), np.amax(dYt_dw))
 
             dYt_du = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     dYt_du[i, k] = P[i]*dN_du[i, k]
+            # print("dYt_du =", dYt_du)
+            # print("min,max dYt_du =", np.amin(dYt_du), np.amax(dYt_du))
 
             dYt_dv = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
                     dYt_dv[i, k] = P[i]*dN_dv[i, k]
+            # print("dYt_dv =", dYt_dv)
+            # print("min,max dYt_dv =", np.amin(dYt_dv), np.amax(dYt_dv))
 
             d2Yt_dwdx = np.zeros((n, m, m, H))
             for i in range(n):
@@ -951,6 +1012,8 @@ class NNPDE2DIFF2D(SLFFNN):
                             d2Yt_dwdx[i, j, jj, k] = \
                                 P[i]*d2N_dwdx[i, j, jj, k] + \
                                     delP[i, jj]*dN_dw[i, j, k]
+            # print("d2Yt_dwdx =", d2Yt_dwdx)
+            # print("min,max d2Yt_dwdx =", np.amin(d2Yt_dwdx), np.amax(d2Yt_dwdx))
 
             d2Yt_dudx = np.zeros((n, m, H))
             for i in range(n):
@@ -958,6 +1021,8 @@ class NNPDE2DIFF2D(SLFFNN):
                     for k in range(H):
                         d2Yt_dudx[i, j, k] = \
                             P[i]*d2N_dudx[i, j, k] + delP[i, j]*dN_du[i, k]
+            # print("d2Yt_dudx =", d2Yt_dudx)
+            # print("min,max d2Yt_dudx =", np.amin(d2Yt_dudx), np.amax(d2Yt_dudx))
 
             d2Yt_dvdx = np.zeros((n, m, H))
             for i in range(n):
@@ -965,6 +1030,8 @@ class NNPDE2DIFF2D(SLFFNN):
                     for k in range(H):
                         d2Yt_dvdx[i, j, k] = \
                             P[i]*d2N_dvdx[i, j, k] + delP[i, j]*dN_dv[i, k]
+            # print("d2Yt_dvdx =", d2Yt_dvdx)
+            # print("min,max d2Yt_dvdx =", np.amin(d2Yt_dvdx), np.amax(d2Yt_dvdx))
 
             d3Yt_dwdx2 = np.zeros((n, m, m, H))
             for i in range(n):
@@ -975,6 +1042,8 @@ class NNPDE2DIFF2D(SLFFNN):
                                 P[i]*d3N_dwdx2[i, j, jj, k] + \
                                 2*delP[i, jj]*d2N_dwdx[i, j, jj, k] + \
                                 del2P[i, jj]*dN_dw[i, j, k]
+            # print("d3Yt_dwdx2 =", d3Yt_dwdx2)
+            # print("min,max d3Yt_dwdx2 =", np.amin(d3Yt_dwdx2), np.amax(d3Yt_dwdx2))
 
             d3Yt_dudx2 = np.zeros((n, m, H))
             for i in range(n):
@@ -984,6 +1053,8 @@ class NNPDE2DIFF2D(SLFFNN):
                             P[i]*d3N_dudx2[i, j, k] + \
                             2*delP[i, j]*d2N_dudx[i, j, k] + \
                             del2P[i, j]*dN_du[i, k]
+            # print("d3Yt_dudx2 =", d3Yt_dudx2)
+            # print("min,max d3Yt_dudx2 =", np.amin(d3Yt_dudx2), np.amax(d3Yt_dudx2))
 
             d3Yt_dvdx2 = np.zeros((n, m, H))
             for i in range(n):
@@ -993,17 +1064,23 @@ class NNPDE2DIFF2D(SLFFNN):
                             P[i]*d3N_dvdx2[i, j, k] + \
                             2*delP[i, j]*d2N_dvdx[i, j, k] + \
                             del2P[i, j]*dN_dv[i, k]
+            # print("d3Yt_dvdx2 =", d3Yt_dvdx2)
+            # print("min,max d3Yt_dvdx2 =", np.amin(d3Yt_dvdx2), np.amax(d3Yt_dvdx2))
 
             # Compute the value of the original differential equation
             # for each training point, and its derivatives.
             G = np.zeros(n)
             for i in range(n):
                 G[i] = self.eq.Gf(x[i], Yt[i], delYt[i], del2Yt[i])
+            # print("G =", G)
+            # print("min,max G =", np.amin(G), np.amax(G))
 
             dG_dYt = np.zeros(n)
             for i in range(n):
                 dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], delYt[i],
                                            del2Yt[i])
+            # print("dG_dYt =", dG_dYt)
+            # print("min,max dG_dYt =", np.amin(dG_dYt), np.amax(dG_dYt))
 
             dG_ddelYt = np.zeros((n, m))
             for i in range(n):
@@ -1011,6 +1088,8 @@ class NNPDE2DIFF2D(SLFFNN):
                     dG_ddelYt[i, j] = \
                         self.eq.dG_ddelYf[j](x[i], Yt[i], delYt[i],
                                              del2Yt[i])
+            # print("dG_ddelYt =", dG_ddelYt)
+            # print("min,max dG_ddelYt =", np.amin(dG_ddelYt), np.amax(dG_ddelYt))
 
             dG_ddel2Yt = np.zeros((n, m))
             for i in range(n):
@@ -1018,6 +1097,8 @@ class NNPDE2DIFF2D(SLFFNN):
                     dG_ddel2Yt[i, j] = \
                         self.eq.dG_ddel2Yf[j](x[i], Yt[i], delYt[i],
                                               del2Yt[i])
+            # print("dG_ddel2Yt =", dG_ddel2Yt)
+            # print("min,max dG_ddel2Yt =", np.amin(dG_ddel2Yt), np.amax(dG_ddel2Yt))
 
             dG_dw = np.zeros((n, m, H))
             for i in range(n):
@@ -1028,6 +1109,8 @@ class NNPDE2DIFF2D(SLFFNN):
                             dG_dw[i, j, k] += \
                                 dG_ddelYt[i, jj]*d2Yt_dwdx[i, j, jj, k] + \
                                     dG_ddel2Yt[i, jj]*d3Yt_dwdx2[i, j, jj, k]
+            # print("dG_dw =", dG_dw)
+            # print("min,max dG_dw =", np.amin(dG_dw), np.amax(dG_dw))
 
             dG_du = np.zeros((n, H))
             for i in range(n):
@@ -1037,6 +1120,8 @@ class NNPDE2DIFF2D(SLFFNN):
                         dG_du[i, k] += \
                             dG_ddelYt[i, j]*d2Yt_dudx[i, j, k] \
                             + dG_ddel2Yt[i, j] * d3Yt_dudx2[i, j, k]
+            # print("dG_du =", dG_du)
+            # print("min,max dG_du =", np.amin(dG_du), np.amax(dG_du))
 
             dG_dv = np.zeros((n, H))
             for i in range(n):
@@ -1046,6 +1131,8 @@ class NNPDE2DIFF2D(SLFFNN):
                         dG_dv[i, k] += \
                             dG_ddelYt[i, j]*d2Yt_dvdx[i, j, k] \
                             + dG_ddel2Yt[i, j] * d3Yt_dvdx2[i, j, k]
+            # print("dG_dv =", dG_dv)
+            # print("min,max dG_dv =", np.amin(dG_dv), np.amax(dG_dv))
 
             # Compute the error function for this epoch.
             E2 = 0
@@ -1062,16 +1149,22 @@ class NNPDE2DIFF2D(SLFFNN):
                 for k in range(H):
                     for i in range(n):
                         dE_dw[j, k] += 2*G[i]*dG_dw[i, j, k]
+            # print("dE_dw =", dE_dw)
+            # print("min,max dE_dw =", np.amin(dE_dw), np.amax(dE_dw))
 
             dE_du = np.zeros(H)
             for k in range(H):
                 for i in range(n):
                     dE_du[k] += 2*G[i]*dG_du[i, k]
+            # print("dE_du =", dE_du)
+            # print("min,max dE_du =", np.amin(dE_du), np.amax(dE_du))
 
             dE_dv = np.zeros(H)
             for k in range(H):
                 for i in range(n):
                     dE_dv[k] += 2*G[i]*dG_dv[i, k]
+            # print("dE_dv =", dE_dv)
+            # print("min,max dE_dv =", np.amin(dE_dv), np.amax(dE_dv))
 
         # Save the optimized parameters.
         self.w = w
@@ -2042,7 +2135,8 @@ class NNPDE2DIFF2D(SLFFNN):
         """Callback to print progress message from optimizer"""
         print('nit =', self.nit)
         self.nit += 1
-        # print('xk =', xk)
+        print('xk =', xk)
+        print('min,max =', np.amin(xk), np.amax(xk))
 
 
 if __name__ == '__main__':
@@ -2071,7 +2165,7 @@ if __name__ == '__main__':
                 x_train[l,0] = xt[i]
                 x_train[l,1] = yt[j]
                 x_train[l,2] = tt[k]
-                l += 1                
+                l += 1
     n = len(x_train)
 
     # Options for np.minimize()
