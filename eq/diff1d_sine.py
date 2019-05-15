@@ -1,25 +1,25 @@
 """
 1-D diffusion PDE
 
-The equation is defined on the domain [[0,1],[0,1]]. The profile starts as a
-half-sine wave, with nodes at x=0,1.
-
 The analytical form of the equation is:
   G(x,t,Y,delY,deldelY) = dY_dt - D*d2Y_dx2 = 0
+
+The equation is defined on the domain [[0,1],[0,]]. The
+initial profile is:
+
+Y(x,0) = sin(pi*x)
 """
 
 
-from inspect import getsource
-from math import exp, pi, sin, cos
+from math import cos, exp, pi, sin
 import numpy as np
 
 
 # Diffusion coefficient
-D = 1
+D = 0.1
 
 
 def Gf(xt, Y, delY, deldelY):
-    """Code for differential equation"""
     (x, t) = xt
     (dY_dx, dY_dt) = delY
     ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
