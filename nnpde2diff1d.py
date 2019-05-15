@@ -32,7 +32,7 @@ import numpy as np
 from scipy.optimize import minimize
 
 from kdelta import kdelta
-from pde2diff1d import PDE2DIFF1D
+from pde2diff1d_orig import PDE2DIFF1D
 from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
 from slffnn import SLFFNN
 
@@ -2313,8 +2313,8 @@ if __name__ == '__main__':
 
     # Options for training
     opts = {}
-    # opts['debug'] = True
-    # opts['verbose'] = True
+    opts['debug'] = True
+    opts['verbose'] = True
     # print('opts =', opts)
 
     # Test each training algorithm on each equation.
@@ -2328,7 +2328,7 @@ if __name__ == '__main__':
     #     'diff1d_rampdown', 'diff1d_rampup', 'diff1d_sine', 'diff1d_sinewave',
     #     'diff1d_triangle'
     #     ):
-    for pde in ('diff1d_flat+increase',):
+    for pde in ('diff1d_sine_orig',):
         print('Examining %s.' % pde)
         pde2diff1d = PDE2DIFF1D(pde)
         print(pde2diff1d)
@@ -2361,7 +2361,7 @@ if __name__ == '__main__':
         #     print()
         # for trainalg in ('delta', 'Nelder-Mead', 'Powell',
         #                  'CG', 'BFGS', 'Newton-CG'):
-        for trainalg in ('BFGS', ):
+        for trainalg in ('delta', ):
             print('Training using %s algorithm.' % trainalg)
             np.random.seed(0)
             try:

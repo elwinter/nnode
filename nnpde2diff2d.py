@@ -14,13 +14,13 @@ Example:
         net = NNPDE2DIFF2D(pde2diff2d_obj, nhid=20)
 
 Attributes:
-    None
+    TBD
 
 Methods:
     train
     run
     run_gradient
-    run_hessian
+    run_laplacian
 
 Todo:
     * Expand base functionality.
@@ -2081,8 +2081,8 @@ if __name__ == '__main__':
 
     # Options for training
     training_opts = {}
-    training_opts['debug'] = True
-    training_opts['verbose'] = True
+    training_opts['debug'] = False
+    training_opts['verbose'] = False
 
     # Test each training algorithm on each equation.
     for pde in ('diff2d_0', 'diff2d_1'):
@@ -2095,27 +2095,27 @@ if __name__ == '__main__':
             Ya = np.zeros(n)
             for i in range(n):
                 Ya[i] = net.eq.Yaf(x_train[i])
-            print('The analytical solution is:')
-            print('Ya =', Ya.reshape(nt, ny, nx))
-            print()
+            # print('The analytical solution is:')
+            # print('Ya =', Ya.reshape(nt, ny, nx))
+            # print()
         delYa = None
         if net.eq.delYaf is not None:
             delYa = np.zeros((n, m))
             for i in range(n):
                 for j in range(m):
                     delYa[i, j] = net.eq.delYaf[j](x_train[i])
-            print('The analytical gradient is:')
-            print('delYa =', delYa)
-            print()
+            # print('The analytical gradient is:')
+            # print('delYa =', delYa)
+            # print()
         del2Ya = None
         if net.eq.del2Yaf is not None:
             del2Ya = np.zeros((n, m))
             for i in range(n):
                 for j in range(m):
                     del2Ya[i, j] = net.eq.del2Yaf[j](x_train[i])
-            print('The analytical Laplacian is:')
-            print('del2Ya =', del2Ya)
-            print()
+            # print('The analytical Laplacian is:')
+            # print('del2Ya =', del2Ya)
+            # print()
 
         # Test each training algorithm.
 
@@ -2136,29 +2136,29 @@ if __name__ == '__main__':
                 print()
                 continue
             Yt = net.run_debug(x_train)
-            print('The trained solution is:')
-            print('Yt =', Yt.reshape(nt, ny, nx))
-            print()
-            if Ya is not None:
-                print('The error in the trained solution is:')
-                print('Yt - Ya =', (Yt - Ya).reshape(nt, ny, nx))
-                print()
+            # print('The trained solution is:')
+            # print('Yt =', Yt.reshape(nt, ny, nx))
+            # print()
+            # if Ya is not None:
+                # print('The error in the trained solution is:')
+                # print('Yt - Ya =', (Yt - Ya).reshape(nt, ny, nx))
+                # print()
             delYt = net.run_gradient_debug(x_train)
-            print('The trained gradient is:')
-            print('delYt =', delYt.reshape(m, nt, ny, nx))
-            print()
-            if delYa is not None:
-                print('The error in the trained gradient is:')
-                print('delYt - delYa =', (delYt - delYa).reshape(m, nt, ny, nx))
-                print()
+            # print('The trained gradient is:')
+            # print('delYt =', delYt.reshape(m, nt, ny, nx))
+            # print()
+            # if delYa is not None:
+            #     print('The error in the trained gradient is:')
+            #     print('delYt - delYa =', (delYt - delYa).reshape(m, nt, ny, nx))
+            #     print()
             del2Yt = net.run_laplacian_debug(x_train)
-            print('The trained Laplacian is:')
-            print('del2Yt =', del2Yt.reshape(m, nt, ny, nx))
-            print()
-            if del2Ya is not None:
-                print('The error in the trained Laplacian is:')
-                print('del2Yt - del2Ya =',
-                      (del2Yt - del2Ya).reshape(m, nt, ny, nx))
+            # print('The trained Laplacian is:')
+            # print('del2Yt =', del2Yt.reshape(m, nt, ny, nx))
+            # print()
+            # if del2Ya is not None:
+            #     print('The error in the trained Laplacian is:')
+            #     print('del2Yt - del2Ya =',
+            #           (del2Yt - del2Ya).reshape(m, nt, ny, nx))
 
         print("The following methods use a jacobian but not a hessian.")
         training_opts['use_jacobian'] = True
@@ -2176,29 +2176,29 @@ if __name__ == '__main__':
                 print()
                 continue
             Yt = net.run_debug(x_train)
-            print('The trained solution is:')
-            print('Yt =', Yt.reshape(nt, ny, nx))
-            print()
-            if Ya is not None:
-                print('The error in the trained solution is:')
-                print('Yt - Ya =', (Yt - Ya).reshape(nt, ny, nx))
-                print()
+            # print('The trained solution is:')
+            # print('Yt =', Yt.reshape(nt, ny, nx))
+            # print()
+            # if Ya is not None:
+            #     print('The error in the trained solution is:')
+            #     print('Yt - Ya =', (Yt - Ya).reshape(nt, ny, nx))
+            #     print()
             delYt = net.run_gradient_debug(x_train)
-            print('The trained gradient is:')
-            print('delYt =', delYt.reshape(m, nt, ny, nx))
-            print()
-            if delYa is not None:
-                print('The error in the trained gradient is:')
-                print('delYt - delYa =', (delYt - delYa).reshape(m, nt, ny, nx))
-                print()
+            # print('The trained gradient is:')
+            # print('delYt =', delYt.reshape(m, nt, ny, nx))
+            # print()
+            # if delYa is not None:
+            #     print('The error in the trained gradient is:')
+            #     print('delYt - delYa =', (delYt - delYa).reshape(m, nt, ny, nx))
+            #     print()
             del2Yt = net.run_laplacian_debug(x_train)
-            print('The trained Laplacian is:')
-            print('del2Yt =', del2Yt.reshape(m, nt, ny, nx))
-            print()
-            if del2Ya is not None:
-                print('The error in the trained Laplacian is:')
-                print('del2Yt - del2Ya =',
-                      (del2Yt - del2Ya).reshape(m, nt, ny, nx))
+            # print('The trained Laplacian is:')
+            # print('del2Yt =', del2Yt.reshape(m, nt, ny, nx))
+            # print()
+            # if del2Ya is not None:
+            #     print('The error in the trained Laplacian is:')
+            #     print('del2Yt - del2Ya =',
+            #           (del2Yt - del2Ya).reshape(m, nt, ny, nx))
 
         # THIS CODE IS NOT READY YET.
         # print("The following methods use a jacobian and a hessian.")
