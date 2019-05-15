@@ -47,7 +47,7 @@ def dG_dY_dtf(xt, Y, delY, del2Y):
     (d2Y_dx2, d2Y_dt2) = del2Y
     return 1
 
-dG_ddelYf = (dG_dY_dxf, dG_dY_dtf)
+dG_ddelYf = [dG_dY_dxf, dG_dY_dtf]
 
 
 def dG_d2Y_dx2f(xt, Y, delY, del2Y):
@@ -183,6 +183,31 @@ def Yaf(xt):
     (x, t) = xt
     Ya = exp(-pi**2*D*t)*sin(pi*x)
     return Ya
+
+def dYa_dxf(xt):
+  """Analytical x-gradient"""
+  dYa_dx = exp(-pi**2*D*t)*pi*cos(pi*x)
+  return dYa_dx
+
+def dYa_dtf(xt):
+  """Analytical t-gradient"""
+  dYa_dt = -exp(-pi**2*D*t)*pi**2*D*sin(pi*x)
+  return dYa_dt
+
+delYaf = [dYa_dxf, dYa_dtf]
+
+
+def d2Ya_dx2f(xt):
+  """Analytical x-Laplacian"""
+  d2Ya_dx2 = -exp(-pi**2*D*t)*pi**2*sin(pi*x)
+  return d2Ya_dx2
+
+def d2Ya_dt2f(xt):
+  """Analytical t-Laplacian"""
+  d2Ya_dt2 = -exp(-pi**2*D*t)*pi**4*D**2*sin(pi*x)
+  return d2Ya_dt2
+
+del2Yaf = [d2Ya_dx2f, d2Ya_dt2f]
 
 
 if __name__ == '__main__':
