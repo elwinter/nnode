@@ -26,416 +26,424 @@ def Gf(xyzt, Y, delY, del2Y):
     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2Y_dt2) = del2Y
     return dY_dt - D*(d2Y_dx2 + d2Y_dy2 + d2Y_dz2)
 
-# def dG_dYf(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return 0
-
-# def dG_dY_dxf(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return 0
+def dG_dYf(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return 0
+
+def dG_dY_dxf(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return 0
 
-# def dG_dY_dyf(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return 0
-
-# def dG_dY_dzf(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return 0
+def dG_dY_dyf(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return 0
+
+def dG_dY_dzf(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return 0
 
-# def dG_dY_dtf(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return 1
-
-# dG_ddelYf = [dG_dY_dxf, dG_dY_dyf, dG_dY_dzf, dG_dY_dtf]
+def dG_dY_dtf(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return 1
+
+dG_ddelYf = [dG_dY_dxf, dG_dY_dyf, dG_dY_dzf, dG_dY_dtf]
 
 
-# def dG_d2Y_dx2f(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return -D
+def dG_d2Y_dx2f(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return -D
 
-# def dG_d2Y_dy2f(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return -D
+def dG_d2Y_dy2f(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return -D
 
-# def dG_d2Y_dz2f(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return -D
+def dG_d2Y_dz2f(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return -D
 
-# def dG_d2Y_dt2f(xyzt, Y, delY, del2Y):
-#     (x, y, z, t) = xyzt
-#     (dY_dx, dY_dy, dY_dz, dY_dt) = delY
-#     (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
-#     return 0
+def dG_d2Y_dt2f(xyzt, Y, delY, del2Y):
+    (x, y, z, t) = xyzt
+    (dY_dx, dY_dy, dY_dz, dY_dt) = delY
+    (d2Y_dx2, d2Y_dy2, d2Y_dz2, d2t_dt2) = del2Y
+    return 0
 
-# dG_ddel2Yf = [dG_d2Y_dx2f, dG_d2Y_dy2f, dG_d2Y_dz2f, dG_d2Y_dt2f]
+dG_ddel2Yf = [dG_d2Y_dx2f, dG_d2Y_dy2f, dG_d2Y_dz2f, dG_d2Y_dt2f]
 
 
-# # Boundary condition functions
+# Boundary condition functions
 
-# def f0f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def f0f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def f1f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def f1f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def g0f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def g0f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def g1f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def g1f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def h0f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def h0f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def h1f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def h1f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def Y0f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return sin(pi*x)*sin(pi*y)*sin(pi*z)/3
+def Y0f(xyzt):
+    (x, y, z, t) = xyzt
+    return sin(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# def Y1f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def Y1f(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# bcf = [[f0f, f1f], [g0f, g1f], [h0f, h1f], [Y0f, Y1f]]
+bcf = [[f0f, f1f], [g0f, g1f], [h0f, h1f], [Y0f, Y1f]]
 
 
-# # Gradients of boundary condition functions
+# Gradients of boundary condition functions
 
-# def df0_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df0_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def df0_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df0_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def df0_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df0_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def df0_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df0_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def df1_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df1_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def df1_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df1_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def df1_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df1_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def df1_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def df1_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
 
-# def dg0_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg0_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dg0_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg0_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dg0_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg0_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dg0_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg0_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dg1_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg1_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dg1_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg1_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dg1_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg1_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dg1_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dg1_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
 
-# def dh0_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh0_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dh0_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh0_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dh0_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh0_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dh0_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh0_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dh1_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh1_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dh1_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh1_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dh1_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh1_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dh1_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dh1_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dY0_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return pi*cos(pi*x)*sin(pi*y)*sin(pi*z)/3
+def dY0_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return pi*cos(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# def dY0_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return pi*sin(pi*x)*cos(pi*y)*sin(pi*z)/3
+def dY0_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return pi*sin(pi*x)*cos(pi*y)*sin(pi*z)/3
 
-# def dY0_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return pi*sin(pi*x)*sin(pi*y)*cos(pi*z)/3
+def dY0_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return pi*sin(pi*x)*sin(pi*y)*cos(pi*z)/3
 
-# def dY0_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def dY0_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def dY1_dxf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def dY1_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# def dY1_dyf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def dY1_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# def dY1_dzf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def dY1_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# def dY1_dtf(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def dY1_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# delbcf = [[[df0_dxf, df0_dyf, df0_dzf, df0_dtf], [df1_dxf, df1_dyf, df1_dzf, df1_dtf]],
-#           [[dg0_dxf, dg0_dyf, dg0_dzf, dg0_dtf], [dg1_dxf, dg1_dyf, dg1_dzf, dg1_dtf]],
-#           [[dh0_dxf, dh0_dyf, dh0_dzf, dh0_dtf], [dh1_dxf, dh1_dyf, dh1_dzf, dh1_dtf]],
-#           [[dY0_dxf, dY0_dyf, dY0_dzf, dY0_dtf], [dY1_dxf, dY1_dyf, dY1_dzf, dY1_dtf]]]
+delbcf = [[[df0_dxf, df0_dyf, df0_dzf, df0_dtf], [df1_dxf, df1_dyf, df1_dzf, df1_dtf]],
+          [[dg0_dxf, dg0_dyf, dg0_dzf, dg0_dtf], [dg1_dxf, dg1_dyf, dg1_dzf, dg1_dtf]],
+          [[dh0_dxf, dh0_dyf, dh0_dzf, dh0_dtf], [dh1_dxf, dh1_dyf, dh1_dzf, dh1_dtf]],
+          [[dY0_dxf, dY0_dyf, dY0_dzf, dY0_dtf], [dY1_dxf, dY1_dyf, dY1_dzf, dY1_dtf]]]
 
 
-# # Laplacians of boundary condition functions
+# Laplacians of boundary condition functions
 
-# def d2f0_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f0_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2f0_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f0_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2f0_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f0_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2f0_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f0_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2f1_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f1_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2f1_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f1_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2f1_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f1_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2f1_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2f1_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g0_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g0_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g0_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g0_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g0_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g0_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g0_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g0_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g1_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g1_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g1_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g1_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g1_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g1_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2g1_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2g1_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h0_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h0_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h0_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h0_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h0_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h0_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h0_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h0_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h1_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h1_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h1_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h1_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h1_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h1_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2h1_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2h1_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2Y0_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return -pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
+def d2Y0_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return -pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# def d2Y0_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return -pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
+def d2Y0_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return -pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# def d2Y0_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return -pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
+def d2Y0_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return -pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# def d2Y0_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return 0
+def d2Y0_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 0
 
-# def d2Y1_dx2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def d2Y1_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# def d2Y1_dy2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def d2Y1_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# def d2Y1_dz2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def d2Y1_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# def d2Y1_dt2f(xyzt):
-#     (x, y, z, t) = xyzt
-#     return None
+def d2Y1_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return None
 
-# del2bcf = [[[d2f0_dx2f, d2f0_dy2f, d2f0_dz2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dy2f, d2f1_dz2f, d2f1_dt2f]],
-#            [[d2g0_dx2f, d2g0_dy2f, d2g0_dz2f, d2g0_dt2f], [d2g1_dx2f, d2g1_dy2f, d2g1_dz2f, d2g1_dt2f]],
-#            [[d2h0_dx2f, d2h0_dy2f, d2h0_dz2f, d2h0_dt2f], [d2h1_dx2f, d2h1_dy2f, d2h1_dz2f, d2h1_dt2f]],
-#            [[d2Y0_dx2f, d2Y0_dy2f, d2Y0_dz2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dy2f, d2Y1_dz2f, d2Y1_dt2f]]]
+del2bcf = [[[d2f0_dx2f, d2f0_dy2f, d2f0_dz2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dy2f, d2f1_dz2f, d2f1_dt2f]],
+           [[d2g0_dx2f, d2g0_dy2f, d2g0_dz2f, d2g0_dt2f], [d2g1_dx2f, d2g1_dy2f, d2g1_dz2f, d2g1_dt2f]],
+           [[d2h0_dx2f, d2h0_dy2f, d2h0_dz2f, d2h0_dt2f], [d2h1_dx2f, d2h1_dy2f, d2h1_dz2f, d2h1_dt2f]],
+           [[d2Y0_dx2f, d2Y0_dy2f, d2Y0_dz2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dy2f, d2Y1_dz2f, d2Y1_dt2f]]]
 
 
 # Analytical solution
 
-# def Yaf(xyzt):
-#     (x, y, z, t) = xyzt
-#     Ya = exp(-3*pi**2*D*t)*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
-#     return Ya
+def Yaf(xyzt):
+    (x, y, z, t) = xyzt
+    Ya = exp(-3*pi**2*D*t)*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
+    return Ya
 
 # Analytical gradient
 
-# # def dYa_dxf(xyt):
-# #     (x, y, t) = xyt
-# #     return 0
+def dYa_dxf(xyzt):
+    (x, y, z, t) = xyzt
+    return exp(-3*pi**2*D*t)*pi*cos(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# # def dYa_dyf(xyt):
-# #     (x, y, t) = xyt
-# #     return 0
+def dYa_dyf(xyzt):
+    (x, y, z, t) = xyzt
+    return exp(-3*pi**2*D*t)*pi*sin(pi*x)*cos(pi*y)*sin(pi*z)/3
 
-# # def dYa_dtf(xyt):
-# #     (x, y, t) = xyt
-# #     return 0
+def dYa_dzf(xyzt):
+    (x, y, z, t) = xyzt
+    return exp(-3*pi**2*D*t)*pi*sin(pi*x)*sin(pi*y)*cos(pi*z)/3
 
-# # delYaf = [dYa_dxf, dYa_dyf, dYa_dtf]
+def dYa_dtf(xyzt):
+    (x, y, z, t) = xyzt
+    return -exp(-3*pi**2*D*t)*pi**2*D*sin(pi*x)*sin(pi*y)*sin(pi*z)
+
+delYaf = [dYa_dxf, dYa_dyf, dYa_dzf, dYa_dtf]
 
 
-# # Analytical Laplacian
+# Analytical Laplacian
 
-# # def d2Ya_dx2f(xyt):
-# #     (x, y, t) = xyt
-# #     return 0
+def d2Ya_dx2f(xyzt):
+    (x, y, z, t) = xyzt
+    return -exp(-3*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# # def d2Ya_dy2f(xyt):
-# #     (x, y, t) = xyt
-# #     return 0
+def d2Ya_dy2f(xyzt):
+    (x, y, z, t) = xyzt
+    return -exp(-3*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# # def d2Ya_dt2f(xyt):
-# #     (x, y, t) = xyt
-# #     return 0
+def d2Ya_dz2f(xyzt):
+    (x, y, z, t) = xyzt
+    return -exp(-3*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)*sin(pi*z)/3
 
-# # del2Yaf = [d2Ya_dx2f, d2Ya_dy2f, d2Ya_dt2f]
+def d2Ya_dt2f(xyzt):
+    (x, y, z, t) = xyzt
+    return 3*exp(-3*pi**2*D*t)*pi**4*D**2*sin(pi*x)*sin(pi*y)*sin(pi*z)
+
+del2Yaf = [d2Ya_dx2f, d2Ya_dy2f, d2Ya_dz2f, d2Ya_dt2f]
 
 
 if __name__ == '__main__':
