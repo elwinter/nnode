@@ -1,3 +1,4 @@
+################################################################################
 """
 Diff2DTrialFunction - Class implementing the trial function for 2-D diffusion
 problems
