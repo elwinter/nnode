@@ -31,7 +31,7 @@ Todo:
 
 from math import sqrt
 import numpy as np
-# from scipy.optimize import minimize
+from scipy.optimize import minimize
 
 from diff1dtrialfunction import Diff1DTrialFunction
 from diff2dtrialfunction import Diff2DTrialFunction
@@ -98,11 +98,12 @@ class NNPDE2DIFF(SLFFNN):
 
         if trainalg == 'delta_debug':
             self.__train_delta_debug(x, opts=my_opts)
-    #     elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
-    #         self.__train_minimize(x, trainalg, opts=my_opts, options=options)
-    #     else:
-    #         print('ERROR: Invalid training algorithm (%s)!' % trainalg)
-    #         exit(1)
+        # elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
+        elif trainalg in ('Nelder-Mead', 'Powell'):
+            self.__train_minimize(x, trainalg, opts=my_opts, options=options)
+        else:
+            print('ERROR: Invalid training algorithm (%s)!' % trainalg)
+            exit(1)
 
     # def run(self, x):
     #     """Compute the trained solution."""
@@ -291,6 +292,67 @@ class NNPDE2DIFF(SLFFNN):
 
         return delYt
 
+    # def run_laplacian(self, x):
+    #     """Compute the trained Laplacian."""
+
+    #     # Fetch the number n of input points at which to calculate the
+    #     # output, and the number m of components of each point.
+    #     n = len(x)
+    #     m = len(x[0])
+
+    #     # Fetch the number of hidden nodes in the neural network.
+    #     H = len(self.w[0])
+
+    #     # Get references to the network parameters for convenience.
+    #     w = self.w
+    #     u = self.u
+    #     v = self.v
+
+    #     z = np.zeros((n, H))
+    #     for i in range(n):
+    #         for k in range(H):
+    #             z[i,k] = u[k]
+    #             for j in range(m):
+    #                 z[i,k] += w[j,k]*x[i,j]
+
+    #     s = np.zeros((n, H))
+    #     for i in range(n):
+    #         for k in range(H):
+    #             s[i, k] = sigma(z[i, k])
+
+    #     s1 = np.zeros((n, H))
+    #     for i in range(n):
+    #         for k in range(H):
+    #             s1[i, k] = dsigma_dz(z[i, k])
+
+    #     s2 = np.zeros((n, H))
+    #     for i in range(n):
+    #         for k in range(H):
+    #             s2[i, k] = d2sigma_dz2(z[i, k])
+
+    #     N = np.zeros(n)
+    #     for i in range(n):
+    #         for k in range(H):
+    #             N[i] += v[k]*s[i, k]
+
+    #     delN = np.zeros((n, m))
+    #     for i in range(n):
+    #         for j in range(m):
+    #             for k in range(H):
+    #                 delN[i, j] += v[k]*s1[i, k]*w[j, k]
+
+    #     del2N = np.zeros((n, m))
+    #     for i in range(n):
+    #         for j in range(m):
+    #             for k in range(H):
+    #                 del2N[i, j] += v[k]*s2[i, k]*w[j, k]**2
+
+    #     del2Yt = np.zeros((n, m))
+    #     for i in range(n):
+    #         del2Yt[i] = self.tf.del2Ytf(x[i], N[i], delN[i], del2N[i])
+
+    #     return del2Yt
+
     def run_laplacian_debug(self, x):
         """Compute the trained Laplacian (debug version)."""
 
@@ -359,7 +421,6 @@ class NNPDE2DIFF(SLFFNN):
         # super().__init__()
         self.eq = eq
         m = len(eq.bcf)
-        assert(m == 2 or m == 3 or m == 4)
         if m == 2:
             self.tf = Diff1DTrialFunction(eq.bcf, eq.delbcf, eq.del2bcf)
         elif m == 3:
@@ -375,8 +436,8 @@ class NNPDE2DIFF(SLFFNN):
 
         # <HACK>
         self.nit = 0
-        # self.res = None
-        # # </HACK>
+        self.res = None
+        # </HACK>
 
     def __str__(self):
         s = ''
@@ -1007,59 +1068,60 @@ class NNPDE2DIFF(SLFFNN):
         self.u = u
         self.v = v
 
-    # def __train_minimize(self, x, trainalg, opts=DEFAULT_OPTS, options=None):
-    #     """Train using the scipy minimize() function"""
+    def __train_minimize(self, x, trainalg, opts=DEFAULT_OPTS,
+                         options=None):
+        """Train using the scipy minimize() function"""
 
-    #     my_opts = dict(DEFAULT_OPTS)
-    #     my_opts.update(opts)
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
 
-    #     # Sanity-check arguments.
-    #     assert x.any()
-    #     assert opts['vmin'] < opts['vmax']
-    #     assert opts['wmin'] < opts['wmax']
-    #     assert opts['umin'] < opts['umax']
+        # Sanity-check arguments.
+        assert x.any()
+        assert opts['vmin'] < opts['vmax']
+        assert opts['wmin'] < opts['wmax']
+        assert opts['umin'] < opts['umax']
 
-    #     callback = None
-    #     if my_opts['verbose']:
-    #         callback = self.__print_progress
+        callback = None
+        if my_opts['verbose']:
+            callback = self.__print_progress
 
-    #     # ---------------------------------------------------------------------
+        #-----------------------------------------------------------------------
 
-    #     # Create the hidden node weights, biases, and output node weights.
-    #     m = len(self.eq.bcf)
-    #     H = my_opts['nhid']
-    #     self.w = np.random.uniform(my_opts['wmin'], my_opts['wmax'], (m, H))
-    #     self.u = np.random.uniform(my_opts['umin'], my_opts['umax'], H)
-    #     self.v = np.random.uniform(my_opts['vmin'], my_opts['vmax'], H)
+        # Create the hidden node weights, biases, and output node weights.
+        m = len(self.eq.bcf)
+        H = my_opts['nhid']
+        self.w = np.random.uniform(my_opts['wmin'], my_opts['wmax'], (m, H))
+        self.u = np.random.uniform(my_opts['umin'], my_opts['umax'], H)
+        self.v = np.random.uniform(my_opts['vmin'], my_opts['vmax'], H)
 
-    #     # Assemble the network parameters into a single 1-D vector for
-    #     # use by the minimize() method.
-    #     p = np.hstack((self.w.flatten(), self.u, self.v))
+        # Assemble the network parameters into a single 1-D vector for
+        # use by the minimize() method.
+        p = np.hstack((self.w.flatten(), self.u, self.v))
 
-    #     res = None
-    #     if my_opts['use_hessian']:
-    #         pass
-    #         # hess = self.__compute_error_hessian_debug
-    #         # jac = self.__compute_error_gradient_debug
-    #     elif my_opts['use_jacobian']:
-    #         pass
-    #         jac = self.__compute_error_gradient_debug
-    #         res = minimize(self.__compute_error_debug, p, method=trainalg, args=(x),
-    #                        jac=jac, options=options, callback=callback)
-    #     else:
-    #         res = minimize(self.__compute_error_debug, p, method=trainalg,
-    #                        args=(x), jac=None, hess=None,
-    #                        options=options, callback=callback)
+        res = None
+        if my_opts['use_hessian']:
+            pass
+            # hess = self.__compute_error_hessian_debug
+            # jac = self.__compute_error_gradient_debug
+        elif my_opts['use_jacobian']:
+            pass
+            # jac = self.__compute_error_gradient_debug
+            # res = minimize(self.__compute_error_debug, p, method=trainalg, args=(x),
+            #                jac=jac, options=options, callback=callback)
+        else:
+            res = minimize(self.__compute_error_debug, p, method=trainalg,
+                           args=(x), jac=None, hess=None,
+                           options=options, callback=callback)
 
-    #     if my_opts['verbose']:
-    #         print('res =', res)
-    #     self.res = res
+        if my_opts['verbose']:
+            print('res =', res)
+        self.res = res
 
-    #     # Unpack the optimized network parameters.
-    #     for j in range(m):
-    #         self.w[j] = res.x[j*H:(j + 1)*H]
-    #     self.u = res.x[(m - 1)*H:m*H]
-    #     self.v = res.x[m*H:(m + 1)*H]
+        # Unpack the optimized network parameters.
+        for j in range(m):
+            self.w[j] = res.x[j*H:(j + 1)*H]
+        self.u = res.x[(m - 1)*H:m*H]
+        self.v = res.x[m*H:(m + 1)*H]
 
     # def __compute_error(self, p, x):
     #     """Compute the current error in the trained solution."""
@@ -1144,84 +1206,84 @@ class NNPDE2DIFF(SLFFNN):
     #     E = np.sum(G**2)
     #     return E
 
-    # def __compute_error_debug(self, p, x):
-    #     """Compute the current error in the trained solution."""
+    def __compute_error_debug(self, p, x):
+        """Compute the current error in the trained solution."""
 
-    #     # Unpack the network parameters.
-    #     n = len(x)
-    #     m = len(x[0])
-    #     H = int(len(p)/(m + 2))
-    #     w = np.zeros((m, H))
-    #     for j in range(m):
-    #         w[j] = p[j*H:(j + 1)*H]
-    #     u = p[(m- 1)*H:m*H]
-    #     v = p[m*H:(m + 1)*H]
+        # Unpack the network parameters.
+        n = len(x)
+        m = len(x[0])
+        H = int(len(p)/(m + 2))
+        w = np.zeros((m, H))
+        for j in range(m):
+            w[j] = p[j*H:(j + 1)*H]
+        u = p[(m- 1)*H:m*H]
+        v = p[m*H:(m + 1)*H]
 
 
-    #     # Weighted inputs and transfer functions and derivatives.
-    #     z = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             z[i, k] = u[k]
-    #             for j in range(m):
-    #                 z[i, k] += w[j, k]*x[i, j]
+        # Weighted inputs and transfer functions and derivatives.
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i,k] = u[k]
+                for j in range(m):
+                    z[i,k] += w[j,k]*x[i,j]
 
-    #     s = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             s[i, k] = sigma(z[i, k])
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i,k] = sigma(z[i,k])
 
-    #     s1 = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             s1[i, k] = dsigma_dz(z[i, k])
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i,k] = dsigma_dz(z[i,k])
 
-    #     s2 = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             s2[i, k] = d2sigma_dz2(z[i, k])
+        s2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s2[i,k] = d2sigma_dz2(z[i,k])
 
-    #     # Network output and derivatives.
-    #     N = np.zeros(n)
-    #     for i in range(n):
-    #         for k in range(H):
-    #             N[i] += s[i, k]*v[k]
+        # Network output and derivatives.
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += s[i,k]*v[k]
 
-    #     delN = np.zeros((n, m))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 delN[i, j] += v[k]*s1[i, k]*w[j, k]
+        delN = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    delN[i,j] += v[k]*s1[i,k]*w[j,k]
 
-    #     del2N = np.zeros((n, m))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 del2N[i, j] += v[k]*s2[i, k]*w[j, k]**2
+        del2N = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    del2N[i,j] += v[k]*s2[i,k]*w[j,k]**2
 
-    #     # Trial function and derivatives
-    #     Yt = np.zeros(n)
-    #     for i in range(n):
-    #         Yt[i] = self.tf.Ytf(x[i], N[i])
+        # Trial function and derivatives
+        Yt = np.zeros(n)
+        for i in range(n):
+            Yt[i] = self.tf.Ytf(x[i], N[i])
 
-    #     delYt = np.zeros((n, m))
-    #     for i in range(n):
-    #         delYt[i] = self.tf.delYtf(x[i], N[i], delN[i])
+        delYt = np.zeros((n, m))
+        for i in range(n):
+            delYt[i] = self.tf.delYtf(x[i], N[i], delN[i])
 
-    #     del2Yt = np.zeros((n, m))
-    #     for i in range(n):
-    #         del2Yt[i] = self.tf.del2Ytf(x[i], N[i], delN[i], del2N[i])
+        del2Yt = np.zeros((n, m))
+        for i in range(n):
+            del2Yt[i] = self.tf.del2Ytf(x[i], N[i], delN[i], del2N[i])
 
-    #     # Differential equation
-    #     G = np.zeros(n)
-    #     for i in range(n):
-    #         G[i] = self.eq.Gf(x[i], Yt[i], delYt[i], del2Yt[i])
+        # Differential equation
+        G = np.zeros(n)
+        for i in range(n):
+            G[i] = self.eq.Gf(x[i], Yt[i], delYt[i], del2Yt[i])
 
-    #     E2 = 0
-    #     for i in range(n):
-    #         E2 += G[i]**2
+        E2 = 0
+        for i in range(n):
+            E2 += G[i]**2
 
-    #     return E2
+        return E2
 
     # def __compute_error_gradient(self, p, x):
     #     """Compute the error gradient in the trained solution."""
@@ -1967,31 +2029,22 @@ class NNPDE2DIFF(SLFFNN):
     #     jac = np.hstack((dE_dw[0], dE_dw[1], dE_du, dE_dv))
     #     return E2, jac
 
-    # def __print_progress(self, xk):
-    #     """Callback to print progress message from optimizer"""
-    #     print('nit =', self.nit)
-    #     self.nit += 1
-    #     print('xk =', xk)
-    #     print('min,max =', np.amin(xk), np.amax(xk))
+    def __print_progress(self, xk):
+        """Callback to print progress message from optimizer"""
+        print('nit =', self.nit)
+        self.nit += 1
+        print('xk =', xk)
 
 
 if __name__ == '__main__':
 
     # Create training data.
 
-    # Test the 1-D diffusion problem.
-
     # Training point counts in each dimension (skip boundaries).
     nx = 3
     ny = 4
     nz = 5
     nt = 6
-
-    # Training point intervals
-    # dx = 1/nx
-    # dy = 1/ny
-    # dz = 1/nz
-    # dt = 1/nt
 
     # Training grid points (drop endpoints)
     xt = np.linspace(0, 1, nx + 2)[1:-1]
@@ -2087,7 +2140,8 @@ if __name__ == '__main__':
 
         training_opts['use_jacobian'] = False
         training_opts['use_hessian'] = False
-        for trainalg in ('delta_debug',):
+        # for trainalg in ('delta_debug', 'Nelder-Mead'):
+        for trainalg in ('Powell',):
             print('Training using %s algorithm.' % trainalg)
             np.random.seed(0)
             net.nit = 0
@@ -2148,9 +2202,6 @@ if __name__ == '__main__':
             Ya = np.zeros(n2)
             for ii in range(n2):
                 Ya[ii] = net.eq.Yaf(x_train2[ii])
-            print('The analytical solution is:')
-            print('Ya =', Ya.reshape(nt, ny, nx))
-            print()
 
         delYa = None
         if net.eq.delYaf is not None:
@@ -2168,10 +2219,9 @@ if __name__ == '__main__':
                 for jj in range(m):
                     del2Ya[ii,jj] = net.eq.del2Yaf[jj](x_train2[ii])
 
-        print("The following methods do not use a jacobian or a hessian.")
         training_opts['use_jacobian'] = False
         training_opts['use_hessian'] = False
-        for trainalg in ('delta_debug',):
+        for trainalg in ('Powell',):
             print('Training using %s algorithm.' % trainalg)
             np.random.seed(0)
             net.nit = 0
@@ -2232,9 +2282,6 @@ if __name__ == '__main__':
             Ya = np.zeros(n3)
             for ii in range(n3):
                 Ya[ii] = net.eq.Yaf(x_train3[ii])
-            print('The analytical solution is:')
-            print('Ya =', Ya.reshape(nt, nz, ny, nx))
-            print()
 
         delYa = None
         if net.eq.delYaf is not None:
@@ -2252,10 +2299,9 @@ if __name__ == '__main__':
                 for jj in range(m):
                     del2Ya[ii,jj] = net.eq.del2Yaf[jj](x_train3[ii])
 
-        print("The following methods do not use a jacobian or a hessian.")
         training_opts['use_jacobian'] = False
         training_opts['use_hessian'] = False
-        for trainalg in ('delta_debug',):
+        for trainalg in ('Powell',):
             print('Training using %s algorithm.' % trainalg)
             np.random.seed(0)
             net.nit = 0
