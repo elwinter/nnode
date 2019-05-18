@@ -38,7 +38,7 @@ from inspect import getsource
 from pde2 import PDE2
 
 
-class PDE2DIFF2D(PDE2):
+class PDE2DIFF3D(PDE2):
 
     def __init__(self, diffeqmod=None):
         self.name = None
@@ -62,11 +62,11 @@ class PDE2DIFF2D(PDE2):
             assert pdemod.bcf         # Array of initial condition functions
             assert pdemod.delbcf        # Array of initial condition gradient functions
             assert pdemod.del2bcf       # Array of initial condition Laplacians
-            assert len(pdemod.dG_ddelYf) == 3  # HACK
-            assert len(pdemod.dG_ddel2Yf) == 3  # HACK
-            assert len(pdemod.bcf) == 3        # HACK
-            assert len(pdemod.delbcf) == 3       # HACK
-            assert len(pdemod.del2bcf) == 3       # HACK
+            assert len(pdemod.dG_ddelYf) == 4  # HACK
+            assert len(pdemod.dG_ddel2Yf) == 4  # HACK
+            assert len(pdemod.bcf) == 4        # HACK
+            assert len(pdemod.delbcf) == 4       # HACK
+            assert len(pdemod.del2bcf) == 4       # HACK
             self.Gf = pdemod.Gf
             self.dG_dYf = pdemod.dG_dYf
             self.dG_ddelYf = pdemod.dG_ddelYf
@@ -83,7 +83,7 @@ class PDE2DIFF2D(PDE2):
 
     def __str__(self):
         s = ''
-        s += 'PDE2DIFF2D:\n'
+        s += 'PDE2DIFF3D:\n'
         s += "name = %s\n" % self.name
         s += "Gf = %s\n" % \
             (getsource(self.Gf).rstrip() if self.Gf else None)
@@ -117,5 +117,5 @@ class PDE2DIFF2D(PDE2):
 
 
 if __name__ == '__main__':
-    pde2diff2d = PDE2DIFF2D('diff2d_0')
-    print(pde2diff2d)
+    pde2diff3d = PDE2DIFF3D('diff3d_halfsine')
+    print(pde2diff3d)
