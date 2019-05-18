@@ -57,10 +57,11 @@ class Diff3DTrialFunction():
         delA = self.delAf(xyzt)
         P = self.Pf(xyzt)
         delP = self.delPf(xyzt)
-        delYt = [None, None, None]
+        delYt = [None, None, None, None]
         delYt[0] = delA[0] + P*delN[0] + delP[0]*N
         delYt[1] = delA[1] + P*delN[1] + delP[1]*N
         delYt[2] = delA[2] + P*delN[2] + delP[2]*N
+        delYt[3] = delA[3] + P*delN[3] + delP[3]*N
         return delYt
 
     def del2Ytf(self, xyzt, N, delN, del2N):
@@ -69,10 +70,11 @@ class Diff3DTrialFunction():
         P = self.Pf(xyzt)
         delP = self.delPf(xyzt)
         del2P = self.del2Pf(xyzt)
-        del2Yt = [None, None, None]
+        del2Yt = [None, None, None, None]
         del2Yt[0] = del2A[0] + P*del2N[0] + 2*delP[0]*delN[0] + del2P[0]*N
         del2Yt[1] = del2A[1] + P*del2N[1] + 2*delP[1]*delN[1] + del2P[1]*N
         del2Yt[2] = del2A[2] + P*del2N[2] + 2*delP[2]*delN[2] + del2P[2]*N
+        del2Yt[3] = del2A[3] + P*del2N[3] + 2*delP[3]*delN[3] + del2P[3]*N
         return del2Yt
 
     def Af(self, xyzt):
@@ -589,13 +591,13 @@ if __name__ == '__main__':
     delP_ref = [0.0084, 0.0, -0.0084, 0.0144]
     del2P_ref = [-0.084, -0.08064, -0.084, 0]
     Yt_ref = 0.101741
-    delYt_ref = [0.104629, 0.002016, -0.100597]
-    del2Yt_ref = [-0.999448, -0.999606, -1.00395]
+    delYt_ref = [0.104629, 0.002016, -0.100597, 0.0058032]
+    del2Yt_ref = [-0.999448, -0.999606, -1.00395, 0.0159552]
 
     # # Additional test variables.
     N_ref = 0.123
-    delN_ref = [0.1, 0.2, 0.3]
-    del2N_ref = [0.11, 0.22, 0.33]
+    delN_ref = [0.1, 0.2, 0.3, 0.4]
+    del2N_ref = [0.11, 0.22, 0.33, 0.44]
 
     # Test all functions near the center of the domain.
     xyzt = [0.4, 0.5, 0.6, 0.7]
