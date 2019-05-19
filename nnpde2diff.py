@@ -98,8 +98,7 @@ class NNPDE2DIFF(SLFFNN):
 
         if trainalg == 'delta_debug':
             self.__train_delta_debug(x, opts=my_opts)
-        # elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
-        elif trainalg in ('Nelder-Mead', 'Powell'):
+        elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS'):
             self.__train_minimize(x, trainalg, opts=my_opts, options=options)
         else:
             print('ERROR: Invalid training algorithm (%s)!' % trainalg)
@@ -2091,7 +2090,7 @@ if __name__ == '__main__':
     # Options for np.minimize()
     minimize_options = {}
     # Set for convergence report.
-    # minimize_options['disp'] = True
+    minimize_options['disp'] = True
 
     # Options for training
     training_opts = DEFAULT_OPTS
@@ -2106,45 +2105,44 @@ if __name__ == '__main__':
         print('Examining %s.' % pde)
 
         # Read the equation definition.
-        pde2diff1d = PDE2DIFF1D(pde)
+        eq = PDE2DIFF1D(pde)
 
         # Determine the dimensionality of the problem.
-        m = len(pde2diff1d.bcf)
+        m = len(eq.bcf)
         assert(m == 2)
 
-        # Create the neural network.
-        net = NNPDE2DIFF(pde2diff1d)
-
         Ya = None
-        if net.eq.Yaf is not None:
+        if eq.Yaf is not None:
             print("Computing analytical solution.")
             Ya = np.zeros(n1)
             for ii in range(n1):
-                Ya[ii] = net.eq.Yaf(x_train1[ii])
+                Ya[ii] = eq.Yaf(x_train1[ii])
 
         delYa = None
-        if net.eq.delYaf is not None:
+        if eq.delYaf is not None:
             print("Computing analytical gradient.")
             delYa = np.zeros((n1, m))
             for ii in range(n1):
                 for jj in range(m):
-                    delYa[ii,jj] = net.eq.delYaf[jj](x_train1[ii])
+                    delYa[ii,jj] = eq.delYaf[jj](x_train1[ii])
 
         del2Ya = None
-        if net.eq.del2Yaf is not None:
+        if eq.del2Yaf is not None:
             print("Computing analytical Laplacian.")
             del2Ya = np.zeros((n1, m))
             for ii in range(n1):
                 for jj in range(m):
-                    del2Ya[ii,jj] = net.eq.del2Yaf[jj](x_train1[ii])
+                    del2Ya[ii,jj] = eq.del2Yaf[jj](x_train1[ii])
 
         training_opts['use_jacobian'] = False
         training_opts['use_hessian'] = False
-        # for trainalg in ('delta_debug', 'Nelder-Mead'):
-        for trainalg in ('Powell',):
+        # for trainalg in ('delta_debug', 'Nelder-Mead', 'Powell', 'CG', 'BFGS'):
+        for trainalg in ('BFGS',):
             print('Training using %s algorithm.' % trainalg)
+
+            # Create and train the neural network.
+            net = NNPDE2DIFF(eq)
             np.random.seed(0)
-            net.nit = 0
             try:
                 net.train(x_train1, trainalg=trainalg, opts=training_opts,
                           options=minimize_options)
@@ -2178,162 +2176,162 @@ if __name__ == '__main__':
                 print('del2Yt - del2Ya =',
                       (del2Yt - del2Ya).reshape(m, nt, nx))
 
-    #----------------------------------------------------------------------
+    # #----------------------------------------------------------------------
 
-    # 2-D test cases
+    # # 2-D test cases
 
-    # Test each training algorithm on each equation.
-    for pde in ('diff2d_halfsine',):
-        print('Examining %s.' % pde)
+    # # Test each training algorithm on each equation.
+    # for pde in ('diff2d_halfsine',):
+    #     print('Examining %s.' % pde)
 
-        # Read the equation definition.
-        pde2diff2d = PDE2DIFF2D(pde)
+    #     # Read the equation definition.
+    #     pde2diff2d = PDE2DIFF2D(pde)
 
-        # Determine the dimensionality of the problem.
-        m = len(pde2diff2d.bcf)
-        assert(m == 3)
+    #     # Determine the dimensionality of the problem.
+    #     m = len(pde2diff2d.bcf)
+    #     assert(m == 3)
 
-        # Create the neural network.
-        net = NNPDE2DIFF(pde2diff2d)
+    #     # Create the neural network.
+    #     net = NNPDE2DIFF(pde2diff2d)
 
-        Ya = None
-        if net.eq.Yaf is not None:
-            print("Computing analytical solution.")
-            Ya = np.zeros(n2)
-            for ii in range(n2):
-                Ya[ii] = net.eq.Yaf(x_train2[ii])
+    #     Ya = None
+    #     if net.eq.Yaf is not None:
+    #         print("Computing analytical solution.")
+    #         Ya = np.zeros(n2)
+    #         for ii in range(n2):
+    #             Ya[ii] = net.eq.Yaf(x_train2[ii])
 
-        delYa = None
-        if net.eq.delYaf is not None:
-            print("Computing analytical gradient.")
-            delYa = np.zeros((n2, m))
-            for ii in range(n2):
-                for jj in range(m):
-                    delYa[ii,jj] = net.eq.delYaf[jj](x_train2[ii])
+    #     delYa = None
+    #     if net.eq.delYaf is not None:
+    #         print("Computing analytical gradient.")
+    #         delYa = np.zeros((n2, m))
+    #         for ii in range(n2):
+    #             for jj in range(m):
+    #                 delYa[ii,jj] = net.eq.delYaf[jj](x_train2[ii])
 
-        del2Ya = None
-        if net.eq.del2Yaf is not None:
-            print("Computing analytical Laplacian.")
-            del2Ya = np.zeros((n2, m))
-            for ii in range(n2):
-                for jj in range(m):
-                    del2Ya[ii,jj] = net.eq.del2Yaf[jj](x_train2[ii])
+    #     del2Ya = None
+    #     if net.eq.del2Yaf is not None:
+    #         print("Computing analytical Laplacian.")
+    #         del2Ya = np.zeros((n2, m))
+    #         for ii in range(n2):
+    #             for jj in range(m):
+    #                 del2Ya[ii,jj] = net.eq.del2Yaf[jj](x_train2[ii])
 
-        training_opts['use_jacobian'] = False
-        training_opts['use_hessian'] = False
-        for trainalg in ('Powell',):
-            print('Training using %s algorithm.' % trainalg)
-            np.random.seed(0)
-            net.nit = 0
-            try:
-                net.train(x_train2, trainalg=trainalg, opts=training_opts,
-                          options=minimize_options)
-            except (OverflowError, ValueError) as e:
-                print('Error using %s algorithm on %s!' % (trainalg, pde))
-                print(e)
-                print()
-                continue
-            Yt = net.run_debug(x_train2)
-            print('The trained solution is:')
-            print('Yt =', Yt.reshape(nt, ny, nx))
-            print()
-            if Ya is not None:
-                print('The error in the trained solution is:')
-                print('Yt - Ya =', (Yt - Ya).reshape(nt, ny, nx))
-                print()
-            delYt = net.run_gradient_debug(x_train2)
-            print('The trained gradient is:')
-            print('delYt =', delYt.reshape(m, nt, ny, nx))
-            print()
-            if delYa is not None:
-                print('The error in the trained gradient is:')
-                print('delYt - delYa =', (delYt - delYa).reshape(m, nt, ny, nx))
-                print()
-            del2Yt = net.run_laplacian_debug(x_train2)
-            print('The trained Laplacian is:')
-            print('del2Yt =', del2Yt.reshape(m, nt, ny, nx))
-            print()
-            if del2Ya is not None:
-                print('The error in the trained Laplacian is:')
-                print('del2Yt - del2Ya =',
-                      (del2Yt - del2Ya).reshape(m, nt, ny, nx))
+    #     training_opts['use_jacobian'] = False
+    #     training_opts['use_hessian'] = False
+    #     for trainalg in ('Powell',):
+    #         print('Training using %s algorithm.' % trainalg)
+    #         np.random.seed(0)
+    #         net.nit = 0
+    #         try:
+    #             net.train(x_train2, trainalg=trainalg, opts=training_opts,
+    #                       options=minimize_options)
+    #         except (OverflowError, ValueError) as e:
+    #             print('Error using %s algorithm on %s!' % (trainalg, pde))
+    #             print(e)
+    #             print()
+    #             continue
+    #         Yt = net.run_debug(x_train2)
+    #         print('The trained solution is:')
+    #         print('Yt =', Yt.reshape(nt, ny, nx))
+    #         print()
+    #         if Ya is not None:
+    #             print('The error in the trained solution is:')
+    #             print('Yt - Ya =', (Yt - Ya).reshape(nt, ny, nx))
+    #             print()
+    #         delYt = net.run_gradient_debug(x_train2)
+    #         print('The trained gradient is:')
+    #         print('delYt =', delYt.reshape(m, nt, ny, nx))
+    #         print()
+    #         if delYa is not None:
+    #             print('The error in the trained gradient is:')
+    #             print('delYt - delYa =', (delYt - delYa).reshape(m, nt, ny, nx))
+    #             print()
+    #         del2Yt = net.run_laplacian_debug(x_train2)
+    #         print('The trained Laplacian is:')
+    #         print('del2Yt =', del2Yt.reshape(m, nt, ny, nx))
+    #         print()
+    #         if del2Ya is not None:
+    #             print('The error in the trained Laplacian is:')
+    #             print('del2Yt - del2Ya =',
+    #                   (del2Yt - del2Ya).reshape(m, nt, ny, nx))
 
-    #----------------------------------------------------------------------
+    # #----------------------------------------------------------------------
 
-    # 3-D test cases
+    # # 3-D test cases
 
-    # Test each training algorithm on each equation.
-    for pde in ('diff3d_halfsine',):
-        print('Examining %s.' % pde)
+    # # Test each training algorithm on each equation.
+    # for pde in ('diff3d_halfsine',):
+    #     print('Examining %s.' % pde)
 
-        # Read the equation definition.
-        pde2diff3d = PDE2DIFF3D(pde)
+    #     # Read the equation definition.
+    #     pde2diff3d = PDE2DIFF3D(pde)
 
-        # Determine the dimensionality of the problem.
-        m = len(pde2diff3d.bcf)
-        assert(m == 4)
+    #     # Determine the dimensionality of the problem.
+    #     m = len(pde2diff3d.bcf)
+    #     assert(m == 4)
 
-        # Create the neural network.
-        net = NNPDE2DIFF(pde2diff3d)
+    #     # Create the neural network.
+    #     net = NNPDE2DIFF(pde2diff3d)
 
-        Ya = None
-        if net.eq.Yaf is not None:
-            print("Computing analytical solution.")
-            Ya = np.zeros(n3)
-            for ii in range(n3):
-                Ya[ii] = net.eq.Yaf(x_train3[ii])
+    #     Ya = None
+    #     if net.eq.Yaf is not None:
+    #         print("Computing analytical solution.")
+    #         Ya = np.zeros(n3)
+    #         for ii in range(n3):
+    #             Ya[ii] = net.eq.Yaf(x_train3[ii])
 
-        delYa = None
-        if net.eq.delYaf is not None:
-            print("Computing analytical gradient.")
-            delYa = np.zeros((n3, m))
-            for ii in range(n3):
-                for jj in range(m):
-                    delYa[ii,jj] = net.eq.delYaf[jj](x_train3[ii])
+    #     delYa = None
+    #     if net.eq.delYaf is not None:
+    #         print("Computing analytical gradient.")
+    #         delYa = np.zeros((n3, m))
+    #         for ii in range(n3):
+    #             for jj in range(m):
+    #                 delYa[ii,jj] = net.eq.delYaf[jj](x_train3[ii])
 
-        del2Ya = None
-        if net.eq.del2Yaf is not None:
-            print("Computing analytical Laplacian.")
-            del2Ya = np.zeros((n3, m))
-            for ii in range(n3):
-                for jj in range(m):
-                    del2Ya[ii,jj] = net.eq.del2Yaf[jj](x_train3[ii])
+    #     del2Ya = None
+    #     if net.eq.del2Yaf is not None:
+    #         print("Computing analytical Laplacian.")
+    #         del2Ya = np.zeros((n3, m))
+    #         for ii in range(n3):
+    #             for jj in range(m):
+    #                 del2Ya[ii,jj] = net.eq.del2Yaf[jj](x_train3[ii])
 
-        training_opts['use_jacobian'] = False
-        training_opts['use_hessian'] = False
-        for trainalg in ('Powell',):
-            print('Training using %s algorithm.' % trainalg)
-            np.random.seed(0)
-            net.nit = 0
-            try:
-                net.train(x_train3, trainalg=trainalg, opts=training_opts,
-                        options=minimize_options)
-            except (OverflowError, ValueError) as e:
-                print('Error using %s algorithm on %s!' % (trainalg, pde))
-                print(e)
-                print()
-                continue
-            Yt = net.run_debug(x_train3)
-            print('The trained solution is:')
-            print('Yt =', Yt.reshape(nt, nz, ny, nx))
-            print()
-            if Ya is not None:
-                print('The error in the trained solution is:')
-                print('Yt - Ya =', (Yt - Ya).reshape(nt, nz, ny, nx))
-                print()
-            delYt = net.run_gradient_debug(x_train3)
-            print('The trained gradient is:')
-            print('delYt =', delYt.reshape(m, nt, nz, ny, nx))
-            print()
-            if delYa is not None:
-                print('The error in the trained gradient is:')
-                print('delYt - delYa =', (delYt - delYa).reshape(m, nt, nz, ny, nx))
-                print()
-            del2Yt = net.run_laplacian_debug(x_train3)
-            print('The trained Laplacian is:')
-            print('del2Yt =', del2Yt.reshape(m, nt, nz, ny, nx))
-            print()
-            if del2Ya is not None:
-                print('The error in the trained Laplacian is:')
-                print('del2Yt - del2Ya =',
-                      (del2Yt - del2Ya).reshape(m, nt, nz, ny, nx))
+    #     training_opts['use_jacobian'] = False
+    #     training_opts['use_hessian'] = False
+    #     for trainalg in ('Powell',):
+    #         print('Training using %s algorithm.' % trainalg)
+    #         np.random.seed(0)
+    #         net.nit = 0
+    #         try:
+    #             net.train(x_train3, trainalg=trainalg, opts=training_opts,
+    #                     options=minimize_options)
+    #         except (OverflowError, ValueError) as e:
+    #             print('Error using %s algorithm on %s!' % (trainalg, pde))
+    #             print(e)
+    #             print()
+    #             continue
+    #         Yt = net.run_debug(x_train3)
+    #         print('The trained solution is:')
+    #         print('Yt =', Yt.reshape(nt, nz, ny, nx))
+    #         print()
+    #         if Ya is not None:
+    #             print('The error in the trained solution is:')
+    #             print('Yt - Ya =', (Yt - Ya).reshape(nt, nz, ny, nx))
+    #             print()
+    #         delYt = net.run_gradient_debug(x_train3)
+    #         print('The trained gradient is:')
+    #         print('delYt =', delYt.reshape(m, nt, nz, ny, nx))
+    #         print()
+    #         if delYa is not None:
+    #             print('The error in the trained gradient is:')
+    #             print('delYt - delYa =', (delYt - delYa).reshape(m, nt, nz, ny, nx))
+    #             print()
+    #         del2Yt = net.run_laplacian_debug(x_train3)
+    #         print('The trained Laplacian is:')
+    #         print('del2Yt =', del2Yt.reshape(m, nt, nz, ny, nx))
+    #         print()
+    #         if del2Ya is not None:
+    #             print('The error in the trained Laplacian is:')
+    #             print('del2Yt - del2Ya =',
+    #                   (del2Yt - del2Ya).reshape(m, nt, nz, ny, nx))
