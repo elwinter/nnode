@@ -775,7 +775,7 @@ class NNPDE2DIFF(SLFFNN):
             # Compute the new values of the network parameters.
             for j in range(m):
                 for k in range(H):
-                    w[j, k] -= eta*dE_dw[j,k]
+                    w[j,k] -= eta*dE_dw[j,k]
 
             for k in range(H):
                 u[k] -= eta*dE_du[k]
@@ -788,7 +788,7 @@ class NNPDE2DIFF(SLFFNN):
             z = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
-                    z[i, k] = u[k]
+                    z[i,k] = u[k]
                     for j in range(m):
                         z[i,k] += w[j,k]*x[i,j]
 
@@ -854,7 +854,7 @@ class NNPDE2DIFF(SLFFNN):
                         for k in range(H):
                             d2N_dwdx[i,j,jj,k] = \
                                 v[k]*(s1[i,k]*kdelta(j, jj) + \
-                                    s2[i,k]*w[jj,k]*x[i,j])
+                                      s2[i,k]*w[jj,k]*x[i,j])
 
             d2N_dudx = np.zeros((n, m, H))
             for i in range(n):
@@ -937,23 +937,20 @@ class NNPDE2DIFF(SLFFNN):
                 for j in range(m):
                     for jj in range(m):
                         for k in range(H):
-                            d2Yt_dwdx[i,j,jj,k] = \
-                                P[i]*d2N_dwdx[i,j,jj,k] + \
-                                    delP[i,jj]*dN_dw[i,j,k]
+                            d2Yt_dwdx[i,j,jj,k] = P[i]*d2N_dwdx[i,j,jj,k] + \
+                                delP[i,jj]*dN_dw[i,j,k]
 
             d2Yt_dudx = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
-                        d2Yt_dudx[i,j,k] = \
-                            P[i]*d2N_dudx[i,j,k] + delP[i,j]*dN_du[i,k]
+                        d2Yt_dudx[i,j,k] = P[i]*d2N_dudx[i,j,k] + delP[i,j]*dN_du[i,k]
 
             d2Yt_dvdx = np.zeros((n, m, H))
             for i in range(n):
                 for j in range(m):
                     for k in range(H):
-                        d2Yt_dvdx[i,j,k] = \
-                            P[i]*d2N_dvdx[i,j,k] + delP[i,j]*dN_dv[i,k]
+                        d2Yt_dvdx[i,j,k] = P[i]*d2N_dvdx[i,j,k] + delP[i,j]*dN_dv[i,k]
 
             d3Yt_dwdx2 = np.zeros((n, m, m, H))
             for i in range(n):
@@ -1025,7 +1022,7 @@ class NNPDE2DIFF(SLFFNN):
                     for j in range(m):
                         dG_du[i,k] += \
                             dG_ddelYt[i,j]*d2Yt_dudx[i,j,k] \
-                            + dG_ddel2Yt[i,j] * d3Yt_dudx2[i,j,k]
+                            + dG_ddel2Yt[i,j]*d3Yt_dudx2[i,j,k]
 
             dG_dv = np.zeros((n, H))
             for i in range(n):
@@ -1103,10 +1100,10 @@ class NNPDE2DIFF(SLFFNN):
             # hess = self.__compute_error_hessian_debug
             # jac = self.__compute_error_gradient_debug
         elif my_opts['use_jacobian']:
-            pass
-            # jac = self.__compute_error_gradient_debug
-            # res = minimize(self.__compute_error_debug, p, method=trainalg, args=(x),
-            #                jac=jac, options=options, callback=callback)
+            jac = True
+            res = minimize(self.__compute_error_and_jacobian_debug, p,
+                           method=trainalg, args=(x),
+                           jac=jac, options=options, callback=callback)
         else:
             res = minimize(self.__compute_error_debug, p, method=trainalg,
                            args=(x), jac=None, hess=None,
@@ -1217,7 +1214,6 @@ class NNPDE2DIFF(SLFFNN):
             w[j] = p[j*H:(j + 1)*H]
         u = p[(m- 1)*H:m*H]
         v = p[m*H:(m + 1)*H]
-
 
         # Weighted inputs and transfer functions and derivatives.
         z = np.zeros((n, H))
@@ -1517,281 +1513,284 @@ class NNPDE2DIFF(SLFFNN):
     #     jac = np.hstack((dE_dw[0], dE_dw[1], dE_du, dE_dv))
     #     return jac
 
-    # def __compute_error_gradient_debug(self, p, x):
-    #     """Compute the error gradient in the trained solution."""
+    def __compute_error_jacobian_debug(self, p, x):
+        """Compute the error Jacobian in the trained solution."""
 
-    #     # Unpack the network parameters.
-    #     n = len(x)
-    #     m = len(x[0])
-    #     H = int(len(p)/(m + 2))
-    #     w = np.zeros((m, H))
-    #     for j in range(m):
-    #         w[j] = p[j*H:(j + 1)*H]
-    #     u = p[(m- 1)*H:m*H]
-    #     v = p[m*H:(m + 1)*H]
+        # Unpack the network parameters.
+        n = len(x)
+        m = len(x[0])
+        H = int(len(p)/(m + 2))
+        w = np.zeros((m, H))
+        for j in range(m):
+            w[j] = p[j*H:(j + 1)*H]
+        u = p[(m- 1)*H:m*H]
+        v = p[m*H:(m + 1)*H]
 
-    #     z = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             z[i, k] = u[k]
-    #             for j in range(m):
-    #                 z[i, k] += w[j, k]*x[i, j]
+        # Weighted inputs and transfer functions and derivatives.
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i,k] = u[k]
+                for j in range(m):
+                    z[i,k] += w[j,k]*x[i,j]
 
-    #     s = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             s[i, k] = sigma(z[i, k])
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i,k] = sigma(z[i,k])
 
-    #     s1 = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             s1[i, k] = dsigma_dz(z[i, k])
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i,k] = dsigma_dz(z[i,k])
 
-    #     s2 = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             s2[i, k] = d2sigma_dz2(z[i, k])
+        s2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s2[i,k] = d2sigma_dz2(z[i,k])
 
-    #     s3 = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             s3[i, k] = d3sigma_dz3(z[i, k])
+        s3 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s3[i,k] = d3sigma_dz3(z[i,k])
 
-    #     N = np.zeros(n)
-    #     for i in range(n):
-    #         for k in range(H):
-    #             N[i] += s[i, k]*v[k]
+        # Network output and derivatives.
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += s[i,k]*v[k]
 
-    #     delN = np.zeros((n, m))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 delN[i, j] += v[k]*s1[i, k]*w[j, k]
+        delN = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    delN[i,j] += v[k]*s1[i,k]*w[j,k]
 
-    #     del2N = np.zeros((n, m))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 del2N[i, j] += v[k]*s2[i, k]*w[j, k]**2
+        del2N = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    del2N[i,j] += v[k]*s2[i,k]*w[j,k]**2
 
-    #     dN_dw = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 dN_dw[i, j, k] = v[k]*s1[i, k]*x[i, j]
+        dN_dw = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
 
-    #     dN_du = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             dN_du[i, k] = v[k]*s1[i, k]
+        dN_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_du[i,k] = v[k]*s1[i,k]
 
-    #     dN_dv = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             dN_dv[i, k] = s[i, k]
+        dN_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_dv[i,k] = s[i,k]
 
-    #     d2N_dwdx = np.zeros((n, m, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for jj in range(m):
-    #                 for k in range(H):
-    #                     d2N_dwdx[i, j, jj, k] = \
-    #                         v[k]*(s1[i, k]*kdelta(j, jj) + \
-    #                             s2[i, k]*w[jj, k]*x[i, j])
+        d2N_dwdx = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d2N_dwdx[i,j,jj,k] = \
+                            v[k]*(s1[i,k]*kdelta(j, jj) + \
+                                s2[i,k]*w[jj,k]*x[i,j])
 
-    #     d2N_dudx = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d2N_dudx[i, j, k] = v[k]*s2[i, k]*w[j, k]
+        d2N_dudx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
 
-    #     d2N_dvdx = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d2N_dvdx[i, j, k] = s1[i, k]*w[j, k]
+        d2N_dvdx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
 
-    #     d3N_dwdx2 = np.zeros((n, m, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for jj in range(m):
-    #                 for k in range(H):
-    #                     d3N_dwdx2[i, j, jj, k] = \
-    #                         v[k]*(2*s2[i, k]*w[jj, k]*kdelta(j, jj) + \
-    #                             s3[i, k]*w[j, k]**2*x[i, j])
+        d3N_dwdx2 = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d3N_dwdx2[i,j,jj,k] = \
+                            v[k]*(2*s2[i,k]*w[jj,k]*kdelta(j, jj) + \
+                                s3[i,k]*w[j,k]**2*x[i,j])
 
-    #     d3N_dudx2 = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d3N_dudx2[i, j, k] = v[k]*s3[i, k]*w[j, k]**2
+        d3N_dudx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3N_dudx2[i,j,k] = v[k]*s3[i,k]*w[j,k]**2
 
-    #     d3N_dvdx2 = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d3N_dvdx2[i, j, k] = s2[i, k]*w[j, k]**2
+        d3N_dvdx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3N_dvdx2[i,j,k] = s2[i,k]*w[j,k]**2
 
-    #     P = np.zeros(n)
-    #     for i in range(n):
-    #         P[i] = self.tf.Pf(x[i])
+        # Trial function and derivatives
+        P = np.zeros(n)
+        for i in range(n):
+            P[i] = self.tf.Pf(x[i])
 
-    #     delP = np.zeros((n, m))
-    #     for i in range(n):
-    #         delP[i] = self.tf.delPf(x[i])
+        delP = np.zeros((n, m))
+        for i in range(n):
+            delP[i] = self.tf.delPf(x[i])
 
-    #     del2P = np.zeros((n, m))
-    #     for i in range(n):
-    #         del2P[i] = self.tf.del2Pf(x[i])
+        del2P = np.zeros((n, m))
+        for i in range(n):
+            del2P[i] = self.tf.del2Pf(x[i])
 
-    #     Yt = np.zeros(n)
-    #     for i in range(n):
-    #         Yt[i] = self.tf.Ytf(x[i], N[i])
+        Yt = np.zeros(n)
+        for i in range(n):
+            Yt[i] = self.tf.Ytf(x[i], N[i])
 
-    #     delYt = np.zeros((n, m))
-    #     for i in range(n):
-    #         delYt[i] = self.tf.delYtf(x[i], N[i], delN[i])
+        delYt = np.zeros((n, m))
+        for i in range(n):
+            delYt[i] = self.tf.delYtf(x[i], N[i], delN[i])
 
-    #     del2Yt = np.zeros((n, m))
-    #     for i in range(n):
-    #         del2Yt[i] = self.tf.del2Ytf(x[i], N[i], delN[i], del2N[i])
+        del2Yt = np.zeros((n, m))
+        for i in range(n):
+            del2Yt[i] = self.tf.del2Ytf(x[i], N[i], delN[i], del2N[i])
 
-    #     dYt_dw = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 dYt_dw[i, j, k] = P[i]*dN_dw[i, j, k]
+        dYt_dw = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    dYt_dw[i,j,k] = P[i]*dN_dw[i,j,k]
 
-    #     dYt_du = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             dYt_du[i, k] = P[i]*dN_du[i, k]
+        dYt_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dYt_du[i,k] = P[i]*dN_du[i,k]
 
-    #     dYt_dv = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             dYt_dv[i, k] = P[i]*dN_dv[i, k]
+        dYt_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dYt_dv[i,k] = P[i]*dN_dv[i,k]
 
-    #     d2Yt_dwdx = np.zeros((n, m, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for jj in range(m):
-    #                 for k in range(H):
-    #                     d2Yt_dwdx[i, j, jj, k] = \
-    #                         P[i]*d2N_dwdx[i, j, jj, k] + \
-    #                             delP[i, jj]*dN_dw[i, j, k]
+        d2Yt_dwdx = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d2Yt_dwdx[i,j,jj,k] = \
+                            P[i]*d2N_dwdx[i,j,jj,k] + \
+                                delP[i, jj]*dN_dw[i,j,k]
 
-    #     d2Yt_dudx = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d2Yt_dudx[i, j, k] = \
-    #                     P[i]*d2N_dudx[i, j, k] + delP[i, j]*dN_du[i, k]
+        d2Yt_dudx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2Yt_dudx[i,j,k] = \
+                        P[i]*d2N_dudx[i,j,k] + delP[i,j]*dN_du[i,k]
 
-    #     d2Yt_dvdx = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d2Yt_dvdx[i, j, k] = \
-    #                     P[i]*d2N_dvdx[i, j, k] + delP[i, j]*dN_dv[i, k]
+        d2Yt_dvdx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2Yt_dvdx[i,j,k] = \
+                        P[i]*d2N_dvdx[i,j,k] + delP[i,j]*dN_dv[i,k]
 
-    #     d3Yt_dwdx2 = np.zeros((n, m, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for jj in range(m):
-    #                 for k in range(H):
-    #                     d3Yt_dwdx2[i, j, jj, k] = \
-    #                         P[i]*d3N_dwdx2[i, j, jj, k] + \
-    #                         2*delP[i, jj]*d2N_dwdx[i, j, jj, k] + \
-    #                         del2P[i, jj]*dN_dw[i, j, k]
+        d3Yt_dwdx2 = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d3Yt_dwdx2[i,j,jj,k] = \
+                            P[i]*d3N_dwdx2[i,j,jj,k] + \
+                            2*delP[i,jj]*d2N_dwdx[i,j,jj,k] + \
+                            del2P[i,jj]*dN_dw[i,j,k]
 
-    #     d3Yt_dudx2 = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d3Yt_dudx2[i, j, k] = \
-    #                     P[i]*d3N_dudx2[i, j, k] + \
-    #                     2*delP[i, j]*d2N_dudx[i, j, k] + \
-    #                     del2P[i, j]*dN_du[i, k]
+        d3Yt_dudx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3Yt_dudx2[i,j,k] = \
+                        P[i]*d3N_dudx2[i,j,k] + \
+                        2*delP[i,j]*d2N_dudx[i,j,k] + \
+                        del2P[i,j]*dN_du[i,k]
 
-    #     d3Yt_dvdx2 = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 d3Yt_dvdx2[i, j, k] = \
-    #                     P[i]*d3N_dvdx2[i, j, k] + \
-    #                     2*delP[i, j]*d2N_dvdx[i, j, k] + \
-    #                     del2P[i, j]*dN_dv[i, k]
+        d3Yt_dvdx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3Yt_dvdx2[i,j,k] = \
+                        P[i]*d3N_dvdx2[i,j,k] + \
+                        2*delP[i,j]*d2N_dvdx[i,j,k] + \
+                        del2P[i,j]*dN_dv[i,k]
 
-    #     G = np.zeros(n)
-    #     for i in range(n):
-    #         G[i] = self.eq.Gf(x[i], Yt[i], delYt[i], del2Yt[i])
+        # Compute the value of the original differential equation
+        # for each training point, and its derivatives.
+        G = np.zeros(n)
+        for i in range(n):
+            G[i] = self.eq.Gf(x[i], Yt[i], delYt[i], del2Yt[i])
 
-    #     dG_dYt = np.zeros(n)
-    #     for i in range(n):
-    #         dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], delYt[i],
-    #                                     del2Yt[i])
+        dG_dYt = np.zeros(n)
+        for i in range(n):
+            dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], delYt[i], del2Yt[i])
 
-    #     dG_ddelYt = np.zeros((n, m))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             dG_ddelYt[i, j] = \
-    #                 self.eq.dG_ddelYf[j](x[i], Yt[i], delYt[i],
-    #                                         del2Yt[i])
+        dG_ddelYt = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                dG_ddelYt[i,j] = \
+                    self.eq.dG_ddelYf[j](x[i], Yt[i], delYt[i], del2Yt[i])
 
-    #     dG_ddel2Yt = np.zeros((n, m))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             dG_ddel2Yt[i, j] = \
-    #                 self.eq.dG_ddel2Yf[j](x[i], Yt[i], delYt[i],
-    #                                         del2Yt[i])
+        dG_ddel2Yt = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                dG_ddel2Yt[i,j] = \
+                    self.eq.dG_ddel2Yf[j](x[i], Yt[i], delYt[i], del2Yt[i])
 
-    #     dG_dw = np.zeros((n, m, H))
-    #     for i in range(n):
-    #         for j in range(m):
-    #             for k in range(H):
-    #                 dG_dw[i, j, k] = dG_dYt[i]*dYt_dw[i, j, k]
-    #                 for jj in range(m):
-    #                     dG_dw[i, j, k] += \
-    #                         dG_ddelYt[i, jj]*d2Yt_dwdx[i, j, jj, k] + \
-    #                             dG_ddel2Yt[i, jj]*d3Yt_dwdx2[i, j, jj, k]
+        dG_dw = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    dG_dw[i,j,k] = dG_dYt[i]*dYt_dw[i,j,k]
+                    for jj in range(m):
+                        dG_dw[i,j,k] += \
+                            dG_ddelYt[i,jj]*d2Yt_dwdx[i,j,jj,k] + \
+                                dG_ddel2Yt[i,jj]*d3Yt_dwdx2[i,j,jj,k]
 
-    #     dG_du = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             dG_du[i, k] = dG_dYt[i]*dYt_du[i, k]
-    #             for j in range(m):
-    #                 dG_du[i, k] += \
-    #                     dG_ddelYt[i, j]*d2Yt_dudx[i, j, k] \
-    #                     + dG_ddel2Yt[i, j] * d3Yt_dudx2[i, j, k]
+        dG_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
+                for j in range(m):
+                    dG_du[i,k] += \
+                        dG_ddelYt[i,j]*d2Yt_dudx[i,j,k] \
+                        + dG_ddel2Yt[i,j]*d3Yt_dudx2[i,j,k]
 
-    #     dG_dv = np.zeros((n, H))
-    #     for i in range(n):
-    #         for k in range(H):
-    #             dG_dv[i, k] = dG_dYt[i]*dYt_dv[i, k]
-    #             for j in range(m):
-    #                 dG_dv[i, k] += \
-    #                     dG_ddelYt[i, j]*d2Yt_dvdx[i, j, k] \
-    #                     + dG_ddel2Yt[i, j] * d3Yt_dvdx2[i, j, k]
+        dG_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
+                for j in range(m):
+                    dG_dv[i,k] += \
+                        dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k] \
+                        + dG_ddel2Yt[i,j] * d3Yt_dvdx2[i,j,k]
 
-    #     dE_dw = np.zeros((m, H))
-    #     for j in range(m):
-    #         for k in range(H):
-    #             for i in range(n):
-    #                 dE_dw[j, k] += 2*G[i]*dG_dw[i, j, k]
+        # Compute the error function gradient.
+        dE_dw = np.zeros((m, H))
+        for j in range(m):
+            for k in range(H):
+                for i in range(n):
+                    dE_dw[j,k] += 2*G[i]*dG_dw[i,j,k]
 
-    #     dE_du = np.zeros(H)
-    #     for k in range(H):
-    #         for i in range(n):
-    #             dE_du[k] += 2*G[i]*dG_du[i, k]
+        dE_du = np.zeros(H)
+        for k in range(H):
+            for i in range(n):
+                dE_du[k] += 2*G[i]*dG_du[i,k]
 
-    #     dE_dv = np.zeros(H)
-    #     for k in range(H):
-    #         for i in range(n):
-    #             dE_dv[k] += 2*G[i]*dG_dv[i, k]
+        dE_dv = np.zeros(H)
+        for k in range(H):
+            for i in range(n):
+                dE_dv[k] += 2*G[i]*dG_dv[i,k]
 
-    #     jac = np.hstack((dE_dw.flatten(), dE_du, dE_dv))
-    #     return jac
+        jac = np.hstack((dE_dw.flatten(), dE_du, dE_dv))
+        return jac
 
     # def __compute_error_and_jacobian(self, p, x):
     #     """Compute the squared error and its gradient (Jacobian)."""
@@ -2028,6 +2027,289 @@ class NNPDE2DIFF(SLFFNN):
     #     jac = np.hstack((dE_dw[0], dE_dw[1], dE_du, dE_dv))
     #     return E2, jac
 
+    def __compute_error_and_jacobian_debug(self, p, x):
+        """Compute the error and Jacobian in the trained solution (debug version)."""
+
+        # Unpack the network parameters.
+        n = len(x)
+        m = len(x[0])
+        H = int(len(p)/(m + 2))
+        w = np.zeros((m, H))
+        for j in range(m):
+            w[j] = p[j*H:(j + 1)*H]
+        u = p[(m- 1)*H:m*H]
+        v = p[m*H:(m + 1)*H]
+
+        # Weighted inputs and transfer functions and derivatives.
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i,k] = u[k]
+                for j in range(m):
+                    z[i,k] += w[j,k]*x[i,j]
+
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i,k] = sigma(z[i,k])
+
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i,k] = dsigma_dz(z[i,k])
+
+        s2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s2[i,k] = d2sigma_dz2(z[i,k])
+
+        s3 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s3[i,k] = d3sigma_dz3(z[i,k])
+
+        # Network output and derivatives.
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += s[i,k]*v[k]
+
+        delN = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    delN[i,j] += v[k]*s1[i,k]*w[j,k]
+
+        del2N = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    del2N[i,j] += v[k]*s2[i,k]*w[j,k]**2
+
+        dN_dw = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
+
+        dN_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_du[i,k] = v[k]*s1[i,k]
+
+        dN_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_dv[i,k] = s[i,k]
+
+        d2N_dwdx = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d2N_dwdx[i,j,jj,k] = \
+                            v[k]*(s1[i,k]*kdelta(j, jj) + \
+                                s2[i,k]*w[jj,k]*x[i,j])
+
+        d2N_dudx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
+
+        d2N_dvdx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
+
+        d3N_dwdx2 = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d3N_dwdx2[i,j,jj,k] = \
+                            v[k]*(2*s2[i,k]*w[jj,k]*kdelta(j, jj) + \
+                                s3[i,k]*w[j,k]**2*x[i,j])
+
+        d3N_dudx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3N_dudx2[i,j,k] = v[k]*s3[i,k]*w[j,k]**2
+
+        d3N_dvdx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3N_dvdx2[i,j,k] = s2[i,k]*w[j,k]**2
+
+        # Trial function and derivatives
+        P = np.zeros(n)
+        for i in range(n):
+            P[i] = self.tf.Pf(x[i])
+
+        delP = np.zeros((n, m))
+        for i in range(n):
+            delP[i] = self.tf.delPf(x[i])
+
+        del2P = np.zeros((n, m))
+        for i in range(n):
+            del2P[i] = self.tf.del2Pf(x[i])
+
+        Yt = np.zeros(n)
+        for i in range(n):
+            Yt[i] = self.tf.Ytf(x[i], N[i])
+
+        delYt = np.zeros((n, m))
+        for i in range(n):
+            delYt[i] = self.tf.delYtf(x[i], N[i], delN[i])
+
+        del2Yt = np.zeros((n, m))
+        for i in range(n):
+            del2Yt[i] = self.tf.del2Ytf(x[i], N[i], delN[i], del2N[i])
+
+        dYt_dw = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    dYt_dw[i,j,k] = P[i]*dN_dw[i,j,k]
+
+        dYt_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dYt_du[i,k] = P[i]*dN_du[i,k]
+
+        dYt_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dYt_dv[i,k] = P[i]*dN_dv[i,k]
+
+        d2Yt_dwdx = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d2Yt_dwdx[i,j,jj,k] = \
+                            P[i]*d2N_dwdx[i,j,jj,k] + \
+                                delP[i, jj]*dN_dw[i,j,k]
+
+        d2Yt_dudx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2Yt_dudx[i,j,k] = \
+                        P[i]*d2N_dudx[i,j,k] + delP[i,j]*dN_du[i,k]
+
+        d2Yt_dvdx = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d2Yt_dvdx[i,j,k] = \
+                        P[i]*d2N_dvdx[i,j,k] + delP[i,j]*dN_dv[i,k]
+
+        d3Yt_dwdx2 = np.zeros((n, m, m, H))
+        for i in range(n):
+            for j in range(m):
+                for jj in range(m):
+                    for k in range(H):
+                        d3Yt_dwdx2[i,j,jj,k] = \
+                            P[i]*d3N_dwdx2[i,j,jj,k] + \
+                            2*delP[i,jj]*d2N_dwdx[i,j,jj,k] + \
+                            del2P[i,jj]*dN_dw[i,j,k]
+
+        d3Yt_dudx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3Yt_dudx2[i,j,k] = \
+                        P[i]*d3N_dudx2[i,j,k] + \
+                        2*delP[i,j]*d2N_dudx[i,j,k] + \
+                        del2P[i,j]*dN_du[i,k]
+
+        d3Yt_dvdx2 = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    d3Yt_dvdx2[i,j,k] = \
+                        P[i]*d3N_dvdx2[i,j,k] + \
+                        2*delP[i,j]*d2N_dvdx[i,j,k] + \
+                        del2P[i,j]*dN_dv[i,k]
+
+        # Compute the value of the original differential equation
+        # for each training point, and its derivatives.
+        G = np.zeros(n)
+        for i in range(n):
+            G[i] = self.eq.Gf(x[i], Yt[i], delYt[i], del2Yt[i])
+
+        dG_dYt = np.zeros(n)
+        for i in range(n):
+            dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], delYt[i], del2Yt[i])
+
+        dG_ddelYt = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                dG_ddelYt[i,j] = \
+                    self.eq.dG_ddelYf[j](x[i], Yt[i], delYt[i], del2Yt[i])
+
+        dG_ddel2Yt = np.zeros((n, m))
+        for i in range(n):
+            for j in range(m):
+                dG_ddel2Yt[i,j] = \
+                    self.eq.dG_ddel2Yf[j](x[i], Yt[i], delYt[i], del2Yt[i])
+
+        dG_dw = np.zeros((n, m, H))
+        for i in range(n):
+            for j in range(m):
+                for k in range(H):
+                    dG_dw[i,j,k] = dG_dYt[i]*dYt_dw[i,j,k]
+                    for jj in range(m):
+                        dG_dw[i,j,k] += \
+                            dG_ddelYt[i,jj]*d2Yt_dwdx[i,j,jj,k] + \
+                                dG_ddel2Yt[i,jj]*d3Yt_dwdx2[i,j,jj,k]
+
+        dG_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
+                for j in range(m):
+                    dG_du[i,k] += \
+                        dG_ddelYt[i,j]*d2Yt_dudx[i,j,k] \
+                        + dG_ddel2Yt[i,j]*d3Yt_dudx2[i,j,k]
+
+        dG_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
+                for j in range(m):
+                    dG_dv[i,k] += \
+                        dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k] \
+                        + dG_ddel2Yt[i,j] * d3Yt_dvdx2[i,j,k]
+
+        # Compute the error function and Jacobian.
+        E2 = 0
+        for i in range(n):
+            E2 += G[i]**2
+
+        dE_dw = np.zeros((m, H))
+        for j in range(m):
+            for k in range(H):
+                for i in range(n):
+                    dE_dw[j,k] += 2*G[i]*dG_dw[i,j,k]
+
+        dE_du = np.zeros(H)
+        for k in range(H):
+            for i in range(n):
+                dE_du[k] += 2*G[i]*dG_du[i,k]
+
+        dE_dv = np.zeros(H)
+        for k in range(H):
+            for i in range(n):
+                dE_dv[k] += 2*G[i]*dG_dv[i,k]
+
+        jac = np.hstack((dE_dw.flatten(), dE_du, dE_dv))
+        return E2, jac
+
     def __print_progress(self, xk):
         """Callback to print progress message from optimizer"""
         print('nit =', self.nit)
@@ -2134,7 +2416,7 @@ if __name__ == '__main__':
                 for jj in range(m):
                     del2Ya[ii,jj] = eq.del2Yaf[jj](x_train1[ii])
 
-        training_opts['use_jacobian'] = False
+        training_opts['use_jacobian'] = True
         training_opts['use_hessian'] = False
         # for trainalg in ('delta_debug', 'Nelder-Mead', 'Powell', 'CG', 'BFGS'):
         for trainalg in ('BFGS',):
