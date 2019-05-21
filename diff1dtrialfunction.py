@@ -1,4 +1,4 @@
-################################################################################
+###############################################################################
 """
 Diff1DTrialFunction - Class implementing the trial function for 1-D diffusion
 problems
@@ -121,8 +121,8 @@ class Diff1DTrialFunction():
         ((f0f, f1f), (Y0f, Y1f)) = self.bcf
         f0 = f0f(xt); f1 = f1f(xt)
         Y0 = Y0f(xt); Y1 = Y1f(xt)
-        cx1 = -(f0**x**2 - f1*x**2 + Y0)/((-1 + x)*x)
-        cx2 = -(-f0*x + f1*x - Y0)/((-1 + x)*x)
+        cx1 = -(x**2*f0 - x**2*f1 + Y0)/((-1 + x)*x)
+        cx2 = -(-x*f0 + x*f1 - Y0)/((-1 + x)*x)
         ct1 = f0/t
         c = [cx1, cx2, ct1]
         return c
