@@ -2380,7 +2380,7 @@ if __name__ == '__main__':
     # 1-D test cases
     
     # Test each training algorithm on each equation.
-    for pde in ('diff1d_halfsine',):
+    for pde in ('diff1d_flat',):
         print('Examining %s.' % pde)
 
         # Read the equation definition.

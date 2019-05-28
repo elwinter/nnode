@@ -1,254 +1,335 @@
+###############################################################################
 """
 1-D diffusion PDE
 
-The equation is defined on the domain [[0,1],[0,1]]. The initial profile is
-flat at Y(x,t)=0.5. The x=0 boundary is then increased from 0.5 with a fixed
-acceleration.
-
 The analytical form of the equation is:
-  G(x,t,Y,delY,deldelY) = dY_dt - D*d2Y_dx2 = 0
+  G(x,t,Y,delY,del2Y) = dY_dt - D*d2Y_dx2 = 0
+
+The equation is defined on the domain [[0,1],[0,]]. The
+initial profile is:
+
+Y(x,0) = 0
+
+The value at x=0 is then increased linearly with time at rate alpha.
 """
 
 
-from inspect import getsource
-from math import exp, pi, sin
+from math import cos, exp, pi, sin
 import numpy as np
 
 
-# Acceleration at x=0
-a = 1
-
 # Diffusion coefficient
-D = 1
+D = 0.1
+
+# Rate of increase at x = 0.
+alpha = 0.1
 
 
-def Gf(xt, Y, delY, deldelY):
-    """Code for differential equation"""
+def Gf(xt, Y, delY, del2Y):
+    """The differential equation in standard form"""
     (x, t) = xt
     (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
-    return dY_dt - D*d2Y_dxdx
+    (d2Y_dx2, d2Y_dt2) = del2Y
+    return dY_dt - D*d2Y_dx2
 
-
-def dG_dYf(xt, Y, delY, deldelY):
+def dG_dYf(xt, Y, delY, del2Y):
     """Partial of PDE wrt Y"""
     (x, t) = xt
     (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
+    (d2Y_dx2, d2Y_dt2) = del2Y
     return 0
 
-
-def dG_dY_dxf(xt, Y, delY, deldelY):
+def dG_dY_dxf(xt, Y, delY, del2Y):
     """Partial of PDE wrt dY/dx"""
     (x, t) = xt
     (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
+    (d2Y_dx2, d2Y_dt2) = del2Y
     return 0
 
-
-def dG_dY_dtf(xt, Y, delY, deldelY):
+def dG_dY_dtf(xt, Y, delY, del2Y):
     """Partial of PDE wrt dY/dt"""
     (x, t) = xt
     (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
+    (d2Y_dx2, d2Y_dt2) = del2Y
     return 1
 
+dG_ddelYf = [dG_dY_dxf, dG_dY_dtf]
 
-dG_ddelYf = (dG_dY_dxf, dG_dY_dtf)
 
-
-def dG_d2Y_dxdxf(xt, Y, delY, deldelY):
+def dG_d2Y_dx2f(xt, Y, delY, del2Y):
     """Partial of PDE wrt d2Y/dx2"""
     (x, t) = xt
     (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
+    (d2Y_dx2, d2Y_dt2) = del2Y
     return -D
 
-
-def dG_d2Y_dxdtf(xt, Y, delY, deldelY):
-    """Partial of PDE wrt d2Y/dxdt"""
-    (x, t) = xt
-    (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
-    return 0
-
-
-def dG_d2Y_dtdxf(xt, Y, delY, deldelY):
-    """Partial of PDE wrt d2Y/dtdx"""
-    (x, t) = xt
-    (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
-    return 0
-
-
-def dG_d2Y_dtdtf(xt, Y, delY, deldelY):
+def dG_d2Y_dt2f(xt, Y, delY, del2Y):
     """Partial of PDE wrt d2Y/dt2"""
     (x, t) = xt
     (dY_dx, dY_dt) = delY
-    ((d2Y_dxdx, d2Y_dxdt), (d2Y_dtdx, d2Y_dtdt)) = deldelY
+    (d2Y_dx2, d2Y_dt2) = del2Y
     return 0
 
-
-dG_ddeldelYf = ((dG_d2Y_dxdxf, dG_d2Y_dxdtf),
-                (dG_d2Y_dtdxf, dG_d2Y_dtdtf))
+dG_ddel2Yf = [dG_d2Y_dx2f, dG_d2Y_dt2f]
 
 
-def f0f(t):
+def f0f(xt):
     """Boundary condition at (x,t) = (0,t)"""
-    return 0.5 + 0.5*a*t**2
+    (x, t) = xt
+    return alpha*t
 
-
-def f1f(t):
+def f1f(xt):
     """Boundary condition at (x,t) = (1,t)"""
-    return 0.5
+    (x, t) = xt
+    return 0
 
-
-def g0f(x):
+def Y0f(xt):
     """Boundary condition at (x,t) = (x,0)"""
-    return 0.5
+    (x, t) = xt
+    return 0
 
-
-def g1f(x):
+def Y1f(xt):
     """Boundary condition at (x,t) = (x,1) NOT USED"""
+    (x, t) = xt
     return None
 
-
-bcf = ((f0f, f1f), (g0f, g1f))
-
-
-def df0_dtf(t):
-    """1st derivative of BC function at (x,t) = (0,t)"""
-    return a*t
+bcf = [[f0f, f1f], [Y0f, Y1f]]
 
 
-def df1_dtf(t):
-    """1st derivative of BC function at (x,t) = (1,t)"""
+def df0_dxf(xt):
+    """1st derivative of BC wrt x at (x,t) = (0,t)"""
+    (x, t) = xt
     return 0
 
+def df0_dtf(xt):
+    """1st derivative of BC wrt t at (x,t) = (0,t)"""
+    (x, t) = xt
+    return alpha
 
-def dg0_dxf(x):
-    """1st derivative of BC function at (x,t) = (x,0)"""
+def df1_dxf(xt):
+    """1st derivative of BC wrt x at (x,t) = (1,t)"""
+    (x, t) = xt
     return 0
 
+def df1_dtf(xt):
+    """1st derivative of BC wrt t at (x,t) = (1,t)"""
+    (x, t) = xt
+    return 0
 
-def dg1_dxf(x):
-    """1st derivative of BC function at (x,t) = (x,0) NOT USED"""
+def dY0_dxf(xt):
+    """1st derivative of BC wrt x at (x,t) = (x,0)"""
+    (x, t) = xt
+    return 0
+
+def dY0_dtf(xt):
+    """1st derivative of BC wrt t at (x,t) = (x,0)"""
+    (x, t) = xt
+    return 0
+
+def dY1_dxf(xt):
+    """1st derivative of BC wrt x at (x,t) = (x,1) NOT USED"""
+    (x, t) = xt
     return None
 
-
-bcdf = ((df0_dtf, df1_dtf), (dg0_dxf, dg1_dxf))
-
-
-def d2f0_dt2f(t):
-    """2nd derivative of BC function at (x,t) = (0,t)"""
-    return a
-
-
-def d2f1_dt2f(t):
-    """2nd derivative of BC function at (x,t) = (1,t)"""
-    return 0
-
-
-def d2g0_dx2f(x):
-    """2nd derivative of BC function at (x,t) = (x,0)"""
-    return 0
-
-
-def d2g1_dx2f(x):
-    """2nd derivative of BC function at (x,t) = (x,1)  NOT USED"""
+def dY1_dtf(xt):
+    """1st derivative of BC wrt x at (x,t) = (x,1) NOT USED"""
+    (x, t) = xt
     return None
 
+delbcf = [[[df0_dxf, df0_dtf], [df1_dxf, df1_dtf]],
+          [[dY0_dxf, dY0_dtf], [dY1_dxf, dY1_dtf]]]
 
-bcd2f = ((d2f0_dt2f, d2f1_dt2f), (d2g0_dx2f, d2g1_dx2f))
+
+def d2f0_dx2f(xt):
+    """2nd derivative of BC wrt x at (x,t) = (0,t)"""
+    (x, t) = xt
+    return 0
+
+def d2f0_dt2f(xt):
+    """2nd derivative of BC wrt t at (x,t) = (0,t)"""
+    (x, t) = xt
+    return 0
+
+def d2f1_dx2f(xt):
+    """2nd derivative of BC wrt x at (x,t) = (1,t)"""
+    (x, t) = xt
+    return 0
+
+def d2f1_dt2f(xt):
+    """2nd derivative of BC wrt t at (x,t) = (1,t)"""
+    (x, t) = xt
+    return 0
+
+def d2Y0_dx2f(xt):
+    """2nd derivative of BC wrt x at (x,t) = (x,0)"""
+    (x, t) = xt
+    return 0
+
+def d2Y0_dt2f(xt):
+    """2nd derivative of BC wrt t at (x,t) = (x,0)"""
+    (x, t) = xt
+    return 0
+
+def d2Y1_dx2f(xt):
+    """2nd derivative of BC wrt x at (x,t) = (x,1) NOT USED"""
+    (x, t) = xt
+    return None
+
+def d2Y1_dt2f(xt):
+    """2nd derivative of BC wrt x at (x,t) = (x,1) NOT USED"""
+    (x, t) = xt
+    return None
+
+del2bcf = [[[d2f0_dx2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dt2f]],
+           [[d2Y0_dx2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dt2f]]]
 
 
 def Yaf(xt):
     """Analytical solution"""
     (x, t) = xt
-    Ya = 0.5*(1 + a*t**2*(1 - x))
-    kmax = 100
-    for k in range(1, kmax + 1):
-        Ya -= 2*a*(exp(-pi**2*t*D*k**2) - 1 + pi**2*t*D*k**2)*sin(pi*x*k) \
-            / (pi**5*D*k**5)
+    Ya = -t*(-1 + x)*alpha
+    kmax = 400 + 1
+    for k in range(1, kmax):
+          Ya += -(2*(1 - exp(-pi**2*t*D*k**2))*alpha*sin(pi*x*k))/ \
+                (pi**3*k**3)
     return Ya
+
+def dYa_dxf(xt):
+    """Analytical x-gradient"""
+    (x, t) = xt
+    dYa_dx = -alpha*t
+    kmax = 400 + 1
+    for k in range(1, kmax):
+          dYa_dx += -(2*(1 - exp(-pi**2*t*D*k**2))*alpha*cos(pi*x*k))/ \
+                    (pi**2*k**2)
+    return dYa_dx
+
+def dYa_dtf(xt):
+    """Analytical t-gradient"""
+    (x, t) = xt
+    dYa_dt = -(-1 + x)*alpha
+    kmax = 400 + 1
+    for k in range(1, kmax):
+          dYa_dt += -(2*exp(-pi**2*t*D*k**2)*D*alpha*sin(pi*x*k))/ \
+                    (pi*k)
+    return dYa_dt
+
+delYaf = [dYa_dxf, dYa_dtf]
+
+
+def d2Ya_dx2f(xt):
+    """Analytical x-Laplacian"""
+    (x, t) = xt
+    d2Ya_dx2 = 0
+    kmax = 400 + 1
+    for k in range(1, kmax):
+          d2Ya_dx2 += (2*(1 - exp(-pi**2*t*D*k**2))*alpha*sin(pi*x*k))/ \
+                      (pi*k)
+    return d2Ya_dx2
+
+def d2Ya_dt2f(xt):
+    """Analytical t-Laplacian"""
+    (x, t) = xt
+    d2Ya_dt2 = 0
+    kmax = 400 + 1
+    for k in range(1, kmax):
+          d2Ya_dt2 += 2*exp(-pi**2*t*D*k**2)*k*pi*D**2*alpha*sin(pi*x*k)
+    return d2Ya_dt2
+
+del2Yaf = [d2Ya_dx2f, d2Ya_dt2f]
 
 
 if __name__ == '__main__':
-    print(getsource(Gf))
-    print('Gf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          Gf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(dG_dYf))
-    print('dG_dYf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          dG_dYf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(dG_dY_dxf))
-    print('dG_dY_dxf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          dG_dY_dxf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(dG_dY_dtf))
-    print('dG_dY_dtf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          dG_dY_dtf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(dG_d2Y_dxdxf))
-    print('dG_d2Y_dxdxf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          dG_d2Y_dxdxf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(dG_d2Y_dxdtf))
-    print('dG_d2Y_dxdtf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          dG_d2Y_dxdtf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(dG_d2Y_dtdxf))
-    print('dG_d2Y_dtdxf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          dG_d2Y_dtdxf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(dG_d2Y_dtdtf))
-    print('dG_d2Y_dtdtf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]) = ',
-          dG_d2Y_dtdtf([0, 0], 0, [0, 0], [[0, 0], [0, 0]]))
-    print()
-    print(getsource(f0f))
-    print('f0f(0) = ', f0f(0))
-    print()
-    print(getsource(f1f))
-    print('f1f(0) = ', f1f(0))
-    print()
-    print(getsource(g0f))
-    print('g0f(0) = ', g0f(0))
-    print()
-    print(getsource(g1f))
-    print('g1f(0) = ', g1f(0))
-    print()
-    assert np.isclose(f1f(0), g0f(1))
-    print(getsource(df0_dtf))
-    print('df0_dtf(0) = ', df0_dtf(0))
-    print()
-    print(getsource(df1_dtf))
-    print('df1_dtf(0) = ', df1_dtf(0))
-    print()
-    print(getsource(dg0_dxf))
-    print('dg0_dxf(0) = ', dg0_dxf(0))
-    print()
-    print(getsource(dg1_dxf))
-    print('dg1_dxf(0) = ', dg1_dxf(0))
-    print()
-    print(getsource(d2f0_dt2f))
-    print('d2f0_dt2f(0) = ', d2f0_dt2f(0))
-    print()
-    print(getsource(d2f1_dt2f))
-    print('d2f1_dt2f(0) = ', d2f1_dt2f(0))
-    print()
-    print(getsource(d2g0_dx2f))
-    print('d2g0_dx2f(0) = ', d2g0_dx2f(0))
-    print()
-    print(getsource(d2g1_dx2f))
-    print('d2g1_dx2f(0) = ', d2g1_dx2f(0))
-    print()
-    print(getsource(Yaf))
-    print('Yaf([0, 0]) = ', Yaf([0, 0]))
-    assert np.isclose(f0f(0), g0f(0))
-    assert np.isclose(f1f(0), g0f(1))
-    assert np.isclose(Yaf([0, 0]), f0f(0))
-    assert np.isclose(Yaf([0, 1]), f0f(1))
-    assert np.isclose(Yaf([1, 0]), f1f(0))
-    assert np.isclose(Yaf([1, 1]), f1f(1))
-    assert np.isclose(Yaf([0.5, 0]), g0f(0.5))
+
+    # Test values
+    xt = [0.4, 0.5]
+
+    # Reference values for tests.
+    G_ref = 0
+    dG_dY_ref = 0
+    (dG_dY_dx_ref, dG_dY_dt_ref) = (0, 1)
+    (dG_d2Y_dx2_ref, dG_d2Y_dt2_ref) = (-D, 0)
+    bc_ref = [[0.5, 0],
+              [0, None]]
+    delbc_ref = [[[0, alpha], [0, 0]],
+                 [[0, 0], [None, None]]]
+    del2bc_ref = [[[0, 0], [0, 0]],
+                  [[0, 0], [None, None]]]
+    Ya_ref = 0.274093
+    delYa_ref = [-0.481011, 0.56059]
+    del2Ya_ref = [0.204808, 0.0453475]
+
+    print("Testing differential equation.")
+    G = Gf(xt, Ya_ref, delYa_ref, del2Ya_ref)
+    if not np.isclose(G, G_ref):
+        print("ERROR: G = %s, vs ref %s" % (G, G_ref))
+
+    print("Testing differential equation Y-derivative.")
+    dG_dY = dG_dYf(xt, Ya_ref, delYa_ref, del2Ya_ref)
+    if not np.isclose(dG_dY, dG_dY_ref):
+        print("ERROR: dG_dY = %s, vs ref %s" % (dG_dY, dG_dY_ref))
+
+    print("Testing differential equation dY/dx-derivative.")
+    dG_dY_dx = dG_dY_dxf(xt, Ya_ref, delYa_ref, del2Ya_ref)
+    if not np.isclose(dG_dY_dx, dG_dY_dx_ref):
+        print("ERROR: dG_dY_dx = %s, vs ref %s" % (dG_dY_dx, dG_dY_dx_ref))
+
+    print("Testing differential equation dY/dt-derivative.")
+    dG_dY_dt = dG_dY_dtf(xt, Ya_ref, delYa_ref, del2Ya_ref)
+    if not np.isclose(dG_dY_dt, dG_dY_dt_ref):
+        print("ERROR: dG_dY_dt = %s, vs ref %s" % (dG_dY_dt, dG_dY_dt_ref))
+
+    print("Testing differential equation d2Y/dx2-derivative.")
+    dG_d2Y_dx2 = dG_d2Y_dx2f(xt, Ya_ref, delYa_ref, del2Ya_ref)
+    if not np.isclose(dG_d2Y_dx2, dG_d2Y_dx2_ref):
+        print("ERROR: dG_d2Y_dx2 = %s, vs ref %s" % (dG_d2Y_dx2, dG_d2Y_dx2_ref))
+
+    print("Testing differential equation d2Y/dt2-derivative.")
+    dG_d2Y_dt2 = dG_d2Y_dt2f(xt, Ya_ref, delYa_ref, del2Ya_ref)
+    if not np.isclose(dG_d2Y_dt2, dG_d2Y_dt2_ref):
+        print("ERROR: dG_d2Y_dt2 = %s, vs ref %s" % (dG_d2Y_dt2, dG_d2Y_dt2_ref))
+
+    print("Testing boundary conditions.")
+    for i in range(len(bcf)):
+        for (j, f) in enumerate(bcf[i]):
+            bc = f(xt)
+            if ((bc_ref[i][j] is not None and not np.isclose(bc, bc_ref[i][j]))
+                or (bc_ref[i][j] is None and bc is not None)):
+                print("ERROR: bc[%d][%d] = %s, vs ref %s" % (i, j, bc, bc_ref[i][j]))
+
+    print("Testing boundary condition gradients.")
+    for i in range(len(delbcf)):
+        for j in range(len(delbcf[i])):
+            for (k, f) in enumerate(delbcf[i][j]):
+                delbc = f(xt)
+                if ((delbc_ref[i][j][k] is not None and not np.isclose(delbc, delbc_ref[i][j][k]))
+                    or (delbc_ref[i][j][k] is None and delbc is not None)):
+                    print("ERROR: delbc[%d][%d][%d] = %s, vs ref %s" % (i, j, k, delbc, delbc_ref[i][j][k]))
+
+    print("Testing boundary condition Laplacians.")
+    for i in range(len(del2bcf)):
+        for j in range(len(del2bcf[i])):
+            for (k, f) in enumerate(del2bcf[i][j]):
+                del2bc = f(xt)
+                if ((del2bc_ref[i][j][k] is not None and not np.isclose(del2bc, del2bc_ref[i][j][k]))
+                    or (del2bc_ref[i][j][k] is None and del2bc is not None)):
+                    print("ERROR: del2bc[%d][%d][%d] = %s, vs ref %s" % (i, j, k, del2bc, del2bc_ref[i][j][k]))
+
+    print("Testing analytical solution.")
+    Ya = Yaf(xt)
+    if not np.isclose(Ya, Ya_ref):
+        print("ERROR: Ya = %s, vs ref %s" % (Ya, Ya_ref))
+
+    print("Testing analytical solution gradient.")
+    for (i, f) in enumerate(delYaf):
+        delYa = f(xt)
+        if ((delYa_ref[i] is not None and not np.isclose(delYa, delYa_ref[i]))
+                or (delYa_ref[i] is None and delYa is not None)):
+                print("ERROR: delYa[%d] = %s, vs ref %s" % (i, delYa, delYa_ref[i]))
+
+    print("Testing analytical solution Laplacian.")
+    for (i, f) in enumerate(del2Yaf):
+        del2Ya = f(xt)
+        if ((del2Ya_ref[i] is not None and not np.isclose(del2Ya, del2Ya_ref[i]))
+                or (del2Ya_ref[i] is None and del2Ya is not None)):
+                print("ERROR: del2Ya[%d] = %s, vs ref %s" % (i, del2Ya, del2Ya_ref[i]))
