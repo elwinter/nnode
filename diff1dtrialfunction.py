@@ -46,6 +46,62 @@ class Diff1DTrialFunction():
         self.delbcf = delbcf
         self.del2bcf = del2bcf
 
+    def Af(self, xt):
+        """Boundary condition function"""
+        (x, t) = xt
+        ((f0f, f1f), (Y0f, Y1f)) = self.bcf
+        A = (1 - x)*f0f([0, t]) + x*f1f([1, t]) + \
+            (1 - t)*(Y0f([x, 0]) - ((1 - x)*Y0f([0, 0]) + x*Y0f([1, 0])))
+        return A
+
+    def delAf(self, xt):
+        """Boundary condition function gradient"""
+        (x, t) = xt
+        ((f0f, f1f), (Y0f, Y1f)) = self.bcf
+        (((df0_dxf, df0_dtf), (df1_dxf, df1_dtf)),
+         ((dY0_dxf, dY0_dtf), (dY1_dxf, dY1_dtf))) = self.delbcf
+        dA_dx = -f0f([0, t]) + f1f([1, t]) - (-1 + t)* \
+                (Y0f([0, 0]) - Y0f([1, 0]) + dY0_dxf([x, 0]))
+        dA_dt =  Y0f([0, 0]) - x*Y0f([0, 0]) + x*Y0f([1, 0]) - Y0f([x, 0]) - \
+                 (-1 + x)*df0_dtf([0, t]) + x*df1_dtf([1, t])
+        delA = [dA_dx, dA_dt]
+        return delA
+
+    def del2Af(self, xt):
+        """Laplacian of boundary condition function"""
+        (x, t) = xt
+        ((f0f, f1f), (Y0f, Y1f)) = self.bcf
+        (((df0_dxf, df0_dtf), (df1_dxf, df1_dtf)),
+         ((dY0_dxf, dY0_dtf), (dY1_dxf, dY1_dtf))) = self.delbcf
+        (((d2f0_dx2f, d2f0_dt2f), (d2f1_dx2f, d2f1_dt2f)),
+         ((d2Y0_dx2f, d2Y0_dt2f), (d2Y1_dx2f, d2Y1_dt2f))) = self.del2bcf
+        d2A_dx2 = -(-1 + t)*d2Y0_dx2f([x, 0])
+        d2A_dt2 = -(-1 + x)*d2f0_dt2f([0, t]) + x*d2f1_dt2f([1, t])
+        del2A = [d2A_dx2, d2A_dt2]
+        return del2A
+
+    def Pf(self, xt):
+        """Network coefficient function"""
+        (x, t) = xt
+        P = x*(1 - x)*t
+        return P
+
+    def delPf(self, xt):
+        """Network coefficient function gradient"""
+        (x, t) = xt
+        dP_dx = (1 - 2*x)*t
+        dP_dt = x*(1 - x)
+        delP = [dP_dx, dP_dt]
+        return delP
+
+    def del2Pf(self, xt):
+        """Network coefficient function Laplacian"""
+        (x, t) = xt
+        d2P_dx2 = -2*t
+        d2P_dt2 = 0
+        del2P = [d2P_dx2, d2P_dt2]
+        return del2P
+
     def Ytf(self, xt, N):
         """Trial function"""
         A = self.Af(xt)
@@ -78,144 +134,6 @@ class Diff1DTrialFunction():
         d2Yt_dt2 = d2A_dt2 + P*d2N_dt2 + 2*dP_dt*dN_dt + d2P_dt2*N
         del2Yt = [d2Yt_dx2, d2Yt_dt2]
         return del2Yt
-
-    def Af(self, xt):
-        """Boundary condition function"""
-        (x, t) = xt
-        (cx1, cx2, ct1) = self.cf(xt)
-        A = cx1*x + cx2*x**2 + ct1*t
-        return A
-
-    def delAf(self, xt):
-        """Boundary condition function gradient"""
-        (x, t) = xt
-        (cx1, cx2, ct1) = self.cf(xt)
-        ((dcx1_dx, dcx1_dt),
-         (dcx2_dx, dcx2_dt),
-         (dct1_dx, dct1_dt)) = self.delcf(xt)
-        dA_dx = cx1 + dcx1_dx*x + cx2*2*x + dcx2_dx*x**2 + dct1_dx*t
-        dA_dt = dcx1_dt*x + dcx2_dt*x**2 + ct1 + dct1_dt*t
-        delA = [dA_dx, dA_dt]
-        return delA
-
-    def del2Af(self, xt):
-        """Laplacian of boundary condition function"""
-        (x, t) = xt
-        (cx1, cx2, ct1) = self.cf(xt)
-        ((dcx1_dx, dcx1_dt),
-         (dcx2_dx, dcx2_dt),
-         (dct1_dx, dct1_dt)) = self.delcf(xt)
-        ((d2cx1_dx2, d2cx1_dt2),
-         (d2cx2_dx2, d2cx2_dt2),
-         (d2ct1_dx2, d2ct1_dt2)) = self.del2cf(xt)
-        d2A_dx2 = 2*dcx1_dx + d2cx1_dx2*x + \
-                  cx2*2 + 2*dcx2_dx*2*x + d2cx2_dx2*x**2 + \
-                  d2ct1_dx2*t
-        d2A_dt2 = d2cx1_dt2*x + d2cx2_dt2*x**2 + 2*dct1_dt + d2ct1_dt2*t
-        del2A = [d2A_dx2, d2A_dt2]
-        return del2A
-
-    def cf(self, xt):
-        """Compute the coefficient vector for the boundary condition function"""
-        (x, t) = xt
-        ((f0f, f1f), (Y0f, Y1f)) = self.bcf
-        f0 = f0f(xt); f1 = f1f(xt)
-        Y0 = Y0f(xt); Y1 = Y1f(xt)
-        cx1 = -(x**2*f0 - x**2*f1 + Y0)/((-1 + x)*x)
-        cx2 = -(-x*f0 + x*f1 - Y0)/((-1 + x)*x)
-        ct1 = f0/t
-        c = [cx1, cx2, ct1]
-        return c
-
-    def delcf(self, xt):
-        """Compute the gradients of each coefficient."""
-        (x, t) = xt
-        ((f0f, f1f), (Y0f, Y1f)) = self.bcf
-        (((df0_dxf, df0_dtf), (df1_dxf, df1_dtf)),
-         ((dY0_dxf, dY0_dtf), (dY1_dxf, dY1_dtf))) = self.delbcf
-        f0 = f0f(xt); f1 = f1f(xt)
-        Y0 = Y0f(xt); Y1 = Y1f(xt)
-        df0_dx = df0_dxf(xt); df0_dt = df0_dtf(xt)
-        df1_dx = df1_dxf(xt); df1_dt = df1_dtf(xt)
-        dY0_dx = dY0_dxf(xt); dY0_dt = dY0_dtf(xt)
-        dY1_dx = dY1_dxf(xt); dY1_dt = dY1_dtf(xt)
-
-        dcx1_dx = (-Y0 + x*(x*f0 - x*f1 + 2*Y0 - (-1 + x)*
-                   (x**2*(df0_dx - df1_dx) + dY0_dx)))/ \
-                  ((-1 + x)**2*x**2)
-        dcx1_dt = (x**2*df0_dt - x**2*df1_dt + dY0_dt)/(x - x**2)
-        dcx2_dx = (Y0 + x*(-x*f0 + x*f1 - 2*Y0 + (-1 + x)*
-                   (x*df0_dx - x*df1_dx + dY0_dx)))/ \
-                  ((-1 + x)**2*x**2)
-        dcx2_dt = (x*df0_dt - x*df1_dt + dY0_dt)/((-1 + x)*x)
-        dct1_dx = df0_dx/t
-        dct1_dt = (-f0 + t*df0_dt)/(t**2)
-
-        delc = [[dcx1_dx, dcx1_dt],
-                [dcx2_dx, dcx2_dt],
-                [dct1_dx, dct1_dt]]
-        return delc
-
-    def del2cf(self, xt):
-        """Compute the Laplacians of each coefficient."""
-        (x, t) = xt
-        ((f0f, f1f), (Y0f, Y1f)) = self.bcf
-        (((df0_dxf, df0_dtf), (df1_dxf, df1_dtf)),
-         ((dY0_dxf, dY0_dtf), (dY1_dxf, dY1_dtf))) = self.delbcf
-        (((d2f0_dx2f, d2f0_dt2f), (d2f1_dx2f, d2f1_dt2f)),
-         ((d2Y0_dx2f, d2Y0_dt2f), (d2Y1_dx2f, d2Y1_dt2f))) = self.del2bcf
-        f0 = f0f(xt); f1 = f1f(xt)
-        Y0 = Y0f(xt); Y1 = Y1f(xt)
-        df0_dx = df0_dxf(xt); df0_dt = df0_dtf(xt)
-        df1_dx = df1_dxf(xt); df1_dt = df1_dtf(xt)
-        dY0_dx = dY0_dxf(xt); dY0_dt = dY0_dtf(xt)
-        dY1_dx = dY1_dxf(xt); dY1_dt = dY1_dtf(xt)
-        d2f0_dx2 = d2f0_dx2f(xt); d2f0_dt2 = d2f0_dt2f(xt)
-        d2f1_dx2 = d2f1_dx2f(xt); d2f1_dt2 = d2f1_dt2f(xt)
-        d2Y0_dx2 = d2Y0_dx2f(xt); d2Y0_dt2 = d2Y0_dt2f(xt)
-        d2Y1_dx2 = d2Y1_dx2f(xt); d2Y1_dt2 = d2Y1_dt2f(xt)
-
-        d2cx1_dx2 = (-2*x**3*f0 + 2*x**3*f1 - 2*Y0 + (-1 + x)*x*
-                     (-6*Y0 - 2*dY0_dx + x*
-                      (2*x*df0_dx - 2*x*df1_dx + 4*dY0_dx - (-1 + x)*
-                       (x**2*(d2f0_dx2 - d2f1_dx2) + d2Y0_dx2))))/ \
-                    ((-1 + x)**3*x**3)
-        d2cx1_dt2 = (x**2*d2f0_dt2 - x**2*d2f1_dt2 + d2Y0_dt2)/(x - x**2)
-        d2cx2_dx2 = (2*x**3*f0 - 2*x**3*f1 + 2*Y0 + (-1 + x)*x*
-                     (6*Y0 + 2*dY0_dx + x*
-                      (-2*x*df0_dx + 2*x*df1_dx - 4*dY0_dx + (-1 + x)*
-                       (x*d2f0_dx2 - x*d2f1_dx2 + d2Y0_dx2))))/ \
-                    ((-1 + x)**3*x**3)
-        d2cx2_dt2 = (x*d2f0_dt2 - x*d2f1_dt2 + d2Y0_dt2)/((-1 + x)*x)
-        d2ct1_dx2 = d2f0_dx2/t
-        d2ct1_dt2 = (2*f0 - 2*t*df0_dt + t**2*d2f0_dt2)/(t**3)
-
-        del2c = [[d2cx1_dx2, d2cx1_dt2],
-                 [d2cx2_dx2, d2cx2_dt2],
-                 [d2ct1_dx2, d2ct1_dt2],]
-        return del2c
-
-    def Pf(self, xt):
-        """Network coefficient function"""
-        (x, t) = xt
-        P = x*(1 - x)*t
-        return P
-
-    def delPf(self, xt):
-        """Network coefficient function gradient"""
-        (x, t) = xt
-        dP_dx = (1 - 2*x)*t
-        dP_dt = x*(1 - x)
-        delP = [dP_dx, dP_dt]
-        return delP
-
-    def del2Pf(self, xt):
-        """Network coefficient function Laplacian"""
-        (x, t) = xt
-        d2P_dx2 = -2*t
-        d2P_dt2 = 0
-        del2P = [d2P_dx2, d2P_dt2]
-        return del2P
 
 #################
 
@@ -265,30 +183,23 @@ if __name__ == '__main__':
                  [[0.970806, 0], [None, None]]]
     del2bc_ref = [[[0, 0], [0, 0]],
                   [[-9.38655, 0], [None, None]]]
-    c_ref = [3.96274, -3.96274, 0]
-    delc_ref = [[0.742743, 0],
-                [-0.742743, 0],
-                [0, 0]]
-    del2c_ref = [[-7.32574, 0],
-                 [7.32574, 0],
-                 [0, 0]]
-    A_ref = 0.951057
-    delA_ref = [0.970806, 0]
-    del2A_ref = [-9.38655, 0]
+    A_ref = 0.475228
+    delA_ref = [0.485403, -0.951057]
+    del2A_ref = [-4.69328, 0]
     P_ref = 0.12
     delP_ref = [0.1, 0.24]
     del2P_ref = [-1, 0]
-    Yt_ref = 1.02306
-    delYt_ref = [1.11481, 0.24]
-    del2Yt_ref = [-9.83335, 0.4104]
+    Yt_ref = 0.547528
+    delYt_ref = [0.629403, -0.711057]
+    del2Yt_ref = [-5.14008, 0.4104]
+
+    # Test all functions near the center of the domain.
+    xt = [0.4, 0.5]
 
     # Additional test variables.
     N_ref = 0.6
     delN_ref = [0.7, 0.8]
     del2N_ref = [0.11, 0.22]
-
-    # Test all functions near the center of the domain.
-    xt = [0.4, 0.5]
 
     # Create a new trial function object.
     tf = Diff1DTrialFunction(bcf, delbcf, del2bcf)
@@ -318,26 +229,6 @@ if __name__ == '__main__':
                 if ((del2bc_ref[i][j][k] is not None and not np.isclose(del2bc, del2bc_ref[i][j][k]))
                     or (del2bc_ref[i][j][k] is None and del2bc is not None)):
                     print("ERROR: del2bc[%d][%d][%d] = %s, vs ref %s" % (i, j, k, del2bc, del2bc_ref[i][j][k]))
-
-    print("Testing coefficients.")
-    c = tf.cf(xt)
-    for (i, cc) in enumerate(c):
-        if not np.isclose(cc, c_ref[i]):
-            print("ERROR: c[%d] = %s, vs ref %s" % (i, cc, c_ref[i]))
-
-    print("Testing coefficient gradients.")
-    delc = tf.delcf(xt)
-    for i in range(len(c)):
-        for (j, delci) in enumerate(delc[i]):
-            if not np.isclose(delci, delc_ref[i][j]):
-                print("ERROR: delc[%d][%d] = %s, vs ref %s" % (i, j, delci, delc_ref[i][j]))
-
-    print("Testing coefficient Laplacians.")
-    del2c = tf.del2cf(xt)
-    for i in range(len(del2c)):
-        for (j, del2ci) in enumerate(del2c[i]):
-            if not np.isclose(del2ci, del2c_ref[i][j]):
-                print("ERROR: del2c[%d][%d] = %s, vs ref %s" % (i, j, del2ci, del2c_ref[i][j]))
 
     print("Testing boundary condition function.")
     A = tf.Af(xt)
