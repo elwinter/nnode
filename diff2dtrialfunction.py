@@ -9,27 +9,27 @@ Yt(x, y, t) = A(x, y, t) + P(x, y, t)N(x, y, t, p)
 
 where:
 
-A(x, y ,t) = boundary condition function that reduces to BC at boundaries
+A(x, y, t) = boundary condition function that reduces to BC at boundaries
 P(x, y, t) = network coefficient function that vanishes at boundaries
 N(x, y, t, p) = scalar output of neural network with parameter vector p
 
 Example:
     Create a default Diff2DTrialFunction object
-        Yt = Diff2DTrialFunction(bcf, delbcf, del2bcf)
+        Yt_obj = Diff2DTrialFunction(bcf, delbcf, del2bcf)
 
     Compute the value of the trial function at a given point
         Yt = Yt_obj.Ytf([x, y. t], N)
 
     Compute the value of the boundary condition function at a given point
-        A = Yt_obj.Af([x, y. t])
+        A = Yt_obj.Af([x, y, t])
 
 Notes:
     Variables that end in 'f' are usually functions or arrays of functions.
 
 Attributes:
-    bcf - 3x2 array of BC functions at (x,t)=0|1
-    delbcf - 3x2x3 array of BC gradient functions at (x,t)=0|1
-    del2bcf - 3x2x3 array of BC Laplacian component functions at (x,t)=0|1
+    bcf - 3x2 array of BC functions at (x,y,t)=0|1
+    delbcf - 3x2x3 array of BC gradient functions at (x,y,t)=0|1
+    del2bcf - 3x2x3 array of BC Laplacian component functions at (x,y,t)=0|1
 
 Methods:
     Af([x, y, t]) - Compute boundary condition function at [x, y, t]
@@ -40,7 +40,7 @@ Methods:
     del2Af([x, y, t]) - Compute boundary condition function Laplacian
         components at [x, y, t]
 
-    Pf([x, t]) - Compute network coefficient function at [x, t]
+    Pf([x, y, t]) - Compute network coefficient function at [x, y, t]
 
     delPf([x, y, t]) - Compute network coefficient function gradient at
         [x, y, t]

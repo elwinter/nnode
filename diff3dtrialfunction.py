@@ -1,3 +1,4 @@
+################################################################################
 """
 Diff3DTrialFunction - Class implementing the trial function for 3-D diffusion
 problems
@@ -8,25 +9,57 @@ Yt(x,y,z,t) = A(x,y,z,t) + P(x,y,z,t)N(x,y,z,t,p)
 
 where:
 
-A(x,y,z,t) = boundary condition function that reduces to BC at boundaries
-P(x,y,z,t) = network coefficient function that vanishes at boundaries
-N(x,y,z,t,p) = scalar output of neural network with parameter vector p
+A(x, y, z, t) = boundary condition function that reduces to BC at boundaries
+P(x, y, z, t) = network coefficient function that vanishes at boundaries
+N(x, y, z, t, p) = scalar output of neural network with parameter vector p
 
 Example:
     Create a default Diff3DTrialFunction object
-        Yt = Diff3DTrialFunction()
+        Yt_obj = Diff3DTrialFunction(bcf, delbcf, del2bcf)
+
+    Compute the value of the trial function at a given point
+        Yt = Yt_obj.Ytf([x, y. z, t], N)
+
+    Compute the value of the boundary condition function at a given point
+        A = Yt_obj.Af([x, y, z, t])
 
 Notes:
-    * Function names end in 'f'.
+    Variables that end in 'f' are usually functions or arrays of functions.
 
 Attributes:
-    None
+    bcf - 4x2 array of BC functions at (x,y,z,t)=0|1
+    delbcf - 4x2x4 array of BC gradient functions at (x,y,z,t)=0|1
+    del2bcf - 4x2x4 array of BC Laplacian component functions at (x,y,z,t)=0|1
 
 Methods:
-    None
+    Af([x, y, z, t]) - Compute boundary condition function at [x, y, z, t]
+
+    delAf([x, y, z, t]) - Compute boundary condition function gradient at
+        [x, y, z, t]
+
+    del2Af([x, y, z, t]) - Compute boundary condition function Laplacian
+        components at [x, y, z, t]
+
+    Pf([x, y, z, t]) - Compute network coefficient function at [x, y, z, t]
+
+    delPf([x, y, z, t]) - Compute network coefficient function gradient at
+        [x, y, z, t]
+
+    del2Pf([x, y, z, t]) - Compute network coefficient function Laplacian
+        components at [x, y, z, t]
+
+    Ytf([x, y, z, t], N) - Compute trial function at [x, y, z, t] with network
+        output N
+
+    delYtf([x, y, z, t], N, delN) - Compute trial function gradient at [x, y, z, t]
+        with network output N and network output gradient delN.
+
+    del2Ytf([x, y, z, t], N, delN, del2N) - Compute trial function Laplacian
+        components at [x, y, z, t] with network output N, network output gradient
+        delN, and network output Laplacian components del2N
 
 Todo:
-    * Expand basic functionality
+
 """
 
 
@@ -45,390 +78,181 @@ class Diff3DTrialFunction():
         self.delbcf = delbcf
         self.del2bcf = del2bcf
 
-    def Ytf(self, xyzt, N):
-        """Trial function"""
-        A = self.Af(xyzt)
-        P = self.Pf(xyzt)
-        Yt = A + P*N
-        return Yt
-
-    def delYtf(self, xyzt, N, delN):
-        """Trial function gradient"""
-        delA = self.delAf(xyzt)
-        P = self.Pf(xyzt)
-        delP = self.delPf(xyzt)
-        delYt = [None, None, None, None]
-        delYt[0] = delA[0] + P*delN[0] + delP[0]*N
-        delYt[1] = delA[1] + P*delN[1] + delP[1]*N
-        delYt[2] = delA[2] + P*delN[2] + delP[2]*N
-        delYt[3] = delA[3] + P*delN[3] + delP[3]*N
-        return delYt
-
-    def del2Ytf(self, xyzt, N, delN, del2N):
-        """Trial function Laplacian"""
-        del2A = self.del2Af(xyzt)
-        P = self.Pf(xyzt)
-        delP = self.delPf(xyzt)
-        del2P = self.del2Pf(xyzt)
-        del2Yt = [None, None, None, None]
-        del2Yt[0] = del2A[0] + P*del2N[0] + 2*delP[0]*delN[0] + del2P[0]*N
-        del2Yt[1] = del2A[1] + P*del2N[1] + 2*delP[1]*delN[1] + del2P[1]*N
-        del2Yt[2] = del2A[2] + P*del2N[2] + 2*delP[2]*delN[2] + del2P[2]*N
-        del2Yt[3] = del2A[3] + P*del2N[3] + 2*delP[3]*delN[3] + del2P[3]*N
-        return del2Yt
-
     def Af(self, xyzt):
         """Boundary condition function"""
         (x, y, z, t) = xyzt
-        (cx1, cx2, cy1, cy2, cz1, cz2, ct1) = self.cf(xyzt)
-        A = cx1*x + cx2*x**2 + cy1*y + cy2*y**2 + cz1*z + cz2*z**2 + ct1*t
+        ((f0f, f1f), (g0f, g1f), (h0f, h1f), (Y0f, Y1f)) = self.bcf
+        A = (1 - x)*f0f([0, y, z, t]) + x*f1f([1, y, z, t]) \
+            + (1 - y)*(g0f([x, 0, z, t]) - ((1 - x)*g0f([0, 0, z, t])
+                       + x*g0f([1, 0, z, t]))) \
+            + y*(g1f([x, 1, z, t]) - ((1 - x)*g1f([0, 1, z, t])
+                 + x*g1f([1, 1, z, t]))) \
+            + (1 - z)*(h0f([x, y, 0, t]) - ((1 - x)*h0f([0, y, 0, t]) + x*h0f([1, y, 0, t])
+                                            + y*(h0f([x, 1, 0, t]) - ((1 - x)*h0f([0, 1, 0, t]) + x*h0f([1, 1, 0, t]))))) \
+            + z*(h1f([x, y, 1, t]) -
+                 ((1 - x)*h1f([0, y, 1, t]) + x*h1f([1, y, 1, t])
+                  + (1 - y)*(h1f([x, 0, 1, t]) - ((1 - x)*h1f([0, 0, 1, t]) + x*h1f([1, 0, 1, t])))
+                  + y*(h1f([x, 1, 1, t]) - ((1 - x)*h1f([0, 1, 1, t]) + x*h1f([1, 1, 1, t]))))) \
+            + (1-t)* \
+               (Y0f([x, y, z, 0]) -
+                ((1 - x)*Y0f([0, y, z, 0]) + x*Y0f([1, y, z, 0]) +
+                 (1 - y)*(Y0f([x, 0, z, 0]) - ((1 - x)*Y0f([0, 0, z, 0]) + x*Y0f([1, 0, z, 0]))) +
+                 y*(Y0f([z, 1, z, 0]) - ((1 - x)*Y0f([0, 1, z, 0]) + x*Y0f([1, 1, z, 0]))) +
+                 (1 - z)*
+                 (Y0f([x, y, 0, 0]) - ((1 - x)*Y0f([0, y, 0, 0]) + x*Y0f([1, y, 0, 0]) +
+                                       (1 - y)*(Y0f([x, 0, 0, 0]) - ((1 - x)*Y0f([0, 0, 0, 0]) + x*Y0f([1, 0, 0, 0]))) +
+                                       y*(Y0f([x, 1, 0, 0]) - ((1 - x)*Y0f([0, 1, 0, 0]) + x*Y0f([1, 1, 0, 0]))))) +
+                 z*(Y0f([x, y, 1, 0]) - ((1 - x)*Y0f([0, y, 1, 0]) + x*Y0f([1, y, 1, 0]) +
+                                         (1 - y)*(Y0f([x, 0, 1, 0]) - ((1 - x)*Y0f([0, 0, 1, 0]) + x*Y0f([1, 0, 1, 0]))) +
+                                         y*(Y0f([x, 1, 1, 0]) - ((1 - x)*Y0f([0, 1, 1, 0]) + x*Y0f([1, 1, 1, 0])))))))
         return A
 
     def delAf(self, xyzt):
         """Gradient of boundary condition function"""
         (x, y, z, t) = xyzt
-        (cx1, cx2, cy1, cy2, cz1, cz2, ct1) = self.cf(xyzt)
-        ((dcx1_dx, dcx1_dy, dcx1_dz, dcx1_dt),
-         (dcx2_dx, dcx2_dy, dcx2_dz, dcx2_dt),
-         (dcy1_dx, dcy1_dy, dcy1_dz, dcy1_dt),
-         (dcy2_dx, dcy2_dy, dcy2_dz, dcy2_dt),
-         (dcz1_dx, dcz1_dy, dcz1_dz, dcz1_dt),
-         (dcz2_dx, dcz2_dy, dcz2_dz, dcz2_dt),
-         (dct1_dx, dct1_dy, dct1_dz, dct1_dt),
-        ) = self.delcf(xyzt)
-        dA_dx = (cx1 + dcx1_dx*x) + (cx2*2*x + dcx2_dx*x**2) + (dcy1_dx*y) + (dcy2_dx*y**2) + (dcz1_dx*z) + (dcz2_dx*z**2) + (dct1_dx*t)
-        dA_dy = (dcx1_dy*x) + (dcx2_dy*x**2) + (cy1 + dcy1_dy*y) + (cy2*2*y + dcy2_dy*y**2) + (dcz1_dy*z) + (dcz2_dy*z**2) + (dct1_dy*t)
-        dA_dz = (dcx1_dz*x) + (dcx2_dz*x**2) + (dcy1_dz*y) + (dcy2_dz*y**2) + (cz1 + dcz1_dz*z) + (cz2*2*z + dcz2_dz*z**2) + (dct1_dz*t)
-        dA_dt = (dcx1_dt*x) + (dcx2_dt*x**2) + (dcy1_dt*y) + (dcy2_dt*y**2) + (dcz1_dt*z) + (dcz2_dt*z**2) + (ct1 + dct1_dt*t)
+        ((f0f, f1f), (g0f, g1f), (h0f, h1f), (Y0f, Y1f)) = self.bcf
+        (((df0_dxf, df0_dyf, df0_dzf, df0_dtf), (df1_dxf, df1_dyf, df1_dzf, df1_dtf)),
+         ((dg0_dxf, dg0_dyf, dg0_dzf, dg0_dtf), (dg1_dxf, dg1_dyf, dg1_dzf, dg1_dtf)),
+         ((dh0_dxf, dh0_dyf, dh0_dzf, dh0_dtf), (dh1_dxf, dh1_dyf, dh1_dzf, dh1_dtf)),
+         ((dY0_dxf, dY0_dyf, dY0_dzf, dY0_dtf), (dY1_dxf, dY1_dyf, dY1_dzf, dY1_dtf))
+         ) = self.delbcf
+
+        dA_dx = -f0f([0, y, z, t]) + f1f([1, y, z, t]) + \
+            (1 - y)*(f0f([0, 0, z, t]) - f1f([1, 0, z, t]) + dg0_dxf([x, 0, z, t])) + \
+            y*(f0f([0, 1, z, t]) - f1f([1, 1, z, t]) + dg1_dxf([x, 1, z, t])) + \
+            (1 - z)*(f0f([0, y, 0, t]) - f1f([1, y, 0, t]) -
+                     (1 - y)*(h0f([0, 0, 0, t]) - h0f([1, 0, 0, t]) + dg0_dxf([x, 0, 0, t])) -
+                     y*(h0f([0, 1, 0, t]) - h0f([1, 1, 0, t]) + dg1_dxf([x, 1, 0, t])) + dh0_dxf([x, y, 0, t])) + \
+            z*(f0f([0, y, 1, t]) - f1f([1, y, 1, t]) -
+               (1 - y)*(h1f([0, 0, 1, t]) - h1f([1, 0, 1, t]) + dg0_dxf([x, 0, 1, t])) -
+               y*(h1f([0, 1, 1, t]) - h1f([1, 1, 1, t]) + dg1_dxf([x, 1, 1, t])) + dh1_dxf([x, y, 1, t])) + \
+            (1 - t)*(f0f([0, y, z, 0]) - f1f([1, y, z, 0]) -
+                     (1 - y)*(f0f([0, 0, z, 0]) - f1f([1, 0, z, 0]) + dg0_dxf([x, 0, z, 0])) -
+                     y*(f0f([0, 1, z, 0]) - f1f([1, 1, z, 0]) + dg1_dxf([x, 1, z, 0])) -
+                     (1 - z)*(f0f([0, y, 0, 0]) - f1f([1, y, 0, 0]) -
+                              (1 - y)*(f0f([0, 0, 0, 0]) - f1f([1, 0, 0, 0]) + dg0_dxf([x, 0, 0, 0])) -
+                              + y*(f0f([0, 1, 0, 0]) - f1f([1, 1, 0, 0]) + dg1_dxf([x, 1, 0, 0])) + dh0_dxf([x, y, 0, 0])) -
+                     z*(f0f([0, y, 1, 0]) - f1f([1, y, 1, 0]) -
+                        (1 - y)*(f0f([0, 0, 1, 0]) - f1f([1, 0, 1, 0]) + dg0_dxf([x, 0, 1, 0])) -
+                        y*(f0f([0, 1, 1, 0]) - f1f([1, 1, 1, 0]) + dg1_dxf([x, 1, 1, 0])) +
+                        dh1_dxf([x, y, 1, 0])) + dY0_dxf([x, y, z, 0]))
+        dA_dy = (1 - x)*f0f([0, 0, z, t]) \
+                - (1 - x)*f0f([0, 1, z, t]) \
+                + x*f1f([1, 0, z, t]) - x*f1f([1, 1, z, t]) - g0f([x, 0, z, t]) + g1f([x, 1, z, t]) + \
+                (1 - x)*df0_dyf([0, y, z, t]) + x*df1_dyf([1, y, z, t]) + \
+                (1 - z)*(g0f([x, 0, 0, t]) - g1f([x, 1, 0, t]) - (1 - x)*h0f([0, 0, 0, t]) +
+                         (1 - x)*h0f([0, 1, 0, t]) - x*h0f([1, 0, 0, t]) + x*h0f([1, 1, 0, t]) -
+                         (1 - x)*df0_dyf([0, y, 0, t]) - x*df1_dyf([1, y, 0, t]) + dh0_dyf([x, y, 0, t])) + \
+                z*(g0f([x, 0, 1, t]) - g1f([x, 1, 1, t]) - (1 - x)*h1f([0, 0, 1, t]) +
+                   (1 - x)*h1f([0, 1, 1, t]) - x*h1f([1, 0, 1, t]) + x*h1f([1, 1, 1, t]) -
+                   (1 - x)*df0_dyf([0, y, 1, t]) - x*df1_dyf([1, y, 1, t]) + dh1_dyf([x, y, 1, t])) + \
+                (1 - t)*(-(1 - x)*f0f([0, 0, z, 0]) + (1 - x)*f0f([0, 1, z, 0]) -
+                         x*f1f([1, 0, z, 0]) + x*f1f([1, 1, z, 0]) + g0f([x, 0, z, 0]) - g1f([x, 1, z, 0]) -
+                         (1 - x)*df0_dyf([0, y, z, 0]) - x*df1_dyf([1, y, z, 0]) -
+                         (1 - z)*(-(1 - x)*f0f([0, 0, 0, 0]) + (1 - x)*f0f([0, 1, 0, 0]) - x*f1f([1, 0, 0, 0]) +
+                                  x*f1f([1, 1, 0, 0]) + g0f([x, 0, 0, 0]) - g1f([x, 1, 0, 0]) - (1 - x)*df0_dyf([0, y, 0, 0]) -
+                                  x*df1_dyf([1, y, 0, 0]) + dh0_dyf([x, y, 0, 0])) -
+                         z*(-(1 - x)*f0f([0, 0, 1, 0]) + (1 - x)*f0f([0, 1, 1, 0]) - x*f1f([1, 0, 1, 0]) +
+                            x*f1f([1, 1, 1, 0]) + g0f([x, 0, 1, 0]) - g1f([x, 1, 1, 0]) -
+                            (1 - x)*df0_dyf([0, y, 1, 0]) - x*df1_dyf([1, y, 1, 0]) +
+                            dh1_dyf([x, y, 1, 0])) + dY0_dyf([x, y, z, 0]))
+        dA_dz = (1 - x)*f0f([0, y, 0, t]) - \
+                (1 - x)*f0f([0, y, 1, t]) + \
+                x*f1f([1, y, 0, t]) - x*f1f([1, y, 12, t]) + \
+                (1 - y)*(g0f([x, 0, 0, t]) - (1 - x)*h0f([0, 0, 0, t]) - x*h0f([1, 0, 0, t])) + \
+                y*(g1f([x, 1, 0, t]) - (1 - x)*h0f([0, 1, 0, t]) - x*h0f([1, 1, 0, t])) - h0f([x, y, 0, t]) - \
+                (1 - y)*(g0f([x, 0, 1, t]) - (1 - x)*h1f([0, 0, 1, t]) - x*h1f([1, 0, 1, t])) - \
+                y*(g1f([x, 1, 1, t]) - (1 - x)*h1f([0, 1, 1, t]) - x*h1f([1, 1, 1, t])) + \
+                h1f([x, y, 1, t]) + (1 - x)*df0_dzf([0, y, z, t]) + x*df1_dzf([1, y, z, t]) + \
+                (1 - y)*(-(1 - x)*df0_dzf([0, 0, z, t]) - x*df1_dzf([1, 0, z, t]) + dg0_dzf([x, 0, z, t])) + \
+                y*(-(1 - x)*df0_dzf([0, 1, z, t]) - x*df1_dzf([1, 1, z, t]) + dg1_dzf([x, 1, z, t])) + \
+                (1 - t)*(-(1 - x)*f0f([0, y, 0, 0]) + (1 - x)*f0f([0, y, 1, 0]) - x*f1f([1, y, 0, 0]) + x*f1f([1, y, 1, 0]) - \
+                         (1 - y)*(-(1 - x)*f0f([0, 0, 0, 0]) - x*f1f([1, 0, 0, 0]) + g0f([x, 0, 0, 0])) +
+                         (1 - y)*(-(1 - x)*f0f([0, 0, 1, 0]) - x*f1f([1, 0, 1, 0]) + g0f([x, 0, 1, 0])) -
+                         y*(-(1 - x)*f0f([0, 1, 0, 0]) - x*f1f([1, 1, 0, 0]) + g1f([x, 1, 0, 0])) +
+                         y*(-(1 - x)*f0f([0, 1, 1, 0]) - x*f1f([1, 1, 1, 0]) + g1f([x, 1, 1, 0])) +
+                         h0f([x, y, 0, 0]) - h1f([x, y, 1, 0]) - (1 - x)*df0_dzf([0, y, z, 0]) - x*df1_dzf([1, y, z, 0]) -
+                         (1 - y)*(-(1 - x)*df0_dzf([0, 0, z, 0]) - x*df1_dzf([1, 0, z, 0]) + dg0_dzf([x, 0, z, 0])) -
+                         y*(-(1 - x)*df0_dzf([0, 1, z, 0]) - x*df1_dzf([1, 1, z, 0]) + dg1_dzf([x, 1, z, 0])) +
+                         dY0_dzf([x, y, z, 0]))
+        dA_dt = (1 - x)*f0f([0, y, z, 0]) + \
+                x*f1f([1, y, z, 0]) + \
+                (1 - y)*(-(1 - x)*f0f([0, 0, z, 0]) - x*f1f([1, 0, z, 0]) + g0f([x, 0, z, 0])) + \
+                y*(-(1 - x)*f0f([0, 1, z, 0]) - x*f1f([1, 1, z, 0]) + g1f([x, 1, z, 0])) + \
+                (1 - z)*(-(1 - x)*f0f([0, y, 0, 0]) - x*f1f([1, y, 0, 0]) -
+                         (1 - y)*(-(1 - x)*f0f([0, 0, 0, 0]) - x*f1f([1, 0, 0, 0]) + g0f([x, 0, 0, 0])) -
+                         y*(-(1 - x)*f0f([0, 1, 0, 0]) - x*f1f([1, 1, 0, 0]) + g1f([x, 1, 0, 0])) + h0f([x, y, 0, 0])) + \
+                z*(-(1 - x)*f0f([0, y, 1, 0]) - x*f1f([1, y, 1, 0]) -
+                   (1 - y)*(-(1 - x)*f0f([0, 0, 1, 0]) - x*f1f([1, 0, 1, 0]) + g0f([x, 0, 1, 0])) -
+                   y*(-(1 - x)*f0f([0, 1, 1, 0]) - x*f1f([1, 1, 1, 0]) + g1f([x, 1, 1, 0])) +
+                   h1f([x, y, 1, 0])) - \
+                Y0f([x, y, z, 0]) + \
+                (1 - x)*df0_dtf([0, y, z, t]) + x*df1_dtf([1, y, z, t]) + \
+                (1 - y)*(-(1 - x)*df0_dtf([0, 0, z, t]) - x*df1_dtf([1, 0, z, t]) + dg0_dtf([x, 0, z, t])) + \
+                y*(-(1 - x)*df0_dtf([0, 1, z, t]) - x*df1_dtf([1, 1, z, t]) + dg1_dtf([x, 1, z, t])) + \
+                (1 - z)*(-(1 - x)*df0_dtf([0, y, 0, t]) - x*df1_dtf([1, y, 0, t]) -
+                         (1 - y)*(dg0_dtf([x, 0, 0, t]) - (1 - x)*dh0_dtf([0, 0, 0, t]) - x*dh0_dtf([1, 0, 0, t])) -
+                         y*(dg1_dtf([x, 1, 0, t]) - (1 - x)*dh0_dtf([0, 1, 0, t]) - x*dh0_dtf([1, 1, 0, t])) +
+                         dh0_dtf([x, y, 0, t])) + \
+                z*(-(1 - x)*df0_dtf([0, y, 1, t]) - x*df1_dtf([1, y, 1, t]) -
+                   (1 - y)*(dg0_dtf([x, 0, 1, t]) - (1 - x)*dh1_dtf([0, 0, 1, t]) - x*dh1_dtf([1, 0, 1, t])) -
+                   y*(dg1_dtf([x, 1, 1, t]) - (1 - x)*dh1_dtf([0, 1, 1, t]) - x*dh1_dtf([1, 1, 1, t])) + \
+                   dh1_dtf([x, y, 1, t]))
         delA = [dA_dx, dA_dy, dA_dz, dA_dt]
         return delA
 
     def del2Af(self, xyzt):
         (x, y, z, t) = xyzt
-        (cx1, cx2, cy1, cy2, cz1, cz2, ct1) = self.cf(xyzt)
-        ((dcx1_dx, dcx1_dy, dcx1_dz, dcx1_dt),
-         (dcx2_dx, dcx2_dy, dcx2_dz, dcx2_dt),
-         (dcy1_dx, dcy1_dy, dcy1_dz, dcy1_dt),
-         (dcy2_dx, dcy2_dy, dcy2_dz, dcy2_dt),
-         (dcz1_dx, dcz1_dy, dcz1_dz, dcz1_dt),
-         (dcz2_dx, dcz2_dy, dcz2_dz, dcz2_dt),
-         (dct1_dx, dct1_dy, dct1_dz, dct1_dt),
-        ) = self.delcf(xyzt)
-        ((d2cx1_dx2, d2cx1_dy2, d2cx1_dz2, d2cx1_dt2),
-         (d2cx2_dx2, d2cx2_dy2, d2cx2_dz2, d2cx2_dt2),
-         (d2cy1_dx2, d2cy1_dy2, d2cy1_dz2, d2cy1_dt2),
-         (d2cy2_dx2, d2cy2_dy2, d2cy2_dz2, d2cy2_dt2),
-         (d2cz1_dx2, d2cz1_dy2, d2cz1_dz2, d2cz1_dt2),
-         (d2cz2_dx2, d2cz2_dy2, d2cz2_dz2, d2cz2_dt2),
-         (d2ct1_dx2, d2ct1_dy2, d2ct1_dz2, d2ct1_dt2),
-        ) = self.del2cf(xyzt)
-
-        d2A_dx2 = (2*dcx1_dx + d2cx1_dx2*x) + (cx2*2 + 2*dcx2_dx*2*x + d2cx2_dx2*x**2) + (d2cy1_dx2*y) + (d2cy2_dx2*y**2) + (d2cz1_dx2*z) + (d2cz2_dx2*z**2) + (d2ct1_dx2*t)
-        d2A_dy2 = (d2cx1_dy2*x) + (d2cx2_dy2*x**2) + (2*dcy1_dy + d2cy1_dy2*y) + (cy2*2 + 2*dcy2_dy*2*y + d2cy2_dy2*y**2) + (d2cz1_dy2*z) + (d2cz2_dy2*z**2) + (d2ct1_dy2*t)
-        d2A_dz2 = (d2cx1_dz2*x) + (d2cx2_dz2*x**2) + (d2cy1_dz2*y) + (d2cy2_dz2*y**2) + (2*dcz1_dz + d2cz1_dz2*z) + (cz2*2 + 2*dcz2_dz*2*z + d2cz2_dz2*z**2) + (d2ct1_dz2*t)
-        d2A_dt2 = (d2cx1_dt2*x) + (d2cx2_dt2*x**2) + (d2cy1_dt2*y) + (d2cy2_dt2*y**2) + (d2cz1_dt2*z) + (d2cz2_dt2*z**2) + (2*dct1_dt + d2ct1_dt2*t)
-        del2A = [d2A_dx2, d2A_dy2, d2A_dz2, d2A_dt2]
-        return del2A
-
-    def cf(self, xyzt):
-        """Compute the coefficient vector for the boundary condition function"""
-        (x, y, z, t) = xyzt
-        ((f0f, f1f), (g0f, g1f), (h0f, h1f), (Y0f, Y1f)) = self.bcf
-        f0 = f0f(xyzt); f1 = f1f(xyzt)
-        g0 = g0f(xyzt); g1 = g1f(xyzt)
-        h0 = h0f(xyzt); h1 = h1f(xyzt)
-        Y0 = Y0f(xyzt); Y1 = Y1f(xyzt)
-        cx1 = (f0*(3*x**2 - 2) - 3*f1*x**2 + g0 + h0 + Y0)/(3*x*(1 - x))
-        cx2 = (f0*(2 - 3*x) + 3*f1*x - g0 - h0 - Y0)/(3*x*(1 - x))
-        cy1 = (f0 + g0*(3*y**2 - 2) - 3*g1*y**2 + h0 + Y0)/(3*y*(1 - y))
-        cy2 = (-f0 + g0*(2 - 3*y) + 3*g1*y - h0 - Y0)/(3*y*(1 - y))
-        cz1 = (f0 + g0 + h0*(3*z**2 - 2) - 3*h1**z**2 + Y0)/(3*z*(1 - z))
-        cz2 = (-f0 - g0 + h0*(2 - 3*z) + 3*h1*z - Y0)/(3*z*(1 - z))
-        ct1 = (f0 + g0 + h0 - 2*Y0)/(3*t)
-        c = [cx1, cx2, cy1, cy2, cz1, cz2, ct1]
-        return c
-
-    def delcf(self, xyzt):
-        """Compute the gradients of each coefficient."""
-        (x, y, z, t) = xyzt
         ((f0f, f1f), (g0f, g1f), (h0f, h1f), (Y0f, Y1f)) = self.bcf
         (((df0_dxf, df0_dyf, df0_dzf, df0_dtf), (df1_dxf, df1_dyf, df1_dzf, df1_dtf)),
          ((dg0_dxf, dg0_dyf, dg0_dzf, dg0_dtf), (dg1_dxf, dg1_dyf, dg1_dzf, dg1_dtf)),
          ((dh0_dxf, dh0_dyf, dh0_dzf, dh0_dtf), (dh1_dxf, dh1_dyf, dh1_dzf, dh1_dtf)),
-         ((dY0_dxf, dY0_dyf, dY0_dzf, dY0_dtf), (dY1_dxf, dY1_dyf, dY1_dzf, dY1_dtf))) = self.delbcf
-        f0 = f0f(xyzt); f1 = f1f(xyzt)
-        g0 = g0f(xyzt); g1 = g1f(xyzt)
-        h0 = h0f(xyzt); h1 = h1f(xyzt)
-        Y0 = Y0f(xyzt); Y1 = Y1f(xyzt)
-        df0_dx = df0_dxf(xyzt); df0_dy = df0_dyf(xyzt); df0_dz = df0_dzf(xyzt); df0_dt = df0_dtf(xyzt)
-        df1_dx = df1_dxf(xyzt); df1_dy = df1_dyf(xyzt); df1_dz = df1_dzf(xyzt); df1_dt = df1_dtf(xyzt)
-        dg0_dx = dg0_dxf(xyzt); dg0_dy = dg0_dyf(xyzt); dg0_dz = dg0_dzf(xyzt); dg0_dt = dg0_dtf(xyzt)
-        dg1_dx = dg1_dxf(xyzt); dg1_dy = dg1_dyf(xyzt); dg1_dz = dg1_dzf(xyzt); dg1_dt = dg1_dtf(xyzt)
-        dh0_dx = dh0_dxf(xyzt); dh0_dy = dh0_dyf(xyzt); dh0_dz = dh0_dzf(xyzt); dh0_dt = dh0_dtf(xyzt)
-        dh1_dx = dh1_dxf(xyzt); dh1_dy = dh1_dyf(xyzt); dh1_dz = dh1_dzf(xyzt); dh1_dt = dh1_dtf(xyzt)
-        dY0_dx = dY0_dxf(xyzt); dY0_dy = dY0_dyf(xyzt); dY0_dz = dY0_dzf(xyzt); dY0_dt = dh0_dtf(xyzt)
-        dY1_dx = dY1_dxf(xyzt); dY1_dy = dY1_dyf(xyzt); dY1_dz = dY1_dzf(xyzt); dY1_dt = dh1_dtf(xyzt)
-
-        dcx1_dx = -((-2 + (4 - 3*x)*x)*f0 + g0 + h0 + Y0 +
-                    x*(3*x*f1 - 2*g0 - 2*h0 - 2*Y0 +
-                       (-1 + x)*((-2 + 3*x**2)*df0_dx - 3*x**2*df1_dx +
-                                 dg0_dx + dh0_dx + dY0_dx)))/ \
-                  (3*(-1 + x)**2*x**2)
-        dcx1_dy = -((-2 + 3*x**2)*df0_dy - 3*x**2*df1_dy + dg0_dy + dh0_dy +
-                    dY0_dy)/ \
-                  (3*(-1 + x)*x)
-        dcx1_dz = -((-2 + 3*x**2)*df0_dz - 3*x**2*df1_dz + dg0_dz + dh0_dz +
-                    dY0_dz)/ \
-                  (3*(-1 + x)*x)
-        dcx1_dt = -((-2 + 3*x**2)*df0_dt - 3*x**2*df1_dt + dg0_dt + dh0_dt +
-                    dY0_dt)/ \
-                  (3*(-1 + x)*x)
-
-        dcx2_dx = ((-2 + (4 - 3*x)*x)*f0 + g0 + h0 + Y0 +
-                   x*(3*x*f1 - 2*g0 - 2*h0 - 2*Y0 +
-                      (-1 + x)*((-2 + 3*x)*df0_dx - 3*x*df1_dx + dg0_dx +
-                                dh0_dx + dY0_dx)))/ \
-                  (3*(-1 + x)**2*x**2)
-        dcx2_dy = ((-2 + 3*x)*df0_dy - 3*x*df1_dy + dg0_dy + dh0_dy + dY0_dy)/ \
-                  (3*(-1 + x)*x)
-        dcx2_dz = ((-2 + 3*x)*df0_dz - 3*x*df1_dz + dg0_dz + dh0_dz + dY0_dz)/ \
-                  (3*(-1 + x)*x)
-        dcx2_dt = ((-2 + 3*x)*df0_dt - 3*x*df1_dt + dg0_dt + dh0_dt + dY0_dt)/ \
-                  (3*(-1 + x)*x)
-
-        dcy1_dx = -(df0_dx + (-2 + 3*y**2)*dg0_dx - 3*y**2*dg1_dx + dh0_dx + dY0_dx)/ \
-                  (3*(-1 + y)*y)
-        dcy1_dy = ((-1 + 2*y)*f0 + (2 + y*(-4 + 3*y))*g0 - h0 - Y0 +
-                   y*(-3*y*g1 + 2*h0 + 2*Y0 - (-1 + y)*
-                      (df0_dy + (-2 + 3*y**2)*dg0_dy - 3*y**2*dg1_dy + dh0_dy + dY0_dy)))/ \
-                  (3*(-1 + y)**2*y**2)
-        dcy1_dz = -(df0_dz + (-2 + 3*y**2)*dg0_dz - 3*y**2*dg1_dz + dh0_dz + dY0_dz)/ \
-                  (3*(-1 + y)*y)
-        dcy1_dt = -(df0_dt + (-2 + 3*y**2)*dg0_dt - 3*y**2*dg1_dt + dh0_dt + dY0_dt)/ \
-                  (3*(-1 + y)*y)
-
-        dcy2_dx = (df0_dx + (-2 * 3*y)*dg0_dx - 3*y*dg1_dx + dh0_dx + dY0_dx)/ \
-                  (3*(-1 + y)*y)
-        dcy2_dy = ((1 - 2*y)*f0 + (-2 + (4 - 3*y)*y)*g0 + h0 + Y0 +
-                   y*(3*y*g1 - 2*h0 - 2*Y0 + (-1 + y)*
-                      (df0_dy + (-2 + 3*y)*dg0_dy - 3*y*dg1_dy + dh0_dy + dY0_dy)))/ \
-                  (3*(-1 + y)**2*y**2)
-        dcy2_dz = (df0_dz + (-2 + 3*y)*dg0_dz - 3*y*dg1_dz + dh0_dz + dY0_dz)/ \
-                  (3*(-1 + y)*y)
-        dcy2_dt = (df0_dt + (-2 + 3*y)*dg0_dt - 3*y*dg1_dt + dh0_dt + dY0_dt)/ \
-                  (3*(-1 + y)*y)
-
-        dcz1_dx = -(df0_dx + 2*h0*dg0_dx + (3*z**2 + 2*g0)*dh0_dx -
-                    3*z**2*dh1_dx + dY0_dx)/ \
-                  (3*(-1 + z)*z)
-        dcz1_dy = -(df0_dy + 2*h0*dg0_dy + (3*z**2 + 2*g0)*dh0_dy -
-                    3*z**2*dh1_dy + dY0_dy)/ \
-                  (3*(-1 + z)*z)
-        dcz1_dz = ((-1 + 2*z)*f0 - Y0 +
-                   h0*((-2 + 4*z)*g0 + z*(3*z - 2*(-1 + z)*dg0_dz)) +
-                   z*(-3*z*h1 + 2*Y0 -
-                      (-1 + z)*(df0_dz + (3*z**2 + 2*g0)*dh0_dz -
-                                 3*z**2*dh1_dz + dY0_dz)))/ \
-                  (3*(-1 + z)**2*z**2)
-        dcz1_dt = -(df0_dt + 2*h0*dg0_dt + (3*z**2 + 2*g0)*dh0_dt -
-                    3*z**2*dh1_dt + dY0_dt)/ \
-                  (3*(-1 + z)*z)
-
-        dcz2_dx = (df0_dx + dg0_dx + (-2 + 3*z)*dh0_dx - 3*z*dh1_dx + dY0_dx)/ \
-                  (3*(-1 + z)*z)
-        dcz2_dy = (df0_dy + dg0_dy + (-2 + 3*z)*dh0_dy - 3*z*dh1_dy + dY0_dy)/ \
-                  (3*(-1 + z)*z)
-        dcz2_dz = ((1 - 2*z)*f0 + (1 - 2*z)*g0 - 2*h0 + Y0 +
-                   z*((4 - 3*z)*h0 + 3*z*h1 - 2*Y0 +
-                      (-1 + z)*(df0_dz + dg0_dz + (-2 + 3*z)*dh0_dz -
-                      -3*z*dh1_dz + dY0_dz)))/ \
-                  (3*(-1 + z)**2*z**2)
-        dcz2_dt = (df0_dt + dg0_dt + (-2 + 3*z)*dh0_dt - 3*z*dh1_dt + dY0_dt)/ \
-                  (3*(-1 + z)*z)
-
-        dct1_dx = (df0_dx + dg0_dx + dh0_dx - 2*dY0_dx)/(3*t)
-        dct1_dy = (df0_dy + dg0_dy + dh0_dy - 2*dY0_dy)/(3*t)
-        dct1_dz = (df0_dz + dg0_dz + dh0_dz - 2*dY0_dz)/(3*t)
-        dct1_dt = -(f0 + g0 + h0 - 2*Y0 -
-                    t*(df0_dt + dg0_dt + dh0_dt - 2*dY0_dt))/ \
-                  (3*t**2)
-
-        delc = [
-            [dcx1_dx, dcx1_dy, dcx1_dz, dcx1_dt],
-            [dcx2_dx, dcx2_dy, dcx2_dz, dcx2_dt],
-            [dcy1_dx, dcy1_dy, dcy1_dz, dcy1_dt],
-            [dcy2_dx, dcy2_dy, dcy2_dz, dcy2_dt],
-            [dcz1_dx, dcz1_dy, dcz1_dz, dcz1_dt],
-            [dcz2_dx, dcz2_dy, dcz2_dz, dcz2_dt],
-            [dct1_dx, dct1_dy, dct1_dz, dct1_dt],
-            ]
-        return delc
-
-    def del2cf(self, xyzt):
-        """Compute the Laplacians of each coefficient."""
-        (x, y, z, t) = xyzt
-        ((f0f, f1f), (g0f, g1f), (h0f, h1f), (Y0f, Y1f)) = self.bcf
-        (((df0_dxf, df0_dyf, df0_dzf, df0_dtf), (df1_dxf, df1_dyf, df1_dzf, df1_dtf)),
-         ((dg0_dxf, dg0_dyf, dg0_dzf, dg0_dtf), (dg1_dxf, dg1_dyf, dg1_dzf, dg1_dtf)),
-         ((dh0_dxf, dh0_dyf, dh0_dzf, dh0_dtf), (dh1_dxf, dh1_dyf, dh1_dzf, dh1_dtf)),
-         ((dY0_dxf, dY0_dyf, dY0_dzf, dY0_dtf), (dY1_dxf, dY1_dyf, dY1_dzf, dY1_dtf))) = self.delbcf
+         ((dY0_dxf, dY0_dyf, dY0_dzf, dY0_dtf), (dY1_dxf, dY1_dyf, dY1_dzf, dY1_dtf))
+         ) = self.delbcf
         (((d2f0_dx2f, d2f0_dy2f, d2f0_dz2f, d2f0_dt2f), (d2f1_dx2f, d2f1_dy2f, d2f1_dz2f, d2f1_dt2f)),
          ((d2g0_dx2f, d2g0_dy2f, d2g0_dz2f, d2g0_dt2f), (d2g1_dx2f, d2g1_dy2f, d2g1_dz2f, d2g1_dt2f)),
          ((d2h0_dx2f, d2h0_dy2f, d2h0_dz2f, d2h0_dt2f), (d2h1_dx2f, d2h1_dy2f, d2h1_dz2f, d2h1_dt2f)),
-         ((d2Y0_dx2f, d2Y0_dy2f, d2Y0_dz2f, d2Y0_dt2f), (d2Y1_dx2f, d2Y1_dy2f, d2Y1_dz2f, d2Y1_dt2f))) = self.del2bcf
-        f0 = f0f(xyzt); f1 = f1f(xyzt)
-        g0 = g0f(xyzt); g1 = g1f(xyzt)
-        h0 = h0f(xyzt); h1 = h1f(xyzt)
-        Y0 = Y0f(xyzt); Y1 = Y1f(xyzt)
-        df0_dx = df0_dxf(xyzt); df0_dy = df0_dyf(xyzt); df0_dz = df0_dzf(xyzt); df0_dt = df0_dtf(xyzt)
-        df1_dx = df1_dxf(xyzt); df1_dy = df1_dyf(xyzt); df1_dz = df1_dzf(xyzt); df1_dt = df1_dtf(xyzt)
-        dg0_dx = dg0_dxf(xyzt); dg0_dy = dg0_dyf(xyzt); dg0_dz = dg0_dzf(xyzt); dg0_dt = dg0_dtf(xyzt)
-        dg1_dx = dg1_dxf(xyzt); dg1_dy = dg1_dyf(xyzt); dg1_dz = dg1_dzf(xyzt); dg1_dt = dg1_dtf(xyzt)
-        dh0_dx = dh0_dxf(xyzt); dh0_dy = dh0_dyf(xyzt); dh0_dz = dh0_dzf(xyzt); dh0_dt = dh0_dtf(xyzt)
-        dh1_dx = dh1_dxf(xyzt); dh1_dy = dh1_dyf(xyzt); dh1_dz = dh1_dzf(xyzt); dh1_dt = dh1_dtf(xyzt)
-        dY0_dx = dY0_dxf(xyzt); dY0_dy = dY0_dyf(xyzt); dY0_dz = dY0_dzf(xyzt); dY0_dt = dY0_dtf(xyzt)
-        dY1_dx = dY1_dxf(xyzt); dY1_dy = dY1_dyf(xyzt); dY1_dz = dY1_dzf(xyzt); dY1_dt = dY1_dtf(xyzt)
-        d2f0_dx2 = d2f0_dx2f(xyzt); d2f0_dy2 = d2f0_dy2f(xyzt); d2f0_dz2 = d2f0_dz2f(xyzt); d2f0_dt2 = d2f0_dt2f(xyzt)
-        d2f1_dx2 = d2f1_dx2f(xyzt); d2f1_dy2 = d2f1_dy2f(xyzt); d2f1_dz2 = d2f1_dz2f(xyzt); d2f1_dt2 = d2f1_dt2f(xyzt)
-        d2g0_dx2 = d2g0_dx2f(xyzt); d2g0_dy2 = d2g0_dy2f(xyzt); d2g0_dz2 = d2g0_dz2f(xyzt); d2g0_dt2 = d2g0_dt2f(xyzt)
-        d2g1_dx2 = d2g1_dx2f(xyzt); d2g1_dy2 = d2g1_dy2f(xyzt); d2g1_dz2 = d2g1_dz2f(xyzt); d2g1_dt2 = d2g1_dt2f(xyzt)
-        d2h0_dx2 = d2h0_dx2f(xyzt); d2h0_dy2 = d2h0_dy2f(xyzt); d2h0_dz2 = d2h0_dz2f(xyzt); d2h0_dt2 = d2h0_dt2f(xyzt)
-        d2h1_dx2 = d2h1_dx2f(xyzt); d2h1_dy2 = d2h1_dy2f(xyzt); d2h1_dz2 = d2h1_dz2f(xyzt); d2h1_dt2 = d2h1_dt2f(xyzt)
-        d2Y0_dx2 = d2Y0_dx2f(xyzt); d2Y0_dy2 = d2Y0_dy2f(xyzt); d2Y0_dz2 = d2Y0_dz2f(xyzt); d2Y0_dt2 = d2Y0_dt2f(xyzt)
-        d2Y1_dx2 = d2Y1_dx2f(xyzt); d2Y1_dy2 = d2Y1_dy2f(xyzt); d2Y1_dz2 = d2Y1_dz2f(xyzt); d2Y1_dt2 = d2Y1_dt2f(xyzt)
+         ((d2Y0_dx2f, d2Y0_dy2f, d2Y0_dz2f, d2Y0_dt2f), (d2Y1_dx2f, d2Y1_dy2f, d2Y1_dz2f, d2Y1_dt2f))
+         ) = self.del2bcf
 
-        d2cx1_dx2 = (2*(2 - 3*x*(2 + (-2 + x)*x))*f0 + 6*x**3*f1 -
-                     2*(g0 + h0 + Y0) - (-1 + x)*x*
-                     (6*g0 + 6*h0 + 6*Y0 + (-4 + 8*x - 6*x**2)*df0_dx +
-                      2*(dg0_dx + dh0_dx + dY0_dx) +
-                      x*(6*x*df1_dx - 4*dg0_dx - 4*dh0_dx - 4*dY0_dx +
-                         (-1 + x)*((-2 + 3*x**2)*d2f0_dx2 - 3*x**2*d2f1_dx2 +
-                         d2g0_dx2 + d2h0_dx2 + d2Y0_dx2))))/ \
-                    (3*(-1 + x)**3*x**3)
-        d2cx1_dy2 = -((-2 + 3*x**2)*d2f0_dy2 - 3*x**2*d2f1_dy2 + d2g0_dy2 +
-                      d2h0_dy2 + d2Y0_dy2)/ \
-                    (3*(-1 + x)*x)
-        d2cx1_dz2 = -((-2 + 3*x**2)*d2f0_dz2 - 3*x**2*d2f1_dz2 + d2g0_dz2 +
-                      d2h0_dz2 + d2Y0_dz2)/ \
-                    (3*(-1 + x)*x)
-        d2cx1_dt2 = -((-2 + 3*x**2)*d2f0_dt2 - 3*x**2*d2f1_dt2 + d2g0_dt2 +
-                      d2h0_dt2 + d2Y0_dt2)/ \
-                    (3*(-1 + x)*x)
+        d2A_dx2 = (1 - y)*d2g0_dx2f([x, 0, z, t]) + \
+                  y*d2g1_dx2f([x, 1, z, t]) + \
+                  (1 - z)*(-(1 - y)*d2g0_dx2f([x, 0, 0, t]) - y*d2g1_dx2f([x, 1, 0, t]) + d2h0_dx2f([x, y, 0, t])) + \
+                  z*(-(1 - y)*d2g0_dx2f([x, 0, 1, t]) - y*d2g1_dx2f([x, 1, 1, t]) + d2h1_dx2f([x, y, 1, t])) + \
+                  (1 - t)*(-(1 - y)*d2g0_dx2f([x, 0, z, 0]) - y*d2g1_dx2f([x, 1, z, 0]) -
+                           (1 - z)*(-(1 - y)*d2g0_dx2f([x, 0, 0, 0]) - y*d2g1_dx2f([x, 1, 0, 0]) + d2h0_dx2f([x, y, 0, 0])) -
+                           z*(-(1 - y)*d2g0_dx2f([x, 0, 1, 0]) - y*d2g1_dx2f([x, 1, 1, 0]) + d2h1_dx2f([x, y, 1, 0])) +
+                           d2Y0_dx2f([x, y, z, 0]))
+        d2A_dy2 = (1 - x)*d2f0_dy2f([0, y, z, t]) + \
+                  x*d2f1_dy2f([1, y, z, t]) + \
+                  (1 - z)*(-(1 - x)*d2f0_dy2f([0, y, 0, t]) - x*d2f1_dy2f([1, y, 0, t]) + d2h0_dy2f([x, y, 0, t])) + \
+                  z*(-(1 - x)*d2f0_dy2f([0, y, 1, t]) - x*d2f1_dy2f([1, y, 1, t]) + d2h1_dy2f([x, y, 1, t])) + \
+                  (1 - t)*(-(1 - x)*d2f0_dy2f([0, y, z, 0]) - x*d2f1_dy2f([1, y, z, 0]) -
+                           (1 - z)*(-(1 - x)*d2f0_dy2f([0, y, 0, 0]) - x*d2f1_dy2f([1, y, 0, 0]) + d2h0_dy2f([x, y, 0, 0])) -
+                           z*(-(1 - x)*d2f0_dy2f([0, y, 1, 0]) - x*d2f1_dy2f([1, y, 1, 0]) + d2h1_dy2f([x, y, 1, 0])) +
+                           d2Y0_dy2f([x, y, z, 0]))
+        d2A_dz2 = (1 - x)*d2f0_dz2f([0, y, z, t]) + \
+                  x*d2f1_dz2f([1, y, z, t]) + \
+                  (1 - y)*(-(1 - x)*d2f0_dz2f([0, 0, z, t]) - x*d2f1_dz2f([1, 0, z, t]) + d2g0_dz2f([x, 0, z, t])) + \
+                  y*(-(1 - x)*d2f0_dz2f([0, 1, z, t]) - x*d2f1_dz2f([1, 1, z, t]) + d2g1_dz2f([x, 1, z, t])) + \
+                  (1 - t)*(-(1 - x)*d2f0_dz2f([0, y, z, 0]) - x*d2f1_dz2f([1, y, z, 0]) -
+                           (1 - y)*(-(1 - x)*d2f0_dz2f([0, 0, z, 0]) - x*d2f1_dz2f([1, 0, z, 0]) + d2g0_dz2f([x, 0, z, 0])) -
+                           y*(-(1 - x)*d2f0_dz2f([0, 1, z, 0]) - x*d2f1_dz2f([1, 1, z, 0]) + d2g1_dz2f([x, 1, z, 0])) +
+                           d2Y0_dz2f([x, y, z, 0]))
+        d2A_dt2 = (1 - x)*d2f0_dt2f([0, y, z, t]) + \
+                  x*d2f1_dt2f([1, y, z, t]) + \
+                  (1 - y)*(-(1 - x)*d2f0_dt2f([0, 0, z, t]) - x*d2f1_dt2f([1, 0, z, t]) + d2g0_dt2f([x, 0, z, t])) + \
+                  y*(-(1 - x)*d2f0_dt2f([0, 1, z, t]) - x*d2f1_dt2f([1, 1, z, t]) + d2g1_dt2f([x, 1, z, t])) + \
+                  (1 - z)*(-(1 - x)*d2f0_dt2f([0, y, 0, t]) - x*d2f1_dt2f([1, y, 0, t]) -
+                           (1 - y)*(d2g0_dt2f([x, 0, 0, t]) - (1 - x)*d2h0_dt2f([0, 0, 0, t]) - x*d2h0_dt2f([1, 0, 0, t])) -
+                           y*(d2g1_dt2f([x, 1, 0, t]) - (1 - x)*d2h0_dt2f([0, 1, 0, t]) - x*d2h0_dt2f([1, 1, 0, t])) + d2h0_dt2f([x, y, 0, t])) + \
+                  z*(-(1 - x)*d2f0_dt2f([0, y, 1, t]) - x*d2f1_dt2f([1, y, 1, t]) -
+                     (1 - y)*(d2g0_dt2f([x, 0, 1, t]) - (1 - x)*d2h1_dt2f([0, 0, 1, t]) - x*d2h1_dt2f([1, 0, 1, t])) -
+                     y*(d2g1_dt2f([x, 1, 1, t]) - (1 - x)*d2h1_dt2f([0, 1, 1, t]) - x*d2h1_dt2f([1, 1, 1, t])) +
+                     d2h1_dt2f([x, y, 1, t]))
 
-        d2cx2_dx2 = (2*(-2 + 3*x*(2 + (-2 + x)*x))*f0
-                     -6*x**3*f1 +
-                     2*(g0 + h0 + Y0) +
-                     (-1 + x)*x*(6*g0 + 6*h0 + 6*Y0 + (-4 + 8*x - 6*x**2)*df0_dx +
-                                 2*(dg0_dx + dh0_dx + dY0_dx) +
-                                 x*(6*x*df1_dx - 4*dg0_dx - 4*dh0_dx - 4*dY0_dx +
-                                    (-1 + x)*((-2 + 3*x)*d2f0_dx2 - 3*x*d2f1_dx2 +
-                                              d2g0_dx2 + d2h0_dx2 + d2Y0_dx2))))/ \
-                    (3*(-1 + x)**3*x**3)
-        d2cx2_dy2 = ((-2 + 3*x)*d2f0_dy2 - 3*x*d2f1_dy2 + d2g0_dy2 + d2h0_dy2 +
-                     d2Y0_dx2)/ \
-                    (3*(-1 + x)*x)
-        d2cx2_dz2 = ((-2 + 3*x)*d2f0_dz2 - 3*x*d2f1_dz2 + d2g0_dz2 + d2h0_dz2 +
-                     d2Y0_dz2)/ \
-                    (3*(-1 + x)*x)
-        d2cx2_dt2 = ((-2 + 3*x)*d2f0_dt2 - 3*x*d2f1_dt2 + d2g0_dt2 + d2h0_dt2 +
-                     d2Y0_dt2)/ \
-                    (3*(-1 + x)*x)
-
-        d2cy1_dx2 = -(d2f0_dx2 + (-2 + 3*y**2)*d2g0_dx2 - 3*y**2*d2g1_dx2 +
-                      d2h0_dx2 + d2Y0_dx2)/ \
-                    (3*(-1 + y)*y)
-        d2cy1_dy2 = ((-2 - 6*(-1 + y)*y)*f0 +
-                     2*(2 - 3*y*(2 + (-2 + y)*y))*g0 + 6*y**3*g1 -
-                     2*(h0 + Y0) - (-1 + y)*y*
-                     (6*h0 + 6*Y0 + (2 - 4*y)*df0_dy +
-                      (-4 + 8*y - 6*y**2)*dg0_dy + 2*
-                      (dh0_dy + dY0_dy) +
-                      y*(6*y*dg1_dy - 4*dh0_dy - 4*dY0_dy + (-1 + y)*
-                         (d2f0_dy2 + (-2 + 3*y**2)*d2g0_dy2 - 3*y**2*d2g1_dy2 +
-                         d2h0_dy2 + d2Y0_dy2))))/ \
-                    (3*(-1 + y)**3*y**3)
-        d2cy1_dz2 = -(d2f0_dz2 + (-2 + 3*y**2)*d2g0_dz2 - 3*y**2*d2g1_dz2 +
-                      d2h0_dz2 + d2Y0_dz2)/ \
-                    (3*(-1 + y)*y)
-        d2cy1_dt2 = -(d2f0_dt2 + (-2 + 3*y**2)*d2g0_dt2 - 3*y**2*d2g1_dt2 +
-                      d2h0_dt2 + d2Y0_dt2)/ \
-                    (3*(-1 + y)*y)
-
-        d2cy2_dx2 = (d2f0_dx2 + (-2 + 3*y)*d2g0_dx2 - 3*y*d2g1_dx2 +
-                     d2h0_dx2 + d2Y0_dx2)/ \
-                    (3*(-1 + y)*y)
-        d2cy2_dy2 = ((2 + 6*(-1 + y)*y)*f0 + 2*(-2 + 3*y*(2 + (-2 + y)*y))*g0 -
-                     6*y**3*g1 + 2*(h0 + Y0) + (-1 + y)*y*
-                     (6*h0 + 6*Y0 + (2 - 4*y)*df0_dy + (-4 + 8*y - 6*y**2)*dg0_dy +
-                     2*(dh0_dy + dY0_dy) +
-                     y*(6*y*dg1_dy - 4*dh0_dy - 4*dY0_dy +
-                       (-1 + y)*(d2f0_dy2 + (-2 + 3*y)*d2g0_dy2 - 3*y*d2g1_dy2 +
-                                 d2h0_dy2 + d2Y0_dy2))))/ \
-                    (3*(-1 + y)**3*y**3)
-        d2cy2_dz2 = (d2f0_dz2 + (-2 + 3*y)*d2g0_dz2 - 3*y*d2g1_dz2 +
-                     d2h0_dz2 + d2Y0_dz2)/ \
-                    (3*(-1 + y)*y)
-        d2cy2_dt2 = (d2f0_dt2 + (-2 + 3*y)*d2g0_dt2 - 3*y*d2g1_dt2 +
-                     d2h0_dt2 + d2Y0_dt2)/ \
-                    (3*(-1 + y)*y)
-
-        d2cz1_dx2 = -(4*dg0_dx*dh0_dx + d2f0_dx2 + 2*h0*d2g0_dx2 +
-                      (3*z**2 + 2*g0)*d2h0_dx2 - 3*z**2*d2h1_dx2 + d2Y0_dx2)/ \
-                    (3*(-1 + z)*z)
-        d2cz1_dy2 = -(4*dg0_dy*dh0_dy + d2f0_dy2 + 2*h0*d2g0_dy2 +
-                      (3*z**2 + 2*g0)*d2h0_dy2 - 3*z**2*d2h1_dy2 + d2Y0_dy2)/ \
-                    (3*(-1 + z)*z)
-        d2cz1_dz2 = ((-2 - 6*(-1 + z)*z)*f0 + 6*z**3*h1 - 2*Y0 + 2*h0*
-                     (-3*z**3 + (-2 - 6*(-1 + z)*z)*g0 + (-1 + z)*z*
-                      ((-2 + 4*z)*dg0_dz - (-1 + z)*z*d2g0_dz2)) + (-1 + z)*z*
-                      (-6*Y0 + (-2 + 4*z)*df0_dz + (6*z**2 + (-4 + 8*z)*g0 -
-                                                    4*(-1 + z)*z*dg0_dz)*dh0_dz -
-                       2*dY0_dz + z*
-                       (-6*z*dh1_dz + 4*dY0_dz - (-1 + z)*
-                        (d2f0_dz2 + (3*z**2 + 2*g0)*d2h0_dz2 - 3*z**2*d2h1_dz2 +
-                        d2Y0_dz2))))/ \
-                    (3*(-1 + z)**3*z**3)
-        d2cz1_dt2 = -(4*dg0_dt*dh0_dy + d2f0_dt2 + 2*h0*d2g0_dt2 +
-                      (3*z**2 + 2*g0)*d2h0_dt2 - 3*z**2*d2h1_dt2 + d2Y0_dt2)/ \
-                    (3*(-1 + z)*z)
-
-        d2cz2_dx2 = (d2f0_dx2 + d2g0_dx2 + (-2 + 3*z)*d2h0_dx2 -
-                     3*z*d2h1_dx2 + d2Y0_dx2)/ \
-                    (3*(-1 + z)*z)
-        d2cz2_dy2 = (d2f0_dy2 + d2g0_dy2 + (-2 + 3*z)*d2h0_dy2 -
-                     3*z*d2h1_dy2 + d2Y0_dy2)/ \
-                    (3*(-1 + z)*z)
-        d2cz2_dz2 = ((2 + 6*(-1 + z)*z)*f0 + (2 + 6*(-1 + z)*z)*g0 -
-                     4*h0 + 2*Y0 + z*
-                     (6*(2 + (-2 + z)*z)*h0 - 6*z**2*h1 + (-1 + z)*
-                      (6*Y0 + (2 - 4*z)*df0_dz + (2 - 4*z)*dg0_dz -
-                      4*dh0_dz + 2*dY0_dz + z*
-                      ((8 - 6*z)*dh0_dz + 6*z*dh1_dz - 4*dY0_dz + (-1 + z)*
-                       (d2f0_dz2 + d2g0_dz2 + (-2 + 3*z)*d2h0_dz2 -
-                        3*z*d2h1_dz2 + d2Y0_dz2)))))/ \
-                    (3*(-1 + z)**3*z**3)
-        d2cz2_dt2 = (d2f0_dt2 + d2g0_dt2 + (-2 + 3*z)*d2h0_dt2 - 3*z*d2h1_dt2 +
-                     d2Y0_dt2)/ \
-                    (3*(-1 + z)*z)
-
-        d2ct1_dx2 = (d2f0_dx2 + d2g0_dx2 + d2h0_dx2 - 2*d2Y0_dx2)/(3*t)
-        d2ct1_dy2 = (d2f0_dy2 + d2g0_dy2 + d2h0_dy2 - 2*d2Y0_dy2)/(3*t)
-        d2ct1_dz2 = (d2f0_dz2 + d2g0_dz2 + d2h0_dz2 - 2*d2Y0_dz2)/(3*t)
-        d2ct1_dt2 = (2*f0 + 2*g0 + 2*h0 - 4*Y0 + t*
-                     (-2*df0_dt - 2*dg0_dt - 2*dh0_dt + 4*dY0_dt + t*
-                      (d2f0_dt2 + d2g0_dt2 + d2h0_dt2 - 2*d2Y0_dt2)))/ \
-                    (3*t**3)
-
-        del2c = [
-            [d2cx1_dx2, d2cx1_dy2, d2cx1_dz2, d2cx1_dt2],
-            [d2cx2_dx2, d2cx2_dy2, d2cx2_dz2, d2cx2_dt2],
-            [d2cy1_dx2, d2cy1_dy2, d2cy1_dz2, d2cy1_dt2],
-            [d2cy2_dx2, d2cy2_dy2, d2cy2_dz2, d2cy2_dt2],
-            [d2cz1_dx2, d2cz1_dy2, d2cz1_dz2, d2cz1_dt2],
-            [d2cz2_dx2, d2cz2_dy2, d2cz2_dz2, d2cz2_dt2],
-            [d2ct1_dx2, d2ct1_dy2, d2ct1_dz2, d2ct1_dt2]
-            ]
-        return del2c
+        del2A = [d2A_dx2, d2A_dy2, d2A_dz2, d2A_dt2]
+        return del2A
 
     def Pf(self, xyzt):
         """Network coefficient function for 3D diffusion problems"""
@@ -455,6 +279,43 @@ class Diff3DTrialFunction():
         d2P_dt2 = 0
         del2P = [d2P_dx2, d2P_dy2, d2P_dz2, d2P_dt2]
         return del2P
+
+    def Ytf(self, xyzt, N):
+        """Trial function"""
+        A = self.Af(xyzt)
+        P = self.Pf(xyzt)
+        Yt = A + P*N
+        return Yt
+
+    def delYtf(self, xyzt, N, delN):
+        """Trial function gradient"""
+        (x, y, z, t) = xyzt
+        (dN_dx, dN_dy, dN_dz, dN_dt) = delN
+        (dA_dx, dA_dy, dA_dz, dA_dt) = self.delAf(xyzt)
+        P = self.Pf(xyzt)
+        (dP_dx, dP_dy, dP_dz, dP_dt) = self.delPf(xyzt)
+        dYt_dx = dA_dx + P*dN_dx + dP_dx*N
+        dYt_dy = dA_dy + P*dN_dy + dP_dy*N
+        dYt_dz = dA_dz + P*dN_dz + dP_dz*N
+        dYt_dt = dA_dt + P*dN_dt + dP_dt*N
+        delYt = [dYt_dx, dYt_dy, dYt_dz, dYt_dt]
+        return delYt
+
+    def del2Ytf(self, xyzt, N, delN, del2N):
+        """Trial function Laplacian"""
+        (x, y, z, t) = xyzt
+        (dN_dx, dN_dy, dN_dz, dN_dt) = delN
+        (d2N_dx2, d2N_dy2, d2N_dz2, d2N_dt2) = del2N
+        (d2A_dx2, d2A_dy2, d2A_dz2, d2A_dt2) = self.del2Af(xyzt)
+        P = self.Pf(xyzt)
+        (dP_dx, dP_dy, dP_dz, dP_dt) = self.delPf(xyzt)
+        (d2P_dx2, d2P_dy2, d2P_dz2, d2P_dt2) = self.del2Pf(xyzt)
+        d2Yt_dx2 = d2A_dx2 + P*d2N_dx2 + 2*dP_dx*dN_dx + d2P_dx2*N
+        d2Yt_dy2 = d2A_dy2 + P*d2N_dy2 + 2*dP_dy*dN_dy + d2P_dy2*N
+        d2Yt_dz2 = d2A_dz2 + P*d2N_dz2 + 2*dP_dz*dN_dz + d2P_dz2*N
+        d2Yt_dt2 = d2A_dt2 + P*d2N_dt2 + 2*dP_dt*dN_dt + d2P_dt2*N
+        del2Yt = [d2Yt_dx2, d2Yt_dy2, d2Yt_dz2, d2Yt_dt2]
+        return del2Yt
 
 #################
 
@@ -559,48 +420,32 @@ if __name__ == '__main__':
     bc_ref = [[0, 0],
               [0, 0],
               [0, 0],
-              [0.301503, None]]
+              [0.294867, None]]
     delbc_ref = [[[0, 0, 0, 0], [0, 0, 0, 0]],
                  [[0, 0, 0, 0], [0, 0, 0, 0]],
                  [[0, 0, 0, 0], [0, 0, 0, 0]],
-                 [[0.307764, 0, -0.307764, 0], [None, None, None, None]]]
-    del2bc_ref = [[[ 0,        0,        0,       0], [0,    0,    0,    0]],
-                  [[ 0,        0,        0,       0], [0,    0,    0,    0]],
-                  [[ 0,        0,        0,       0], [0,    0,    0,    0]],
-                  [[-2.97571, -2.97571, -2.97571, 0], [None, None, None, None]]]
-    c_ref = [0.418754, -0.418754, 0.402004, -0.402004, 0.418754,
-             -0.418754, -0.287146]
-    delc_ref = [[ 0.0784879, 0, -0.427449,  0],
-                [-0.0784879, 0,  0.427449,  0],
-                [ 0.410352,  0, -0.410352,  0],
-                [-0.410352,  0,  0.410352,  0],
-                [ 0.427449,  0, -0.0784879, 0],
-                [-0.427449,  0,  0.0784879, 0],
-                [-0.293108,  0,  0.293108, 0.410208]]
-    del2c_ref = [[-0.774133, -4.13294,  -4.13294,  0],
-                 [ 0.774133,  4.13294,   4.13294,  0],
-                 [-3.96762,  -0.751588, -3.96762,  0],
-                 [ 3.96762,   0.751588,  3.96762,  0],
-                 [-4.13294,  -4.13294,  -0.774133, 0],
-                 [ 4.13294,   4.13294,   0.774133, 0],
-                 [ 2.83401,   2.83401,   2.83401, -1.17202]]
-    A_ref = 0.100501
-    delA_ref = [0.102588, 0, -0.102588, 0]
-    del2A_ref = [-0.991905, -0.991905, -0.991905, 0]
-    P_ref = 0.01008
-    delP_ref = [0.0084, 0.0, -0.0084, 0.0144]
-    del2P_ref = [-0.084, -0.08064, -0.084, 0]
-    Yt_ref = 0.101741
-    delYt_ref = [0.104629, 0.002016, -0.100597, 0.0058032]
-    del2Yt_ref = [-0.999448, -0.999606, -1.00395, 0.0159552]
+                 [[0.30099, 0.26913, 0.237847, 0], [None, None, None, None]]]
+    del2bc_ref = [[[ 0, 0, 0, 0], [0, 0, 0, 0]],
+                  [[ 0, 0, 0, 0], [0, 0, 0, 0]],
+                  [[ 0, 0, 0, 0], [0, 0, 0, 0]],
+                  [[-2.91022, -2.91022, -2.91022, 0], [None, None, None, None]]]
+    A_ref = 0.168074
+    delA_ref = [0.171564, 0.153404, 0.135573, -0.294867]
+    del2A_ref = [-1.65883, -1.65883, -1.65883, 0]
+    P_ref = 0.00608125
+    delP_ref = [0.00506771, 0.00452511, 0.00399425, 0.0141424]
+    del2P_ref = [-0.0506771, -0.050279, -0.0499282, 0]
+    Yt_ref = 0.171115
+    delYt_ref = [0.177808, 0.159437, 0.141401, -0.283904]
+    del2Yt_ref = [-1.67366, -1.67398, -1.67432, 0.0226025]
 
-    # # Additional test variables.
-    N_ref = 0.123
-    delN_ref = [0.1, 0.2, 0.3, 0.4]
-    del2N_ref = [0.11, 0.22, 0.33, 0.44]
+    # Additional test variables.
+    N_test = 0.5
+    delN_test = [0.61, 0.62, 0.63, 0.64]
+    del2N_test = [0.71, 0.72, 0.73, 0.74]
 
     # Test all functions near the center of the domain.
-    xyzt = [0.4, 0.5, 0.6, 0.7]
+    xyzt_test = [0.4, 0.41, 0.42, 0.43]
 
     # Create a new trial function object.
     tf = Diff3DTrialFunction(bcf, delbcf, del2bcf)
@@ -608,96 +453,84 @@ if __name__ == '__main__':
     print("Testing boundary conditions.")
     for i in range(len(tf.bcf)):
         for (j, f) in enumerate(tf.bcf[i]):
-            bc = f(xyzt)
-            if ((bc_ref[i][j] is not None and not np.isclose(bc, bc_ref[i][j]))
-                or (bc_ref[i][j] is None and bc is not None)):
-                print("ERROR: bc[%d][%d] = %s, vs ref %s" % (i, j, bc, bc_ref[i][j]))
+            bc_test = f(xyzt_test)
+            if ((bc_ref[i][j] is not None and
+                 not np.isclose(bc_test, bc_ref[i][j]))
+                or (bc_ref[i][j] is None and bc_test is not None)):
+                print("ERROR: bc[%d][%d] = %s, vs ref %s" %
+                      (i, j, bc_test, bc_ref[i][j]))
 
     print("Testing boundary condition gradients.")
     for i in range(len(tf.delbcf)):
         for j in range(len(tf.delbcf[i])):
             for (k, f) in enumerate(tf.delbcf[i][j]):
-                delbc = f(xyzt)
-                if ((delbc_ref[i][j][k] is not None and not np.isclose(delbc, delbc_ref[i][j][k]))
-                    or (delbc_ref[i][j][k] is None and delbc is not None)):
-                    print("ERROR: delbc[%d][%d][%d] = %s, vs ref %s" % (i, j, k, delbc, delbc_ref[i][j][k]))
+                delbc_test = f(xyzt_test)
+                if ((delbc_ref[i][j][k] is not None and
+                     not np.isclose(delbc_test, delbc_ref[i][j][k]))
+                    or (delbc_ref[i][j][k] is None and
+                        delbc_test is not None)):
+                    print("ERROR: delbc[%d][%d][%d] = %s, vs ref %s" %
+                          (i, j, k, delbc_test, delbc_ref[i][j][k]))
 
     print("Testing boundary condition Laplacians.")
     for i in range(len(tf.del2bcf)):
         for j in range(len(tf.del2bcf[i])):
             for (k, f) in enumerate(tf.del2bcf[i][j]):
-                del2bc = f(xyzt)
-                if ((del2bc_ref[i][j][k] is not None and not np.isclose(del2bc, del2bc_ref[i][j][k]))
-                    or (del2bc_ref[i][j][k] is None and del2bc is not None)):
-                    print("ERROR: del2bc[%d][%d][%d] = %s, vs ref %s" % (i, j, k, del2bc, del2bc_ref[i][j][k]))
-
-    print("Testing coefficients.")
-    c = tf.cf(xyzt)
-    for (i, cc) in enumerate(c):
-        if not np.isclose(cc, c_ref[i]):
-            print("ERROR: c[%d] = %s, vs ref %s" % (i, cc, c_ref[i]))
-
-    print("Testing coefficient gradients.")
-    delc = tf.delcf(xyzt)
-    for i in range(len(c)):
-        for (j, delci) in enumerate(delc[i]):
-            if not np.isclose(delci, delc_ref[i][j]):
-                print("ERROR: delc[%d][%d] = %s, vs ref %s" % (i, j, delci, delc_ref[i][j]))
-
-    print("Testing coefficient Laplacians.")
-    del2c = tf.del2cf(xyzt)
-    for i in range(len(del2c)):
-        for (j, del2ci) in enumerate(del2c[i]):
-            if not np.isclose(del2ci, del2c_ref[i][j]):
-                print("ERROR: del2c[%d][%d] = %s, vs ref %s" % (i, j, del2ci, del2c_ref[i][j]))
+                del2bc_test = f(xyzt_test)
+                if ((del2bc_ref[i][j][k] is not None and
+                     not np.isclose(del2bc_test, del2bc_ref[i][j][k]))
+                    or (del2bc_ref[i][j][k] is None and
+                        del2bc_test is not None)):
+                    print("ERROR: del2bc[%d][%d][%d] = %s, vs ref %s" %
+                          (i, j, k, del2bc_test, del2bc_ref[i][j][k]))
 
     print("Testing boundary condition function.")
-    A = tf.Af(xyzt)
-    if not np.isclose(A, A_ref):
-        print("ERROR: A = %s, vs ref %s" % (A, A_ref))
+    A_test = tf.Af(xyzt_test)
+    if not np.isclose(A_test, A_ref):
+        print("ERROR: A = %s, vs ref %s" % (A_test, A_ref))
 
     print("Testing boundary condition function gradient.")
-    delA = tf.delAf(xyzt)
-    for (i, delAi) in enumerate(delA):
-        if not np.isclose(delAi, delA_ref[i]):
-            print("ERROR: delA[%d] = %s, vs ref %s" % (i, delAi, delA_ref[i]))
+    delA_test = tf.delAf(xyzt_test)
+    for (i, delA_t) in enumerate(delA_test):
+        if not np.isclose(delA_t, delA_ref[i]):
+            print("ERROR: delA[%d] = %s, vs ref %s" % (i, delA_t, delA_ref[i]))
 
     print("Testing boundary condition function Laplacian.")
-    del2A = tf.del2Af(xyzt)
-    for (i, del2Ai) in enumerate(del2A):
-        if not np.isclose(del2Ai, del2A_ref[i]):
-            print("ERROR: del2A[%d] = %s, vs ref %s" % (i, del2Ai, del2A_ref[i]))
+    del2A_test = tf.del2Af(xyzt_test)
+    for (i, del2A_t) in enumerate(del2A_test):
+        if not np.isclose(del2A_t, del2A_ref[i]):
+            print("ERROR: del2A[%d] = %s, vs ref %s" % (i, del2A_t, del2A_ref[i]))
 
     print("Testing network coefficient function.")
-    P = tf.Pf(xyzt)
-    if not np.isclose(P, P_ref):
-        print("ERROR: P = %s, vs ref %s" % (P, P_ref))
+    P_test = tf.Pf(xyzt_test)
+    if not np.isclose(P_test, P_ref):
+        print("ERROR: P = %s, vs ref %s" % (P_test, P_ref))
 
     print("Testing network coefficient function gradient.")
-    delP = tf.delPf(xyzt)
-    for (i, delPi) in enumerate(delP):
-        if not np.isclose(delPi, delP_ref[i]):
-            print("ERROR: delP[%d] = %s, vs ref %s" % (i, delPi, delP_ref[i]))
+    delP_test = tf.delPf(xyzt_test)
+    for (i, delP_t) in enumerate(delP_test):
+        if not np.isclose(delP_t, delP_ref[i]):
+            print("ERROR: delP[%d] = %s, vs ref %s" % (delP_t, delP_ref[i]))
 
     print("Testing network coefficient function Laplacian.")
-    del2P = tf.del2Pf(xyzt)
-    for (i, del2Pi) in enumerate(del2P):
-        if not np.isclose(del2Pi, del2P_ref[i]):
-            print("ERROR: del2P[%d] = %s, vs ref %s" % (i, del2Pi, del2P_ref[i]))
+    del2P_test = tf.del2Pf(xyzt_test)
+    for (i, del2P_t) in enumerate(del2P_test):
+        if not np.isclose(del2P_t, del2P_ref[i]):
+            print("ERROR: del2P[%d] = %s, vs ref %s" % (del2P_t, del2P_ref[i]))
 
     print("Testing trial function.")
-    Yt = tf.Ytf(xyzt, N_ref)
-    if not np.isclose(Yt, Yt_ref):
-        print("ERROR: Yt = %s, vs ref %s" % (Yt, Yt_ref))
+    Yt_test = tf.Ytf(xyzt_test, N_test)
+    if not np.isclose(Yt_test, Yt_ref):
+        print("ERROR: Yt = %s, vs ref %s" % (Yt_test, Yt_ref))
 
     print("Testing trial function gradient.")
-    delYt = tf.delYtf(xyzt, N_ref, delN_ref)
-    for (i, delYti) in enumerate(delYt):
-        if not np.isclose(delYti, delYt_ref[i]):
-            print("ERROR: delYt[%d] = %s, vs ref %s" % (i, delYti, delYt_ref[i]))
+    delYt_test = tf.delYtf(xyzt_test, N_test, delN_test)
+    for (i, delYt_t) in enumerate(delYt_test):
+        if not np.isclose(delYt_t, delYt_ref[i]):
+            print("ERROR: delYt[%d] = %s, vs ref %s" % (i, delYt_t, delYt_ref[i]))
 
     print("Testing trial function Laplacian.")
-    del2Yt = tf.del2Ytf(xyzt, N_ref, delN_ref, del2N_ref)
-    for (i, del2Yti) in enumerate(del2Yt):
-        if not np.isclose(del2Yti, del2Yt_ref[i]):
-            print("ERROR: del2Yt[%d] = %s, vs ref %s" % (i, del2Yti, del2Yt_ref[i]))
+    del2Yt_test = tf.del2Ytf(xyzt_test, N_test, delN_test, del2N_test)
+    for (i, del2Yt_t) in enumerate(del2Yt_test):
+        if not np.isclose(del2Yt_t, del2Yt_ref[i]):
+            print("ERROR: del2Yt[%d] = %s, vs ref %s" % (i, del2Yt_t, del2Yt_ref[i]))

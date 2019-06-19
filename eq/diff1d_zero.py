@@ -15,9 +15,6 @@ Y(x,0) = 0
 """
 
 
-import numpy as np
-
-
 # Diffusion coefficient
 D = 0.1
 
@@ -181,6 +178,19 @@ del2bcf = [[[d2f0_dx2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dt2f]],
            [[d2Y0_dx2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dt2f]]]
 
 
+def Af(xt):
+    """Optimized version of boundary condition function"""
+    return 0
+
+def delAf(xt):
+    """Optimized version of boundary condition function gradient"""
+    return [0, 0]
+
+def del2Af(xt):
+    """Optimized version of boundary condition function Laplacian"""
+    return [0, 0]
+
+
 def Yaf(xt):
     """Analytical solution"""
     (x, t) = xt
@@ -215,6 +225,9 @@ def d2Ya_dt2f(xt):
     return d2Ya_dt2
 
 del2Yaf = [d2Ya_dx2f, d2Ya_dt2f]
+
+
+import numpy as np
 
 
 if __name__ == '__main__':
