@@ -230,6 +230,9 @@ class NNPDE2DIFF(SLFFNN):
         self.u = np.zeros(nhid)
         self.v = np.zeros(nhid)
 
+        # Create the parameter history array.
+        self.phist = np.hstack((self.w.flatten(), self.u, self.v))
+
         # Initialize results from minimize().
         self.nit = 0
         self.res = None
@@ -297,6 +300,10 @@ class NNPDE2DIFF(SLFFNN):
             w -= eta*dE_dw
             u -= eta*dE_du
             v -= eta*dE_dv
+
+            # Log the current parameter values.
+            self.phist = np.vstack((self.phist,
+                                    np.hstack((w.flatten(), u, v))))
 
             # Compute the node activation, the sigmoid function and its
             # derivatives, for each hidden node and each training point.
@@ -523,6 +530,8 @@ class NNPDE2DIFF(SLFFNN):
         print('nit =', self.nit)
         self.nit += 1
         # print('xk =', xk)
+        # Log the current parameters.
+        self.phist = np.vstack((self.phist, xk))
 
 #########
 
