@@ -179,6 +179,27 @@ del2bcf = [[[d2f0_dx2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dt2f]],
            [[d2Y0_dx2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dt2f]]]
 
 
+def Af(xt):
+    """Optimized version of boundary condition function"""
+    (x, t) = xt
+    A = -(-1 + t)*sin(pi*x)
+    return A
+
+def delAf(xt):
+    """Optimized version of boundary condition function gradient"""
+    (x, t) = xt
+    dA_dx = -pi*(-1 + t)*cos(pi*x)
+    dA_dt = -sin(pi*x)
+    return [dA_dx, dA_dt]
+
+def del2Af(xt):
+    """Optimized version of boundary condition function Laplacian"""
+    (x, t) = xt
+    d2A_dx2 = pi**2*(-1 + t)*sin(pi*x)
+    d2A_dt2 = 0
+    return [d2A_dx2, d2A_dt2]
+
+
 def Yaf(xt):
     """Analytical solution"""
     (x, t) = xt

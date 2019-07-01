@@ -9,9 +9,9 @@ The analytical form of the equation is:
 The equation is defined on the domain [[0,1],[0,]]. The boundary
 conditions are:
 
-Y(0,t) = C
-Y(1,t) = C
-Y(x,0) = C
+Y(0,t) = C = 1
+Y(1,t) = C = 1
+Y(x,0) = C = 1
 """
 
 
@@ -182,6 +182,19 @@ def d2Y1_dt2f(xt):
 
 del2bcf = [[[d2f0_dx2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dt2f]],
            [[d2Y0_dx2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dt2f]]]
+
+
+def Af(xt):
+    """Optimized version of boundary condition function"""
+    return 1
+
+def delAf(xt):
+    """Optimized version of boundary condition function gradient"""
+    return [0, 0]
+
+def del2Af(xt):
+    """Optimized version of boundary condition function Laplacian"""
+    return [0, 0]
 
 
 def Yaf(xt):

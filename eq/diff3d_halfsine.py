@@ -471,6 +471,31 @@ del2bcf = [[[d2f0_dx2f, d2f0_dy2f, d2f0_dz2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dy2f,
            [[d2Y0_dx2f, d2Y0_dy2f, d2Y0_dz2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dy2f, d2Y1_dz2f, d2Y1_dt2f]]]
 
 
+def Af(xyzt):
+    """Optimized version of boundary condition function"""
+    (x, y, z, t) = xyzt
+    A = -1/3*(-1 + t)*sin(pi*x)*sin(pi*y)*sin(pi*z)
+    return A
+
+def delAf(xyzt):
+    """Optimized version of boundary condition function gradient"""
+    (x, y, z, t) = xyzt
+    dA_dx = 1/3*pi*(1 - t)*cos(pi*x)*sin(pi*y)*sin(pi*z)
+    dA_dy = 1/3*pi*(1 - t)*sin(pi*x)*cos(pi*y)*sin(pi*z)
+    dA_dz = 1/3*pi*(1 - t)*sin(pi*x)*sin(pi*y)*cos(pi*z)
+    dA_dt = -1/3*sin(pi*x)*sin(pi*y)*sin(pi*z)
+    return [dA_dx, dA_dy, dA_dz, dA_dt]
+
+def del2Af(xyzt):
+    """Optimized version of boundary condition function Laplacian"""
+    (x, y, z, t) = xyzt
+    d2A_dx2 = 1/3*pi**2*(-1 + t)*sin(pi*x)*sin(pi*y)*sin(pi*z)
+    d2A_dy2 = 1/3*pi**2*(-1 + t)*sin(pi*x)*sin(pi*y)*sin(pi*z)
+    d2A_dz2 = 1/3*pi**2*(-1 + t)*sin(pi*x)*sin(pi*y)*sin(pi*z)
+    d2A_dt2 = 0
+    return [d2A_dx2, d2A_dy2, d2A_dz2, d2A_dt2]
+
+
 def Yaf(xyzt):
     """Analytical solution"""
     (x, y, z, t) = xyzt
