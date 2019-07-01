@@ -186,7 +186,7 @@ del2bcf = [[[d2f0_dx2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dt2f]],
 
 def Af(xt):
     """Optimized version of boundary condition function"""
-    return 1
+    return C
 
 def delAf(xt):
     """Optimized version of boundary condition function gradient"""

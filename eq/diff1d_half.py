@@ -9,17 +9,20 @@ The analytical form of the equation is:
 The equation is defined on the domain [[0,1],[0,]]. The boundary
 conditions are:
 
-Y(0,t) = C = 0
-Y(1,t) = C = 0
-Y(x,0) = C = 0
+Y(0,t) = C = 0.5
+Y(1,t) = C = 0.5
+Y(x,0) = C = 0.5
 """
+
+
+import numpy as np
 
 
 # Diffusion coefficient
 D = 0.1
 
 # Constant value of profile
-C = 0
+C = 0.5
 
 
 def Gf(xt, Y, delY, del2Y):
@@ -230,9 +233,6 @@ def d2Ya_dt2f(xt):
 del2Yaf = [d2Ya_dx2f, d2Ya_dt2f]
 
 
-import numpy as np
-
-
 if __name__ == '__main__':
 
     # Test values
@@ -243,8 +243,8 @@ if __name__ == '__main__':
     dG_dY_ref = 0
     (dG_dY_dx_ref, dG_dY_dt_ref) = (0, 1)
     (dG_d2Y_dx2_ref, dG_d2Y_dt2_ref) = (-D, 0)
-    bc_ref = [[0, 0],
-              [0, None]]
+    bc_ref = [[C, C],
+              [C, None]]
     delbc_ref = [[[0, 0], [0, 0]],
                  [[0, 0], [None, None]]]
     del2bc_ref = [[[0, 0], [0, 0]],
