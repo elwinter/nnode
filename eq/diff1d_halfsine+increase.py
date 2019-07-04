@@ -187,12 +187,33 @@ del2bcf = [[[d2f0_dx2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dt2f]],
            [[d2Y0_dx2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dt2f]]]
 
 
+def Af(xt):
+    """Optimized version of boundary condition function"""
+    (x, t) = xt
+    A = a*t*x - (-1 + t)*sin(pi*x)
+    return A
+
+def delAf(xt):
+    """Optimized version of boundary condition function gradient"""
+    (x, t) = xt
+    dA_dx = a*t - pi*(-1 + t)*cos(pi*x)
+    dA_dt = a*x - sin(pi*x)
+    return [dA_dx, dA_dt]
+
+def del2Af(xt):
+    """Optimized version of boundary condition function Laplacian"""
+    (x, t) = xt
+    d2A_dx2 = pi**2*(-1 + t)*sin(pi*x)
+    d2A_dt2 = 0
+    return [d2A_dx2, d2A_dt2]
+
+
 def Yaf(xt):
     """Analytical solution"""
     (x, t) = xt
     Ya = t*x*a + sin(pi*x)*(cosh(pi**2*t*D) - sinh(pi**2*t*D))
     for k in range(1, kmax + 1):
-        Ya += 2*(-1)**k*(1 - exp(-pi**2*t*D*k**2))*a*sin(pi*x*k)/ \
+        Ya += 2*(-1)**k*a*(1 - exp(-pi**2*t*D*k**2))*sin(pi*x*k)/ \
               (pi**3*k**3)
     return Ya
 
@@ -201,7 +222,7 @@ def dYa_dxf(xt):
     (x, t) = xt
     dYa_dx = t*a + pi*cos(pi*x)*(cosh(pi**2*t*D) - sinh(pi**2*t*D))
     for k in range(1, kmax + 1):
-        dYa_dx += 2*(-1)**k*(1 - exp(-pi**2*t*D*k**2))*a*cos(pi*x*k)/ \
+        dYa_dx += 2*(-1)**k*a*(1 - exp(-pi**2*t*D*k**2))*cos(pi*x*k)/ \
               (pi**2*k**2)
     return dYa_dx
 
@@ -210,7 +231,7 @@ def dYa_dtf(xt):
     (x, t) = xt
     dYa_dt = x*a + sin(pi*x)*(-pi**2*D*cosh(pi**2*t*D) + pi**2*D*sinh(pi**2*t*D))
     for k in range(1, kmax + 1):
-        dYa_dt += 2*(-1)**k*exp(-pi**2*t*D*k**2)*D*a*sin(pi*x*k)/ \
+        dYa_dt += 2*(-1)**k*a*exp(-pi**2*t*D*k**2)*D*sin(pi*x*k)/ \
                   (pi*k)
     return dYa_dt
 
@@ -222,7 +243,7 @@ def d2Ya_dx2f(xt):
     (x, t) = xt
     d2Ya_dx2 = -pi**2*sin(pi*x)*(cosh(pi**2*t*D) - sinh(pi**2*t*D))
     for k in range(1, kmax + 1):
-        d2Ya_dx2 += -2*(-1)**k*(1 - exp(-pi**2*t*D*k**2))*a*sin(pi*x*k)/ \
+        d2Ya_dx2 += -2*(-1)**k*a*(1 - exp(-pi**2*t*D*k**2))*sin(pi*x*k)/ \
               (pi*k)
     return d2Ya_dx2
 
@@ -231,7 +252,7 @@ def d2Ya_dt2f(xt):
     (x, t) = xt
     d2Ya_dt2 = sin(pi*x)*(pi**4*D**2*cosh(pi**2*t*D) - pi**4*D**2*sinh(pi**2*t*D))
     for k in range(1, kmax + 1):
-        d2Ya_dt2 += -2*(-1)**k*exp(-pi**2*t*D*k**2)*k*pi*D**2*a*sin(pi*x*k)
+        d2Ya_dt2 += -2*(-1)**k*a*exp(-pi**2*t*D*k**2)*k*pi*D**2*sin(pi*x*k)
     return d2Ya_dt2
 
 del2Yaf = [d2Ya_dx2f, d2Ya_dt2f]
