@@ -541,13 +541,13 @@ if __name__ == '__main__':
 
     # Create training data.
 
-    # Training point counts in each dimension (skip boundaries).
-    nx = 11
-    ny = 11
-    nz = 11
-    nt = 11
+    # Training point counts in each dimension
+    nx = 10
+    ny = 10
+    nz = 10
+    nt = 10
 
-    # Training grid points (drop endpoints)
+    # Training grid points
     xt = np.linspace(0, 1, nx)
     yt = np.linspace(0, 1, ny)
     zt = np.linspace(0, 1, nz)
