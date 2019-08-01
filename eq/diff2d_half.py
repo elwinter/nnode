@@ -7,20 +7,19 @@ The analytical form of the equation is:
 The equation is defined on the domain (x,y,t)=([0,1],[0,1],[0,]). The
 boundary conditions are:
 
-Y(0,y,t) = C = 0
-Y(1,y,t) = C = 0
-Y(x,0,t) = C = 0
-Y(x,1,t) = C = 0
-Y(x,y,0) = C = 1/2 sin(pi*x) sin(pi*y)
+Y(0,y,t) = C = 0.5
+Y(1,y,t) = C = 0.5
+Y(x,0,t) = C = 0.5
+Y(x,1,t) = C = 0.5
+Y(x,y,0) = C = 0.5
 """
-
-
-from math import cos, exp, pi, sin
-import numpy as np
 
 
 # Diffusion coefficient
 D = 0.1
+
+# Constant value of profile
+C = 0.5
 
 
 def Gf(xyt, Y, delY, del2Y):
@@ -34,28 +33,28 @@ def dG_dYf(xyt, Y, delY, del2Y):
     """Partial of PDE wrt Y"""
     (x, y, t) = xyt
     (dY_dx, dY_dy, dY_dt) = delY
-    (d2Y_dx2, d2Y_dy2, d2Y_dt2) = del2Y
+    (d2Y_dx2, d2Y_dy2, d2t_dt2) = del2Y
     return 0
 
 def dG_dY_dxf(xyt, Y, delY, del2Y):
     """Partial of PDE wrt dY/dx"""
     (x, y, t) = xyt
     (dY_dx, dY_dy, dY_dt) = delY
-    (d2Y_dx2, d2Y_dy2, d2Y_dt2) = del2Y
+    (d2Y_dx2, d2Y_dy2, d2t_dt2) = del2Y
     return 0
 
 def dG_dY_dyf(xyt, Y, delY, del2Y):
     """Partial of PDE wrt dY/dy"""
     (x, y, t) = xyt
     (dY_dx, dY_dy, dY_dt) = delY
-    (d2Y_dx2, d2Y_dy2, d2Y_dt2) = del2Y
+    (d2Y_dx2, d2Y_dy2, d2t_dt2) = del2Y
     return 0
 
 def dG_dY_dtf(xyt, Y, delY, del2Y):
     """Partial of PDE wrt dY/dt"""
     (x, y, t) = xyt
     (dY_dx, dY_dy, dY_dt) = delY
-    (d2Y_dx2, d2Y_dy2, d2Y_dt2) = del2Y
+    (d2Y_dx2, d2Y_dy2, d2t_dt2) = del2Y
     return 1
 
 dG_ddelYf = [dG_dY_dxf, dG_dY_dyf, dG_dY_dtf]
@@ -65,53 +64,53 @@ def dG_d2Y_dx2f(xyt, Y, delY, del2Y):
     """Partial of PDE wrt d2Y/dx2"""
     (x, y, t) = xyt
     (dY_dx, dY_dy, dY_dt) = delY
-    (d2Y_dx2, d2Y_dy2, d2Y_dt2) = del2Y
+    (d2Y_dx2, d2Y_dy2, d2t_dt2) = del2Y
     return -D
 
 def dG_d2Y_dy2f(xyt, Y, delY, del2Y):
     """Partial of PDE wrt d2Y/dy2"""
     (x, y, t) = xyt
     (dY_dx, dY_dy, dY_dt) = delY
-    (d2Y_dx2, d2Y_dy2, d2Y_dt2) = del2Y
+    (d2Y_dx2, d2Y_dy2, d2t_dt2) = del2Y
     return -D
 
 def dG_d2Y_dt2f(xyt, Y, delY, del2Y):
     """Partial of PDE wrt d2Y/dt2"""
     (x, y, t) = xyt
     (dY_dx, dY_dy, dY_dt) = delY
-    (d2Y_dx2, d2Y_dy2, d2Y_dt2) = del2Y
+    (d2Y_dx2, d2Y_dy2, d2t_dt2) = del2Y
     return 0
 
 dG_ddel2Yf = [dG_d2Y_dx2f, dG_d2Y_dy2f, dG_d2Y_dt2f]
 
 
 def f0f(xyt):
-    """Boundary condition at (x,y,t) = (0,y,t)"""
+    """Boundary condition at (x,y,t) = (0,y,t)."""
     (x, y, t) = xyt
-    return 0
+    return C
 
 def f1f(xyt):
-    """Boundary condition at (x,y,t) = (1,y,t)"""
+    """Boundary condition at (x,y,t) = (1,y,t)."""
     (x, y, t) = xyt
-    return 0
+    return C
 
 def g0f(xyt):
-    """Boundary condition at (x,y,t) = (x,0,t)"""
+    """Boundary condition at (x,y,t) = (x,0,t)."""
     (x, y, t) = xyt
-    return 0
+    return C
 
 def g1f(xyt):
-    """Boundary condition at (x,y,t) = (x,1,t)"""
+    """Boundary condition at (x,y,t) = (x,1,t)."""
     (x, y, t) = xyt
-    return 0
+    return C
 
 def Y0f(xyt):
-    """Boundary condition at (x,y,t) = (x,y,0)"""
+    """Boundary condition at (x,y,t) = (x,y,0), aka initial condition."""
     (x, y, t) = xyt
-    return sin(pi*x)*sin(pi*y)/2
+    return C
 
 def Y1f(xyt):
-    """Boundary condition at (x,y,t) = (x,y,1) NOT USED"""
+    """Boundary condition at (x,y,t) = (x,y,1) - NOT USED."""
     (x, y, t) = xyt
     return None
 
@@ -119,92 +118,92 @@ bcf = [[f0f, f1f], [g0f, g1f], [Y0f, Y1f]]
 
 
 def df0_dxf(xyt):
-    """1st derivative of BC wrt x at (x,y,t) = (0,y,t)"""
+    """1st derivative of BC wrt x at (x,y,t)=(0,y,t)"""
     (x, y, t) = xyt
     return 0
 
 def df0_dyf(xyt):
-    """1st derivative of BC wrt y at (x,y,t) = (0,y,t)"""
+    """1st derivative of BC wrt x at (x,y,t)=(1,y,t)"""
     (x, y, t) = xyt
     return 0
 
 def df0_dtf(xyt):
-    """1st derivative of BC wrt t at (x,y,t) = (0,y,t)"""
+    """1st derivative of BC wrt t at (x,y,t)=(0,y,t)"""
     (x, y, t) = xyt
     return 0
 
 def df1_dxf(xyt):
-    """1st derivative of BC wrt x at (x,y,t) = (1,y,t)"""
+    """1st derivative of BC wrt x at (x,y,t)=(1,y,t)"""
     (x, y, t) = xyt
     return 0
 
 def df1_dyf(xyt):
-    """1st derivative of BC wrt y at (x,y,t) = (1,y,t)"""
+    """1st derivative of BC wrt y at (x,y,t)=(1,y,t)"""
     (x, y, t) = xyt
     return 0
 
 def df1_dtf(xyt):
-    """1st derivative of BC wrt z at (x,y,t) = (1,y,t)"""
+    """1st derivative of BC wrt t at (x,y,t)=(1,y,t)"""
     (x, y, t) = xyt
     return 0
 
 def dg0_dxf(xyt):
-    """1st derivative of BC wrt x at (x,y,t) = (x,0,t)"""
+    """1st derivative of BC wrt x at (x,y,t)=(x,0,t)"""
     (x, y, t) = xyt
     return 0
 
 def dg0_dyf(xyt):
-    """1st derivative of BC wrt y at (x,y,t) = (x,0,t)"""
+    """1st derivative of BC wrt y at (x,y,t)=(x,0,t)"""
     (x, y, t) = xyt
     return 0
 
 def dg0_dtf(xyt):
-    """1st derivative of BC wrt t at (x,y,t) = (x,0,t)"""
+    """1st derivative of BC wrt t at (x,y,t)=(x,0,t)"""
     (x, y, t) = xyt
     return 0
 
 def dg1_dxf(xyt):
-    """1st derivative of BC wrt x at (x,y,t) = (x,1,t)"""
+    """1st derivative of BC wrt x at (x,y,t)=(x,1,t)"""
     (x, y, t) = xyt
     return 0
 
 def dg1_dyf(xyt):
-    """1st derivative of BC wrt y at (x,y,t) = (x,1,t)"""
+    """1st derivative of BC wrt y at (x,y,t)=(x,1,t)"""
     (x, y, t) = xyt
     return 0
 
 def dg1_dtf(xyt):
-    """1st derivative of BC wrt t at (x,y,t) = (x,1,t)"""
+    """1st derivative of BC wrt t at (x,y,t)=(x,1,t)"""
     (x, y, t) = xyt
     return 0
 
 def dY0_dxf(xyt):
-    """1st derivative of BC wrt x at (x,y,t) = (x,y,0)"""
+    """1st derivative of BC wrt x at (x,y,t)=(x,y,0)"""
     (x, y, t) = xyt
-    return pi*cos(pi*x)*sin(pi*y)/2
+    return 0
 
 def dY0_dyf(xyt):
-    """1st derivative of BC wrt y at (x,y,t) = (x,y,0)"""
+    """1st derivative of BC wrt y at (x,y,t)=(x,y,0)"""
     (x, y, t) = xyt
-    return pi*sin(pi*x)*cos(pi*y)/2
+    return 0
 
 def dY0_dtf(xyt):
-    """1st derivative of BC wrt t at (x,y,t) = (x,y,0)"""
+    """1st derivative of BC wrt t at (x,y,t)=(x,y,0)"""
     (x, y, t) = xyt
     return 0
 
 def dY1_dxf(xyt):
-    """1st derivative of BC wrt x at (x,y,t) = (x,y,1) NOT USED"""
+    """1st derivative of BC wrt x at (x,y,t)=(x,y,1) NOT USED"""
     (x, y, t) = xyt
     return None
 
 def dY1_dyf(xyt):
-    """1st derivative of BC wrt y at (x,y,t) = (x,y,1) NOT USED"""
+    """1st derivative of BC wrt y at (x,y,t)=(x,y,1) NOT USED"""
     (x, y, t) = xyt
     return None
 
 def dY1_dtf(xyt):
-    """1st derivative of BC wrt t at (x,y,t) = (x,y,1) NOT USED"""
+    """1st derivative of BC wrt t at (x,y,t)=(x,y,1) NOT USED"""
     (x, y, t) = xyt
     return None
 
@@ -276,15 +275,15 @@ def d2g1_dt2f(xyt):
 def d2Y0_dx2f(xyt):
     """2nd derivative of BC wrt x at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return -pi**2*sin(pi*x)*sin(pi*y)/2
+    return 0
 
 def d2Y0_dy2f(xyt):
     """2nd derivative of BC wrt y at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return -pi**2*sin(pi*x)*sin(pi*y)/2
+    return 0
 
 def d2Y0_dt2f(xyt):
-    """2nd derivative of BC wrt t at (x,y,t) = (x,y,0)"""
+    """2nd derivative of BC wrt x at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
     return 0
 
@@ -308,48 +307,38 @@ del2bcf = [[[d2f0_dx2f, d2f0_dy2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dy2f, d2f1_dt2f]
            [[d2Y0_dx2f, d2Y0_dy2f, d2Y0_dt2f], [d2Y1_dx2f, d2Y1_dy2f, d2Y1_dt2f]]]
 
 
-def Af(xyt):
+def Af(xt):
     """Optimized version of boundary condition function"""
-    (x, y, t) = xyt
-    A = 1/2*(1 - t)*sin(pi*x)*sin(pi*y)
-    return A
+    return C
 
-def delAf(xyt):
+def delAf(xt):
     """Optimized version of boundary condition function gradient"""
-    (x, y, t) = xyt
-    dA_dx = pi/2*(1 - t)*cos(pi*x)*sin(pi*y)
-    dA_dy = pi/2*(1 - t)*sin(pi*x)*cos(pi*y)
-    dA_dt = -1/2*sin(pi*x)*sin(pi*y)
-    return [dA_dx, dA_dy, dA_dt]
+    return [0, 0, 0]
 
-def del2Af(xyt):
+def del2Af(xt):
     """Optimized version of boundary condition function Laplacian"""
-    (x, y, t) = xyt
-    d2A_dx2 = pi**2/2*(t - 1)*sin(pi*x)*sin(pi*y)
-    d2A_dy2 = pi**2/2*(t - 1)*sin(pi*x)*sin(pi*y)
-    d2A_dt2 = 0
-    return [d2A_dx2, d2A_dy2, d2A_dt2]
+    return [0, 0, 0]
 
 
 def Yaf(xyt):
     """Analytical solution"""
     (x, y, t) = xyt
-    return exp(-2*pi**2*D*t)*sin(pi*x)*sin(pi*y)/2
+    return C
 
 def dYa_dxf(xyt):
     """Analytical x-gradient"""
     (x, y, t) = xyt
-    return exp(-2*pi**2*D*t)*pi*cos(pi*x)*sin(pi*y)/2
+    return 0
 
 def dYa_dyf(xyt):
     """Analytical y-gradient"""
     (x, y, t) = xyt
-    return exp(-2*pi**2*D*t)*pi*sin(pi*x)*cos(pi*y)/2
+    return 0
 
 def dYa_dtf(xyt):
     """Analytical t-gradient"""
     (x, y, t) = xyt
-    return -exp(-2*pi**2*D*t)*pi**2*D*sin(pi*x)*sin(pi*y)
+    return 0
 
 delYaf = [dYa_dxf, dYa_dyf, dYa_dtf]
 
@@ -357,19 +346,23 @@ delYaf = [dYa_dxf, dYa_dyf, dYa_dtf]
 def d2Ya_dx2f(xyt):
     """Analytical x-Laplacian"""
     (x, y, t) = xyt
-    return -exp(-2*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)/2
+    return 0
 
 def d2Ya_dy2f(xyt):
     """Analytical y-Laplacian"""
     (x, y, t) = xyt
-    return -exp(-2*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)/2
+    return 0
 
 def d2Ya_dt2f(xyt):
     """Analytical t-Laplacian"""
     (x, y, t) = xyt
-    return 2*exp(-2*pi**2*D*t)*pi**4*D**2*sin(pi*x)*sin(pi*y)
+    return 0
 
+# Collection of analytical solution Laplacian functions
 del2Yaf = [d2Ya_dx2f, d2Ya_dy2f, d2Ya_dt2f]
+
+
+import numpy as np
 
 
 if __name__ == '__main__':
@@ -382,21 +375,21 @@ if __name__ == '__main__':
     dG_dY_ref = 0
     dG_ddelY_ref = [0, 0, 1]
     dG_ddel2Y_ref = [-D, -D, 0]
-    bc_ref = [[0, 0],
-              [0, 0],
-              [0.4755282581475767, None]]
+    bc_ref = [[C, C],
+              [C, C],
+              [C, None]]
     delbc_ref = [[[0, 0, 0], [0, 0, 0]],
                  [[0, 0, 0], [0, 0, 0]],
-                 [[0.4854027596813666, 0, 0], [None, None, None]]]
+                 [[0, 0, 0], [None, None, None]]]
     del2bc_ref = [[[0, 0, 0], [0, 0, 0]],
                   [[0, 0, 0], [0, 0, 0]],
-                  [[-4.69327578945568, -4.69327578945568, 0], [None, None, None]]]
-    A_ref = 0.1902113032590307
-    delA_ref = [0.1941611038725467, 0, -0.4755282581475767]
-    del2A_ref = [-1.877310315782272, -1.877310315782272, 0]
-    Ya_ref = 0.1454851152032499
-    delYa_ref = [0.1485061617311983, 0, -0.2871761066605974]
-    del2Ya_ref = [-1.435880533302987, -1.435880533302987, 0.5668629132370281]
+                  [[0, 0, 0], [None, None, None]]]
+    A_ref = C
+    delA_ref = [0, 0, 0]
+    del2A_ref = [0, 0, 0]
+    Ya_ref = C
+    delYa_ref = [0, 0, 0]
+    del2Ya_ref = [0, 0, 0]
 
     print("Testing differential equation.")
     assert np.isclose(Gf(xyt, Ya_ref, delYa_ref, del2Ya_ref), G_ref)

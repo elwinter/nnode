@@ -1,19 +1,20 @@
-###############################################################################
 """
 1-D diffusion PDE
 
 The analytical form of the equation is:
+
   G(x,t,Y,delY,del2Y) = dY_dt - D*d2Y_dx2 = 0
 
-The equation is defined on the domain [[0,1],[0,]]. The
-initial profile is:
+The equation is defined on the domain [[0,1],[0,]]. The boundary
+conditions are:
 
+Y(0,t) = 0
+Y(1,t) = 0
 Y(x,0) = sin(pi*x)
 """
 
 
 from math import cos, exp, pi, sin
-import numpy as np
 
 
 # Diffusion coefficient
@@ -182,20 +183,20 @@ del2bcf = [[[d2f0_dx2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dt2f]],
 def Af(xt):
     """Optimized version of boundary condition function"""
     (x, t) = xt
-    A = -(-1 + t)*sin(pi*x)
+    A = (1 - t)*sin(pi*x)
     return A
 
 def delAf(xt):
     """Optimized version of boundary condition function gradient"""
     (x, t) = xt
-    dA_dx = -pi*(-1 + t)*cos(pi*x)
+    dA_dx = pi*(1 - t)*cos(pi*x)
     dA_dt = -sin(pi*x)
     return [dA_dx, dA_dt]
 
 def del2Af(xt):
     """Optimized version of boundary condition function Laplacian"""
     (x, t) = xt
-    d2A_dx2 = pi**2*(-1 + t)*sin(pi*x)
+    d2A_dx2 = pi**2*(t - 1)*sin(pi*x)
     d2A_dt2 = 0
     return [d2A_dx2, d2A_dt2]
 
@@ -230,10 +231,13 @@ def d2Ya_dx2f(xt):
 def d2Ya_dt2f(xt):
     """Analytical t-Laplacian"""
     (x, t) = xt
-    d2Ya_dt2 = -exp(-pi**2*D*t)*pi**4*D**2*sin(pi*x)
+    d2Ya_dt2 = exp(-pi**2*D*t)*pi**4*D**2*sin(pi*x)
     return d2Ya_dt2
 
 del2Yaf = [d2Ya_dx2f, d2Ya_dt2f]
+
+
+import numpy as np
 
 
 if __name__ == '__main__':
@@ -244,89 +248,94 @@ if __name__ == '__main__':
     # Reference values for tests.
     G_ref = 0
     dG_dY_ref = 0
-    (dG_dY_dx_ref, dG_dY_dt_ref) = (0, 1)
-    (dG_d2Y_dx2_ref, dG_d2Y_dt2_ref) = (-D, 0)
+    dG_ddelY_ref = (0, 1)
+    dG_ddel2Y_ref = (-D, 0)
     bc_ref = [[0, 0],
-              [0.951057, None]]
+              [0.951056516295154, None]]
     delbc_ref = [[[0, 0], [0, 0]],
-                 [[0.970806, 0], [None, None]]]
+                 [[0.970805519362733, 0], [None, None]]]
     del2bc_ref = [[[0, 0], [0, 0]],
-                  [[-9.38655, 0], [None, None]]]
-    Ya_ref = 0.580618
-    delYa_ref = [0.592675, -0.573047]
-    del2Ya_ref = [-5.73057, 0.565575]
+                  [[-9.38655157891136, 0], [None, None]]]
+    A_ref = 0.4755282581475767
+    delA_ref =  [ 0.4854027596813666, -0.9510565162951535]
+    del2A_ref = [-4.69327578945568,    0                 ]
+    Ya_ref = 0.5806181251143597
+    delYa_ref =  [ 0.5926748524880853, -0.5730471202980937]
+    del2Ya_ref = [-5.730471202980937,   0.5655748380525648]
 
     print("Testing differential equation.")
-    G = Gf(xt, Ya_ref, delYa_ref, del2Ya_ref)
-    if not np.isclose(G, G_ref):
-        print("ERROR: G = %s, vs ref %s" % (G, G_ref))
+    assert np.isclose(Gf(xt, Ya_ref, delYa_ref, del2Ya_ref), G_ref)
 
     print("Testing differential equation Y-derivative.")
-    dG_dY = dG_dYf(xt, Ya_ref, delYa_ref, del2Ya_ref)
-    if not np.isclose(dG_dY, dG_dY_ref):
-        print("ERROR: dG_dY = %s, vs ref %s" % (dG_dY, dG_dY_ref))
+    assert np.isclose(dG_dYf(xt, Ya_ref, delYa_ref, del2Ya_ref), dG_dY_ref)
 
-    print("Testing differential equation dY/dx-derivative.")
-    dG_dY_dx = dG_dY_dxf(xt, Ya_ref, delYa_ref, del2Ya_ref)
-    if not np.isclose(dG_dY_dx, dG_dY_dx_ref):
-        print("ERROR: dG_dY_dx = %s, vs ref %s" % (dG_dY_dx, dG_dY_dx_ref))
+    print("Testing differential equation gradient-derivatives.")
+    for (i, f) in enumerate(dG_ddelYf):
+        assert np.isclose(f(xt, Ya_ref, delYa_ref, del2Ya_ref),
+                          dG_ddelY_ref[i])
 
-    print("Testing differential equation dY/dt-derivative.")
-    dG_dY_dt = dG_dY_dtf(xt, Ya_ref, delYa_ref, del2Ya_ref)
-    if not np.isclose(dG_dY_dt, dG_dY_dt_ref):
-        print("ERROR: dG_dY_dt = %s, vs ref %s" % (dG_dY_dt, dG_dY_dt_ref))
-
-    print("Testing differential equation d2Y/dx2-derivative.")
-    dG_d2Y_dx2 = dG_d2Y_dx2f(xt, Ya_ref, delYa_ref, del2Ya_ref)
-    if not np.isclose(dG_d2Y_dx2, dG_d2Y_dx2_ref):
-        print("ERROR: dG_d2Y_dx2 = %s, vs ref %s" % (dG_d2Y_dx2, dG_d2Y_dx2_ref))
-
-    print("Testing differential equation d2Y/dt2-derivative.")
-    dG_d2Y_dt2 = dG_d2Y_dt2f(xt, Ya_ref, delYa_ref, del2Ya_ref)
-    if not np.isclose(dG_d2Y_dt2, dG_d2Y_dt2_ref):
-        print("ERROR: dG_d2Y_dt2 = %s, vs ref %s" % (dG_d2Y_dt2, dG_d2Y_dt2_ref))
+    print("Testing differential equation Laplacian-derivatives.")
+    for (i, f) in enumerate(dG_ddel2Yf):
+        assert np.isclose(f(xt, Ya_ref, delYa_ref, del2Ya_ref),
+                          dG_ddel2Y_ref[i])
 
     print("Testing boundary conditions.")
     for i in range(len(bcf)):
         for (j, f) in enumerate(bcf[i]):
-            bc = f(xt)
-            if ((bc_ref[i][j] is not None and not np.isclose(bc, bc_ref[i][j]))
-                or (bc_ref[i][j] is None and bc is not None)):
-                print("ERROR: bc[%d][%d] = %s, vs ref %s" % (i, j, bc, bc_ref[i][j]))
+            if bc_ref[i][j] is None:
+                assert f(xt) is None
+            else:
+                assert np.isclose(f(xt), bc_ref[i][j])
 
     print("Testing boundary condition gradients.")
     for i in range(len(delbcf)):
         for j in range(len(delbcf[i])):
             for (k, f) in enumerate(delbcf[i][j]):
-                delbc = f(xt)
-                if ((delbc_ref[i][j][k] is not None and not np.isclose(delbc, delbc_ref[i][j][k]))
-                    or (delbc_ref[i][j][k] is None and delbc is not None)):
-                    print("ERROR: delbc[%d][%d][%d] = %s, vs ref %s" % (i, j, k, delbc, delbc_ref[i][j][k]))
+                if delbc_ref[i][j][k] is None:
+                    assert f(xt) is None
+                else:
+                    assert np.isclose(f(xt), delbc_ref[i][j][k])
 
     print("Testing boundary condition Laplacians.")
     for i in range(len(del2bcf)):
         for j in range(len(del2bcf[i])):
             for (k, f) in enumerate(del2bcf[i][j]):
-                del2bc = f(xt)
-                if ((del2bc_ref[i][j][k] is not None and not np.isclose(del2bc, del2bc_ref[i][j][k]))
-                    or (del2bc_ref[i][j][k] is None and del2bc is not None)):
-                    print("ERROR: del2bc[%d][%d][%d] = %s, vs ref %s" % (i, j, k, del2bc, del2bc_ref[i][j][k]))
+                if del2bc_ref[i][j][k] is None:
+                    assert f(xt) is None
+                else:
+                    assert np.isclose(f(xt), del2bc_ref[i][j][k])
+
+    print("Verifying BC continuity constraints.")
+    assert np.isclose(f0f([0, 0]), Y0f([0, 0]))
+    assert np.isclose(f1f([1, 0]), Y0f([1, 0]))
+    # t=1 not used
+
+    print("Testing optimized BC function.")
+    assert np.isclose(Af(xt), A_ref)
+
+    print("Testing optimized BC function gradient.")
+    delA = delAf(xt)
+    for i in range(len(delA_ref)):
+        assert np.isclose(delA[i], delA_ref[i])
+
+    print("Testing optimized BC function Laplacian.")
+    del2A = del2Af(xt)
+    for i in range(len(del2A_ref)):
+        assert np.isclose(del2A[i], del2A_ref[i])
 
     print("Testing analytical solution.")
-    Ya = Yaf(xt)
-    if not np.isclose(Ya, Ya_ref):
-        print("ERROR: Ya = %s, vs ref %s" % (Ya, Ya_ref))
+    assert np.isclose(Yaf(xt), Ya_ref)
 
     print("Testing analytical solution gradient.")
     for (i, f) in enumerate(delYaf):
-        delYa = f(xt)
-        if ((delYa_ref[i] is not None and not np.isclose(delYa, delYa_ref[i]))
-                or (delYa_ref[i] is None and delYa is not None)):
-                print("ERROR: delYa[%d] = %s, vs ref %s" % (i, delYa, delYa_ref[i]))
+        if delYa_ref[i] is None:
+            assert f(xt) is None
+        else:
+            assert np.isclose(f(xt), delYa_ref[i])
 
     print("Testing analytical solution Laplacian.")
     for (i, f) in enumerate(del2Yaf):
-        del2Ya = f(xt)
-        if ((del2Ya_ref[i] is not None and not np.isclose(del2Ya, del2Ya_ref[i]))
-                or (del2Ya_ref[i] is None and del2Ya is not None)):
-                print("ERROR: del2Ya[%d] = %s, vs ref %s" % (i, del2Ya, del2Ya_ref[i]))
+        if del2Ya_ref[i] is None:
+            assert f(xt) is None
+        else:
+            assert np.isclose(f(xt), del2Ya_ref[i])
