@@ -21,7 +21,7 @@ import numpy as np
 D = 0.1
 
 # Boundary increase rate at x=1
-a = 0.1
+a = 1.0
 
 # Number of terms in analytical summation
 kmax = 800
@@ -263,22 +263,22 @@ if __name__ == '__main__':
     xt = [0.4, 0.5]
 
     # Reference values for tests.
-    G_ref = 0.0360028908174169   # Non-zero due to roundoff error?
+    G_ref = 0.360028908174169   # Non-zero due to roundoff error?
     dG_dY_ref = 0
     dG_ddelY_ref = (0, 1)
     dG_ddel2Y_ref = (-D, 0)
-    bc_ref = [[0, 0.05],
+    bc_ref = [[0, 0.5],
               [0.951056516295154, None]]
-    delbc_ref = [[[0, 0], [0, 0.1]],
+    delbc_ref = [[[0, 0], [0, a]],
                  [[0.970805519362733, 0], [None, None]]]
     del2bc_ref = [[[0, 0], [0, 0]],
                   [[-9.38655157891136, 0], [None, None]]]
-    A_ref = 0.4955282581475768
-    delA_ref = [0.5354027596813666, -0.911056516295153]
+    A_ref = 0.6755282581475768
+    delA_ref = [0.9854027596813666, -0.5510565162951535]
     del2A_ref = [-4.69327578945568, 0]
-    Ya_ref = 0.5986958383019955
-    delYa_ref =  [ 0.6383788665776866, -0.536469420056056]
-    del2Ya_ref = [-5.724723108734729,   0.5680753052926439]
+    Ya_ref = 0.761395256990717
+    delYa_ref =  [1.0497149933841, -0.2072701178777183]
+    del2Ya_ref = [-5.672990260518873, 0.5905795104533562]
 
     print("Testing differential equation.")
     assert np.isclose(Gf(xt, Ya_ref, delYa_ref, del2Ya_ref), G_ref)
