@@ -7,16 +7,15 @@ The analytical form of the equation is:
 The equation is defined on the domain (x,y,t)=([0,1],[0,1],[0,]). The
 boundary conditions are:
 
-Y(0,y,t) = C = 0
-Y(1,y,t) = C = 0
-Y(x,0,t) = C = 0
-Y(x,1,t) = C = 0
-Y(x,y,0) = C = 1/2 sin(pi*x) sin(pi*y)
+Y(0,y,t) = 0
+Y(1,y,t) = 0
+Y(x,0,t) = 0
+Y(x,1,t) = 0
+Y(x,y,0) = sin(pi*x)*sin(pi*y)
 """
 
 
 from math import cos, exp, pi, sin
-import numpy as np
 
 
 # Diffusion coefficient
@@ -108,7 +107,7 @@ def g1f(xyt):
 def Y0f(xyt):
     """Boundary condition at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return sin(pi*x)*sin(pi*y)/2
+    return sin(pi*x)*sin(pi*y)
 
 def Y1f(xyt):
     """Boundary condition at (x,y,t) = (x,y,1) NOT USED"""
@@ -181,12 +180,12 @@ def dg1_dtf(xyt):
 def dY0_dxf(xyt):
     """1st derivative of BC wrt x at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return pi*cos(pi*x)*sin(pi*y)/2
+    return pi*cos(pi*x)*sin(pi*y)
 
 def dY0_dyf(xyt):
     """1st derivative of BC wrt y at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return pi*sin(pi*x)*cos(pi*y)/2
+    return pi*sin(pi*x)*cos(pi*y)
 
 def dY0_dtf(xyt):
     """1st derivative of BC wrt t at (x,y,t) = (x,y,0)"""
@@ -276,12 +275,12 @@ def d2g1_dt2f(xyt):
 def d2Y0_dx2f(xyt):
     """2nd derivative of BC wrt x at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return -pi**2*sin(pi*x)*sin(pi*y)/2
+    return -pi**2*sin(pi*x)*sin(pi*y)
 
 def d2Y0_dy2f(xyt):
     """2nd derivative of BC wrt y at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return -pi**2*sin(pi*x)*sin(pi*y)/2
+    return -pi**2*sin(pi*x)*sin(pi*y)
 
 def d2Y0_dt2f(xyt):
     """2nd derivative of BC wrt t at (x,y,t) = (x,y,0)"""
@@ -311,22 +310,22 @@ del2bcf = [[[d2f0_dx2f, d2f0_dy2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dy2f, d2f1_dt2f]
 def Af(xyt):
     """Optimized version of boundary condition function"""
     (x, y, t) = xyt
-    A = 1/2*(1 - t)*sin(pi*x)*sin(pi*y)
+    A = (1 - t)*sin(pi*x)*sin(pi*y)
     return A
 
 def delAf(xyt):
     """Optimized version of boundary condition function gradient"""
     (x, y, t) = xyt
-    dA_dx = pi/2*(1 - t)*cos(pi*x)*sin(pi*y)
-    dA_dy = pi/2*(1 - t)*sin(pi*x)*cos(pi*y)
-    dA_dt = -1/2*sin(pi*x)*sin(pi*y)
+    dA_dx = pi*(1 - t)*cos(pi*x)*sin(pi*y)
+    dA_dy = pi*(1 - t)*sin(pi*x)*cos(pi*y)
+    dA_dt = -sin(pi*x)*sin(pi*y)
     return [dA_dx, dA_dy, dA_dt]
 
 def del2Af(xyt):
     """Optimized version of boundary condition function Laplacian"""
     (x, y, t) = xyt
-    d2A_dx2 = pi**2/2*(t - 1)*sin(pi*x)*sin(pi*y)
-    d2A_dy2 = pi**2/2*(t - 1)*sin(pi*x)*sin(pi*y)
+    d2A_dx2 = pi**2*(t - 1)*sin(pi*x)*sin(pi*y)
+    d2A_dy2 = pi**2*(t - 1)*sin(pi*x)*sin(pi*y)
     d2A_dt2 = 0
     return [d2A_dx2, d2A_dy2, d2A_dt2]
 
@@ -334,22 +333,22 @@ def del2Af(xyt):
 def Yaf(xyt):
     """Analytical solution"""
     (x, y, t) = xyt
-    return exp(-2*pi**2*D*t)*sin(pi*x)*sin(pi*y)/2
+    return exp(-2*pi**2*D*t)*sin(pi*x)*sin(pi*y)
 
 def dYa_dxf(xyt):
     """Analytical x-gradient"""
     (x, y, t) = xyt
-    return exp(-2*pi**2*D*t)*pi*cos(pi*x)*sin(pi*y)/2
+    return exp(-2*pi**2*D*t)*pi*cos(pi*x)*sin(pi*y)
 
 def dYa_dyf(xyt):
     """Analytical y-gradient"""
     (x, y, t) = xyt
-    return exp(-2*pi**2*D*t)*pi*sin(pi*x)*cos(pi*y)/2
+    return exp(-2*pi**2*D*t)*pi*sin(pi*x)*cos(pi*y)
 
 def dYa_dtf(xyt):
     """Analytical t-gradient"""
     (x, y, t) = xyt
-    return -exp(-2*pi**2*D*t)*pi**2*D*sin(pi*x)*sin(pi*y)
+    return -2*exp(-2*pi**2*D*t)*pi**2*D*sin(pi*x)*sin(pi*y)
 
 delYaf = [dYa_dxf, dYa_dyf, dYa_dtf]
 
@@ -357,19 +356,22 @@ delYaf = [dYa_dxf, dYa_dyf, dYa_dtf]
 def d2Ya_dx2f(xyt):
     """Analytical x-Laplacian"""
     (x, y, t) = xyt
-    return -exp(-2*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)/2
+    return -exp(-2*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)
 
 def d2Ya_dy2f(xyt):
     """Analytical y-Laplacian"""
     (x, y, t) = xyt
-    return -exp(-2*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)/2
+    return -exp(-2*pi**2*D*t)*pi**2*sin(pi*x)*sin(pi*y)
 
 def d2Ya_dt2f(xyt):
     """Analytical t-Laplacian"""
     (x, y, t) = xyt
-    return 2*exp(-2*pi**2*D*t)*pi**4*D**2*sin(pi*x)*sin(pi*y)
+    return 4*exp(-2*pi**2*D*t)*pi**4*D**2*sin(pi*x)*sin(pi*y)
 
 del2Yaf = [d2Ya_dx2f, d2Ya_dy2f, d2Ya_dt2f]
+
+
+import numpy as np
 
 
 if __name__ == '__main__':
@@ -384,19 +386,19 @@ if __name__ == '__main__':
     dG_ddel2Y_ref = [-D, -D, 0]
     bc_ref = [[0, 0],
               [0, 0],
-              [0.4755282581475767, None]]
+              [0.951056516295154, None]]
     delbc_ref = [[[0, 0, 0], [0, 0, 0]],
                  [[0, 0, 0], [0, 0, 0]],
-                 [[0.4854027596813666, 0, 0], [None, None, None]]]
+                 [[0.970805519362733, 0, 0], [None, None, None]]]
     del2bc_ref = [[[0, 0, 0], [0, 0, 0]],
                   [[0, 0, 0], [0, 0, 0]],
-                  [[-4.69327578945568, -4.69327578945568, 0], [None, None, None]]]
-    A_ref = 0.1902113032590307
-    delA_ref = [0.1941611038725467, 0, -0.4755282581475767]
-    del2A_ref = [-1.877310315782272, -1.877310315782272, 0]
-    Ya_ref = 0.1454851152032499
-    delYa_ref = [0.1485061617311983, 0, -0.2871761066605974]
-    del2Ya_ref = [-1.435880533302987, -1.435880533302987, 0.5668629132370281]
+                  [[-9.38655157891136, -9.38655157891136, 0], [None, None, None]]]
+    A_ref = 0.3804226065180614
+    delA_ref = [0.38832220774509335, 0, -0.9510565162951535]
+    del2A_ref = [-3.754620631564544, -3.754620631564544, 0]
+    Ya_ref = 0.2909702304064997
+    delYa_ref = [0.2970123234623966, 0, -0.5743522133211949]
+    del2Ya_ref = [-2.8717610666059743, -2.8717610666059743, 1.1337258264740562]
 
     print("Testing differential equation.")
     assert np.isclose(Gf(xyt, Ya_ref, delYa_ref, del2Ya_ref), G_ref)
