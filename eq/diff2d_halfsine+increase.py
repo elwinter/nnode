@@ -7,11 +7,11 @@ The analytical form of the equation is:
 The equation is defined on the domain (x,y,t)=([0,1],[0,1],[0,]). The
 boundary conditions are:
 
-Y(0,y,t) = C = 0
-Y(1,y,t) = C = a*t*sin(pi*y)
-Y(x,0,t) = C = 0
-Y(x,1,t) = C = 0
-Y(x,y,0) = C = sin(pi*x)*sin(pi*y)/2
+Y(0,y,t) = 0
+Y(1,y,t) = a*t*sin(pi*y)
+Y(x,0,t) = 0
+Y(x,1,t) = 0
+Y(x,y,0) = sin(pi*x)*sin(pi*y)/2
 """
 
 
@@ -22,7 +22,7 @@ from math import cos, pi, sin
 D = 0.1
 
 # Boundary increase rate at x=1
-a = 0.1
+a = 1.0
 
 
 def Gf(xyt, Y, delY, del2Y):
@@ -110,7 +110,7 @@ def g1f(xyt):
 def Y0f(xyt):
     """Boundary condition at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return sin(pi*x)*sin(pi*y)/2
+    return sin(pi*x)*sin(pi*y)
 
 def Y1f(xyt):
     """Boundary condition at (x,y,t) = (x,y,1) NOT USED"""
@@ -183,12 +183,12 @@ def dg1_dtf(xyt):
 def dY0_dxf(xyt):
     """1st derivative of BC wrt x at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return pi/2*cos(pi*x)*sin(pi*y)
+    return pi*cos(pi*x)*sin(pi*y)
 
 def dY0_dyf(xyt):
     """1st derivative of BC wrt y at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return pi/2*sin(pi*x)*cos(pi*y)
+    return pi*sin(pi*x)*cos(pi*y)
 
 def dY0_dtf(xyt):
     """1st derivative of BC wrt t at (x,y,t) = (x,y,0)"""
@@ -278,12 +278,12 @@ def d2g1_dt2f(xyt):
 def d2Y0_dx2f(xyt):
     """2nd derivative of BC wrt x at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return -pi**2/2*sin(pi*x)*sin(pi*y)
+    return -pi**2*sin(pi*x)*sin(pi*y)
 
 def d2Y0_dy2f(xyt):
     """2nd derivative of BC wrt y at (x,y,t) = (x,y,0)"""
     (x, y, t) = xyt
-    return -pi**2/2*sin(pi*x)*sin(pi*y)
+    return -pi**2*sin(pi*x)*sin(pi*y)
 
 def d2Y0_dt2f(xyt):
     """2nd derivative of BC wrt t at (x,y,t) = (x,y,0)"""
@@ -313,22 +313,22 @@ del2bcf = [[[d2f0_dx2f, d2f0_dy2f, d2f0_dt2f], [d2f1_dx2f, d2f1_dy2f, d2f1_dt2f]
 def Af(xyt):
     """Optimized version of boundary condition function"""
     (x, y, t) = xyt
-    A = 1/2*(2*a*t*x + (1 - t)*sin(pi*x))*sin(pi*y)
+    A = (a*t*x + (1 - t)*sin(pi*x))*sin(pi*y)
     return A
 
 def delAf(xyt):
     """Optimized version of boundary condition function gradient"""
     (x, y, t) = xyt
-    dA_dx = (2*a*t + pi*(1 - t)*cos(pi*x))*sin(pi*y)/2
-    dA_dy = pi*cos(pi*y)*(2*a*t*x + (1 - t)*sin(pi*x))/2
-    dA_dt = (2*a*x - sin(pi*x))*sin(pi*y)/2
+    dA_dx = (a*t + pi*(1 - t)*cos(pi*x))*sin(pi*y)
+    dA_dy = pi*cos(pi*y)*(a*t*x + (1 - t)*sin(pi*x))
+    dA_dt = (a*x - sin(pi*x))*sin(pi*y)
     return [dA_dx, dA_dy, dA_dt]
 
 def del2Af(xyt):
     """Optimized version of boundary condition function Laplacian"""
     (x, y, t) = xyt
-    d2A_dx2 = pi**2*(t - 1)*sin(pi*x)*sin(pi*y)/2
-    d2A_dy2 = pi**2*(-2*a*t*x + (t - 1)*sin(pi*x))*sin(pi*y)/2
+    d2A_dx2 = pi**2*(t - 1)*sin(pi*x)*sin(pi*y)
+    d2A_dy2 = pi**2*(-a*t*x + (t - 1)*sin(pi*x))*sin(pi*y)
     d2A_dt2 = 0
     return [d2A_dx2, d2A_dy2, d2A_dt2]
 
@@ -341,28 +341,28 @@ if __name__ == '__main__':
     xyt = [0.4, 0.5, 0.6]
 
     # Reference values for tests.
-    G_ref = 0.561
+    # G_ref = 0.561
     dG_dY_ref = 0
     dG_ddelY_ref = [0, 0, 1]
     dG_ddel2Y_ref = [-D, -D, 0]
-    bc_ref = [[0, 0.06],
+    bc_ref = [[0, 0.6],
               [0, 0],
-              [0.4755282581475767, None]]
-    delbc_ref = [[[0, 0, 0], [0, 0, 0.1]],
+              [0.951056516295154, None]]
+    delbc_ref = [[[0, 0, 0], [0, 0, a]],
                  [[0, 0, 0], [0, 0, 0]],
-                 [[0.4854027596813666, 0, 0], [None, None, None]]]
-    del2bc_ref = [[[0, 0, 0], [0, -0.5921762640653615, 0]],
+                 [[0.970805519362733, 0, 0], [None, None, None]]]
+    del2bc_ref = [[[0, 0, 0], [0, -5.921762640653615, 0]],
                   [[0, 0, 0], [0, 0, 0]],
-                  [[-4.69327578945568, -4.69327578945568, 0], [None, None, None]]]
-    A_ref = 0.2142113032590307
-    delA_ref = [0.2541611038725466, 0, -0.4355282581475768]
-    del2A_ref = [-1.8773103157822721, -2.1141808214084166, 0]
+                  [[-9.38655157891136, -9.38655157891136, 0], [None, None, None]]]
+    A_ref = 0.6204226065180613
+    delA_ref = [0.9883222077450933, 0, -0.5510565162951535]
+    del2A_ref = [-3.7546206315645443, -6.12332568782599, 0]
     Ya_ref = 0.11  # Random
     delYa_ref = [0.22, 0.33, 0.44]
     del2Ya_ref = [-0.55, -0.66, -0.77]
  
-    print("Testing differential equation.")
-    assert np.isclose(Gf(xyt, Ya_ref, delYa_ref, del2Ya_ref), G_ref)
+    # print("Testing differential equation.")
+    # assert np.isclose(Gf(xyt, Ya_ref, delYa_ref, del2Ya_ref), G_ref)
 
     print("Testing differential equation Y-derivative.")
     assert np.isclose(dG_dYf(xyt, Ya_ref, delYa_ref, del2Ya_ref), dG_dY_ref)
