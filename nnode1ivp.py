@@ -33,7 +33,7 @@ from scipy.optimize import minimize
 
 from kdelta import kdelta
 from ode1ivp import ODE1IVP
-from sigma import sigma, dsigma_dz, d2sigma_dz2
+import sigma
 from slffnn import SLFFNN
 
 
@@ -66,9 +66,9 @@ DEFAULT_OPTS = {
 
 
 # Vectorize sigma functions for speed.
-sigma_v = np.vectorize(sigma)
-dsigma_dz_v = np.vectorize(dsigma_dz)
-d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
+s_v = np.vectorize(sigma.s)
+s1_v = np.vectorize(sigma.s1)
+s2_v = np.vectorize(sigma.s2)
 
 
 class NNODE1IVP(SLFFNN):
@@ -123,33 +123,14 @@ class NNODE1IVP(SLFFNN):
 
     def run(self, x):
         """Compute the trained solution."""
-        # n = len(x)
-        # H = len(self.v)
         w = self.w
         u = self.u
         v = self.v
 
         z = np.outer(x, w) + u
-        # z = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         z[i, k] = self.w[k] * x[i] + self.u[k]
-        s = sigma_v(z)
-        # s = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s[i, k] = sigma(z[i, k])
-
+        s = s_v(z)
         N = s.dot(v)
-        # N = np.zeros(n)
-        # for i in range(n):
-        #     for k in range(H):
-        #         N[i] += s[i, k]*self.v[k]
-
         Yt = self.Ytf_v(x, N)
-        # Yt = np.zeros(n)
-        # for i in range(n):
-        #     Yt[i] = self.__Ytf(x[i], N[i])
 
         return Yt
 
@@ -164,12 +145,12 @@ class NNODE1IVP(SLFFNN):
         z = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                z[i, k] = w[k] * x[i] + u[k]
+                z[i, k] = w[k]*x[i] + u[k]
 
         s = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s[i, k] = sigma(z[i, k])
+                s[i, k] = sigma.s(z[i, k])
 
         N = np.zeros(n)
         for i in range(n):
@@ -184,51 +165,17 @@ class NNODE1IVP(SLFFNN):
 
     def run_derivative(self, x):
         """Compute the trained derivative."""
-        # n = len(x)
-        # H = len(self.v)
         w = self.w
         u = self.u
         v = self.v
 
         z = np.outer(x, w) + u
-        # z = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         z[i, k] = self.w[k] * x[i] + self.u[k]
-
-        s = sigma_v(z)
-        # s = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s[i, k] = sigma(z[i, k])
-
-        s1 = dsigma_dz_v(z)
-        # s1 = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s1[i, k] = dsigma_dz(z[i, k])
-
+        s = s_v(z)
+        s1 = s1_v(s)
         N = s.dot(v)
-        # N = np.zeros(n)
-        # for i in range(n):
-        #     for k in range(H):
-        #         N[i] += s[i, k]*self.v[k]
-
         Yt = self.Ytf_v(x, N)
-        # Yt = np.zeros(n)
-        # for i in range(n):
-        #     Yt[i] = self.__Ytf(x[i], N[i])
-
         dN_dx = s1.dot(v*w)
-        # dN_dx = np.zeros(n)
-        # for i in range(n):
-        #     for k in range(H):
-        #         dN_dx[i] += self.v[k]*s1[i, k]*self.w[k]
-
         dYt_dx = self.dYt_dxf_v(x, N, dN_dx)
-        # dYt_dx = np.zeros(n)
-        # for i in range(n):
-        #     dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i])
 
         return dYt_dx
 
@@ -243,17 +190,17 @@ class NNODE1IVP(SLFFNN):
         z = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                z[i, k] = self.w[k] * x[i] + self.u[k]
+                z[i, k] = self.w[k]*x[i] + self.u[k]
 
         s = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s[i, k] = sigma(z[i, k])
+                s[i, k] = sigma.s(z[i, k])
 
         s1 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s1[i, k] = dsigma_dz(z[i, k])
+                s1[i, k] = sigma.s1(s[i, k])
 
         N = np.zeros(n)
         for i in range(n):
@@ -331,189 +278,66 @@ class NNODE1IVP(SLFFNN):
 
             # Compute the new values of the network parameters.
             w -= eta*dE_dw
-            # for k in range(H):
-            #     w[k] -= eta*dE_dw[k]
             u -= eta*dE_du
-            # for k in range(H):
-            #     u[k] -= eta*dE_du[k]
             v -= eta*dE_dv
-            # for k in range(H):
-            #     v[k] -= eta*dE_dv[k]
 
             # Compute the input, the sigmoid function, and its derivatives, for
             # each hidden node and training point.
             # x is nx1, w is 1xH
             # z, s, s1, s2 are nxH
             z = np.outer(x, w) + u
-            # z = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         z[i, k] = w[k]*x[i] + u[k]
-            s = sigma_v(z)
-            # s = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         s[i, k] = sigma(z[i, k])
-            s1 = dsigma_dz_v(z)
-            # s1 = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         s1[i, k] = dsigma_dz(z[i, k])
-            s2 = d2sigma_dz2_v(z)
-            # s2 = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         s2[i, k] = d2sigma_dz2(z[i, k])
+            s = s_v(z)
+            s1 = s1_v(s)
+            s2 = s2_v(s)
 
             # Compute the network output and its derivatives, for each
             # training point.
             # s, v are Hx1
             # N is scalar
             N = s.dot(v)
-            # N = np.zeros(n)
-            # for i in range(n):
-            #     for k in range(H):
-            #         N[i] += v[k]*s[i, k]
             dN_dx = s1.dot(v*w)
-            # dN_dx = np.zeros(n)
-            # for i in range(n):
-            #     for k in range(H):
-            #         dN_dx[i] += v[k]*s1[i, k]*w[k]
             dN_dw = s1*np.outer(x, v)
-            # dN_dw = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dN_dw[i, k] = v[k]*s1[i, k]*x[i]
             dN_du = s1*v
-            # dN_du = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dN_du[i, k] = v[k]*s1[i, k]
             dN_dv = np.copy(s)
-            # dN_dv = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dN_dv[i, k] = s[i, k]
             d2N_dwdx = v*(s1 + s2*np.outer(x, w))
-            # d2N_dwdx = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         d2N_dwdx[i, k] = v[k]*(s1[i, k] + s2[i, k]*w[k]*x[i])
             d2N_dudx = v*s2*w
-            # d2N_dudx = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         d2N_dudx[i, k] = v[k]*s2[i, k]*w[k]
             d2N_dvdx = s1*w
-            # d2N_dvdx = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         d2N_dvdx[i, k] = s1[i, k]*w[k]
 
             # Compute the value of the trial solution, its coefficients,
             # and derivatives, for each training point.
             Yt = self.Ytf_v(x, N)
-            # Yt = np.zeros(n)
-            # for i in range(n):
-            #     Yt[i] = self.__Ytf(x[i], N[i])
             dYt_dx = self.dYt_dxf_v(x, N, dN_dx)
-            # dYt_dx = np.zeros(n)
-            # for i in range(n):
-            #     dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i])
             # Temporary broadcast version of x.
             x_b = np.broadcast_to(x, (H, n)).T
             dYt_dw = x_b*dN_dw
-            # dYt_dw = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dYt_dw[i, k] = x[i]*dN_dw[i, k]
             dYt_du = x_b*dN_du
-            # dYt_du = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dYt_du[i, k] = x[i]*dN_du[i, k]
             dYt_dv = x_b*dN_dv
-            # dYt_dv = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dYt_dv[i, k] = x[i]*dN_dv[i, k]
             d2Yt_dwdx = x_b*d2N_dwdx + dN_dw
-            # d2Yt_dwdx = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         d2Yt_dwdx[i, k] = x[i]*d2N_dwdx[i, k] + dN_dw[i, k]
             d2Yt_dudx = x_b*d2N_dudx + dN_du
-            # d2Yt_dudx = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         d2Yt_dudx[i, k] = x[i]*d2N_dudx[i, k] + dN_du[i, k]
             d2Yt_dvdx = x_b*d2N_dvdx + dN_dv
-            # d2Yt_dvdx = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         d2Yt_dvdx[i, k] = x[i]*d2N_dvdx[i, k] + dN_dv[i, k]
 
             # Compute the value of the original differential equation for
             # each training point, and its derivatives.
             G = self.Gf_v(x, Yt, dYt_dx)
-            # G = np.zeros(n)
-            # for i in range(n):
-            #     G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i])
             dG_dYt = self.dG_dYf_v(x, Yt, dYt_dx)
-            # dG_dYt = np.zeros(n)
-            # for i in range(n):
-            #     dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], dYt_dx[i])
             dG_dYtdx = self.dG_dYdxf_v(x, Yt, dYt_dx)
-            # dG_dYtdx = np.zeros(n)
-            # for i in range(n):
-            #     dG_dYtdx[i] = self.eq.dG_dYdxf(x[i], Yt[i], dYt_dx[i])
             # Temporary broadcast versions of dG_dyt and dG_dytdx.
             dG_dYt_b = np.broadcast_to(dG_dYt, (H, n)).T
             dG_dYtdx_b = np.broadcast_to(dG_dYtdx, (H, n)).T
             dG_dw = dG_dYt_b*dYt_dw + dG_dYtdx_b*d2Yt_dwdx
-            # dG_dw = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dG_dw[i, k] = dG_dYt[i]*dYt_dw[i, k] + \
-            #                       dG_dYtdx[i]*d2Yt_dwdx[i, k]
             dG_du = dG_dYt_b*dYt_du + dG_dYtdx_b*d2Yt_dudx
-            # dG_du = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dG_du[i, k] = dG_dYt[i]*dYt_du[i, k] + \
-            #                       dG_dYtdx[i]*d2Yt_dudx[i, k]
             dG_dv = dG_dYt_b*dYt_dv + dG_dYtdx_b*d2Yt_dvdx
-            # dG_dv = np.zeros((n, H))
-            # for i in range(n):
-            #     for k in range(H):
-            #         dG_dv[i, k] = dG_dYt[i]*dYt_dv[i, k] + \
-            #                       dG_dYtdx[i]*d2Yt_dvdx[i, k]
 
             # Compute the error function for this epoch.
             E = np.sum(G**2)
-            # E = 0
-            # for i in range(n):
-            #     E += G[i]**2
 
             # Compute the partial derivatives of the error with respect to the
             # network parameters.
             # Temporary boradcast version of G.
             G_b = np.broadcast_to(G, (H, n)).T
             dE_dw = 2*np.sum(G_b*dG_dw, axis=0)
-            # dE_dw = np.zeros(H)
-            # for k in range(H):
-            #     for i in range(n):
-            #         dE_dw[k] += 2*G[i]*dG_dw[i, k]
             dE_du = 2*np.sum(G_b*dG_du, axis=0)
-            # dE_du = np.zeros(H)
-            # for k in range(H):
-            #     for i in range(n):
-            #         dE_du[k] += 2*G[i]*dG_du[i, k]
             dE_dv = 2*np.sum(G_b*dG_dv, axis=0)
-            # dE_dv = np.zeros(H)
-            # for k in range(H):
-            #     for i in range(n):
-            #         dE_dv[k] += 2*G[i]*dG_dv[i, k]
 
             # Compute RMS error for this epoch.
             rmse = sqrt(E/n)
@@ -589,17 +413,17 @@ class NNODE1IVP(SLFFNN):
             s = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
-                    s[i, k] = sigma(z[i, k])
+                    s[i, k] = sigma.sigma(z[i, k])
 
             s1 = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
-                    s1[i, k] = dsigma_dz(z[i, k])
+                    s1[i, k] = sigma.s1(s[i, k])
 
             s2 = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
-                    s2[i, k] = d2sigma_dz2(z[i, k])
+                    s2[i, k] = sigma.s2(s[i, k])
 
             # Compute the network output and its derivatives, for each
             # training point.
@@ -808,46 +632,14 @@ class NNODE1IVP(SLFFNN):
 
         # Compute the forward pass through the network.
         z = np.outer(x, w) + u
-        # z = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         z[i, k] = x[i]*w[k] + u[k]
-        s = sigma_v(z)
-        # s = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s[i, k] = sigma(z[i, k])
-        s1 = dsigma_dz_v(z)
-        # s1 = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s1[i, k] = dsigma_dz(z[i, k])
+        s = s_v(z)
+        s1 = s1_v(s)
         N = s.dot(v)
-        # N = np.zeros(n)
-        # for i in range(n):
-        #     for k in range(H):
-        #         N[i] += v[k]*s[i, k]
         dN_dx = s1.dot(v*w)
-        # dN_dx = np.zeros(n)
-        # for i in range(n):
-        #     for k in range(H):
-        #         dN_dx[i] += s1[i, k]*v[k]*w[k]
         Yt = self.Ytf_v(x, N)
-        # Yt = np.zeros(n)
-        # for i in range(n):
-        #     Yt[i] = self.__Ytf(x[i], N[i])
         dYt_dx = self.dYt_dxf_v(x, N, dN_dx)
-        # dYt_dx = np.zeros(n)
-        # for i in range(n):
-        #     dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i])
         G = self.Gf_v(x, Yt, dYt_dx)
-        # G = np.zeros(n)
-        # for i in range(n):
-        #     G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i])
         E = np.sum(G**2)
-        # E = 0
-        # for i in range(n):
-        #     E += G[i]**2
 
         return E
 
@@ -869,11 +661,11 @@ class NNODE1IVP(SLFFNN):
         s = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s[i, k] = sigma(z[i, k])
+                s[i, k] = sigma.s(z[i, k])
         s1 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s1[i, k] = dsigma_dz(z[i, k])
+                s1[i, k] = sigma.s1(s[i, k])
         N = np.zeros(n)
         for i in range(n):
             for k in range(H):
@@ -910,28 +702,9 @@ class NNODE1IVP(SLFFNN):
 
         # Compute the forward pass through the network.
         z = np.outer(x, w) + u
-        # z = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         z[i, k] = x[i]*w[k] + u[k]
-
-        s = sigma_v(z)
-        # s = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s[i, k] = sigma(z[i, k])
-
-        s1 = dsigma_dz_v(z)
-        # s1 = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s1[i, k] = dsigma_dz(z[i, k])
-
-        s2 = d2sigma_dz2_v(z)
-        # s2 = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         s2[i, k] = d2sigma_dz2(z[i, k])
+        s = s_v(z)
+        s1 = s1_v(s)
+        s2 = s2_v(s)
 
         # WARNING: Numpy and loop code below can give different results with Newton-CG after
         # a few iterations. The differences are very slight, but they result in significantly
@@ -957,16 +730,7 @@ class NNODE1IVP(SLFFNN):
                 dN_dw[i, k] = s1[i, k]*x[i]*v[k]
 
         dN_du = s1*v
-        # dN_du = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dN_du[i, k] = s1[i, k]*v[k]
-
         dN_dv = s
-        # dN_dv = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dN_dv[i, k] = s[i, k]
 
         # d2N_dwdx = v*(s1 + s2*np.outer(x, w))
         d2N_dwdx = np.zeros((n, H))
@@ -975,137 +739,28 @@ class NNODE1IVP(SLFFNN):
                 d2N_dwdx[i, k] = v[k]*(s1[i, k] + s2[i, k]*x[i]*w[k])
 
         d2N_dudx = v*s2*w
-        # d2N_dudx = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         d2N_dudx[i, k] = v[k]*s2[i, k]*w[k]
-
         d2N_dvdx = s1*w
-        # d2N_dvdx = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         d2N_dvdx[i, k] = s1[i, k]*w[k]
-
         Yt = self.__Ytf(x, N)
-        # Yt = np.zeros(n)
-        # for i in range(n):
-        #     Yt[i] = self.__Ytf(x[i], N[i])
-
         dYt_dx = self.__dYt_dxf(x, N, dN_dx)
-        # dYt_dx = np.zeros(n)
-        # for i in range(n):
-        #     dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i])
-
         dYt_dw = np.broadcast_to(x, (H, n)).T*dN_dw
-        # dYt_dw = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dYt_dw[i, k] = x[i]*dN_dw[i, k]
-
         dYt_du = np.broadcast_to(x, (H, n)).T*dN_du
-        # dYt_du = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dYt_du[i, k] = x[i]*dN_du[i, k]
-
         dYt_dv = np.broadcast_to(x, (H, n)).T*dN_dv
-        # dYt_dv = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dYt_dv[i, k] = x[i]*dN_dv[i, k]
-
         d2Yt_dwdx = np.broadcast_to(x, (H, n)).T*d2N_dwdx + dN_dw
-        # d2Yt_dwdx = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         d2Yt_dwdx[i, k] = x[i]*d2N_dwdx[i, k] + dN_dw[i, k]
-
         d2Yt_dudx = np.broadcast_to(x, (H, n)).T*d2N_dudx + dN_du
-        # d2Yt_dudx = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         d2Yt_dudx[i, k] = x[i]*d2N_dudx[i, k] + dN_du[i, k]
-
         d2Yt_dvdx = np.broadcast_to(x, (H, n)).T*d2N_dvdx + dN_dv
-        # d2Yt_dvdx = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         d2Yt_dvdx[i, k] = x[i]*d2N_dvdx[i, k] + dN_dv[i, k]
 
         G = self.Gf_v(x, Yt, dYt_dx)
-        # G = np.zeros(n)
-        # for i in range(n):
-        #     G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i])
-
-        dG_dyt = self.dG_dYf_v(x, Yt, dYt_dx)
-        # dG_dYt = np.zeros(n)
-        # for i in range(n):
-        #     dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], dYt_dx[i])
-
-        dG_dYtdx = self.dG_dYdxf_v(x, Yt, dYt_dx)
-        # dG_dYtdx = np.zeros(n)
-        # for i in range(n):
-        #     dG_dYtdx[i] = self.eq.dG_dYdxf(x[i], Yt[i], dYt_dx[i])
-
-        G = self.Gf_v(x, Yt, dYt_dx)
-        # G = np.zeros(n)
-        # for i in range(n):
-        #     G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i])
-
         dG_dYt = self.dG_dYf_v(x, Yt, dYt_dx)
-        # dG_dYt = np.zeros(n)
-        # for i in range(n):
-        #     dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], dYt_dx[i])
-
         dG_dYtdx = self.dG_dYdxf_v(x, Yt, dYt_dx)
-        # dG_dYtdx = np.zeros(n)
-        # for i in range(n):
-        #     dG_dYtdx[i] = self.eq.dG_dYdxf(x[i], Yt[i], dYt_dx[i])
-
         dG_dw = np.broadcast_to(dG_dYt, (H, n)).T*dYt_dw + np.broadcast_to(dG_dYtdx, (H, n)).T*d2Yt_dwdx
-        # dG_dw = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dG_dw[i, k] = dG_dYt[i]*dYt_dw[i, k] + dG_dYtdx[i]*d2Yt_dwdx[i, k]
-
         dG_du = np.broadcast_to(dG_dYt, (H, n)).T*dYt_du + np.broadcast_to(dG_dYtdx, (H, n)).T*d2Yt_dudx
-        # dG_du = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dG_du[i, k] = dG_dYt[i]*dYt_du[i, k] + dG_dYtdx[i]*d2Yt_dudx[i, k]
-
         dG_dv = np.broadcast_to(dG_dYt, (H, n)).T*dYt_dv + np.broadcast_to(dG_dYtdx, (H, n)).T*d2Yt_dvdx
-        # dG_dv = np.zeros((n, H))
-        # for i in range(n):
-        #     for k in range(H):
-        #         dG_dv[i, k] = dG_dYt[i]*dYt_dv[i, k] + dG_dYtdx[i]*d2Yt_dvdx[i, k]
 
         dE_dw = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_dw, axis=0)
-        # dE_dw = np.zeros(H)
-        # for k in range(H):
-        #     for i in range(n):
-        #         dE_dw[k] += 2*G[i]*dG_dw[i, k]
-
         dE_du = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_du, axis=0)
-        # dE_du = np.zeros(H)
-        # for k in range(H):
-        #     for i in range(n):
-        #         dE_du[k] += 2*G[i]*dG_du[i, k]
-
         dE_dv = 2*np.sum(np.broadcast_to(G, (H, n)).T*dG_dv, axis=0)
-        # dE_dv = np.zeros(H)
-        # for k in range(H):
-        #     for i in range(n):
-        #         dE_dv[k] += 2*G[i]*dG_dv[i, k]
 
         jac = np.hstack((dE_dw, dE_du, dE_dv))
-        # jac = np.zeros(3*H)
-        # for j in range(H):
-        #     jac[j] = dE_dw[j]
-        # for j in range(H):
-        #     jac[H + j] = dE_du[j]
-        # for j in range(H):
-        #     jac[2*H + j] = dE_dv[j]
 
         return jac
 
@@ -1129,17 +784,17 @@ class NNODE1IVP(SLFFNN):
         s = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s[i, k] = sigma(z[i, k])
+                s[i, k] = sigma.s(z[i, k])
 
         s1 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s1[i, k] = dsigma_dz(z[i, k])
+                s1[i, k] = sigma.s1(s[i, k])
 
         s2 = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                s2[i, k] = d2sigma_dz2(z[i, k])
+                s2[i, k] = sigma.s2(s[i, k])
 
         N = np.zeros(n)
         for i in range(n):
