@@ -16,7 +16,7 @@ Attributes:
     Gf - Function for equation
     ic - Scalar for initial condition Y(0)
     dG_dYf - Function for derivative of Gf wrt Y
-    dG_dYdxf - Function for derivative of Gf wrt dY/dx
+    dG_ddYdxf - Function for derivative of Gf wrt dY/dx
     Yaf - (Optional) function for analytical solution Ya(x)
     dYa_dxf - (Optional) function for analytical derivative dY_x(x)
 
@@ -45,7 +45,7 @@ class ODE1IVP(ODE1):
         self.Gf = None
         self.ic = None
         self.dG_dYf = None
-        self.dG_dYdxf = None
+        self.dG_ddYdxf = None
         self.Yaf = None
         self.dYa_dxf = None
         if diffeqmod:
@@ -54,11 +54,11 @@ class ODE1IVP(ODE1):
             assert odemod.Gf              # Function for the ODE as a whole
             assert odemod.ic is not None  # Initial condition at x=0
             assert odemod.dG_dYf          # Function for derivative of G wrt y
-            assert odemod.dG_dYdxf        # Function for derivative of G wrt dy/dx
+            assert odemod.dG_ddYdxf       # Function for derivative of G wrt dy/dx
             self.Gf = odemod.Gf
             self.ic = odemod.ic
             self.dG_dYf = odemod.dG_dYf
-            self.dG_dYdxf = odemod.dG_dYdxf
+            self.dG_ddYdxf = odemod.dG_ddYdxf
             # Yaf() is the optional function for analytical solution ya
             # dYa_dxf is the optional function for analytical derivative dya/dx
             if odemod.Yaf:

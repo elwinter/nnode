@@ -96,7 +96,7 @@ class NNODE1IVP(SLFFNN):
         # Pre-vectorize (_v suffix) functions for efficiency.
         self.Gf_v = np.vectorize(self.eq.Gf)
         self.dG_dYf_v = np.vectorize(self.eq.dG_dYf)
-        self.dG_dYdxf_v = np.vectorize(self.eq.dG_dYdxf)
+        self.dG_ddYdxf_v = np.vectorize(self.eq.dG_ddYdxf)
         self.Ytf_v = np.vectorize(self.__Ytf)
         self.dYt_dxf_v = np.vectorize(self.__dYt_dxf)
 
@@ -320,7 +320,7 @@ class NNODE1IVP(SLFFNN):
             # each training point, and its derivatives.
             G = self.Gf_v(x, Yt, dYt_dx)
             dG_dYt = self.dG_dYf_v(x, Yt, dYt_dx)
-            dG_dYtdx = self.dG_dYdxf_v(x, Yt, dYt_dx)
+            dG_dYtdx = self.dG_ddYdxf_v(x, Yt, dYt_dx)
             # Temporary broadcast versions of dG_dyt and dG_dytdx.
             dG_dYt_b = np.broadcast_to(dG_dYt, (H, n)).T
             dG_dYtdx_b = np.broadcast_to(dG_dYtdx, (H, n)).T
@@ -522,7 +522,7 @@ class NNODE1IVP(SLFFNN):
 
             dG_dYtdx = np.zeros(n)
             for i in range(n):
-                dG_dYtdx[i] = self.eq.dG_dYdxf(x[i], Yt[i], dYt_dx[i])
+                dG_dYtdx[i] = self.eq.dG_ddYdxf(x[i], Yt[i], dYt_dx[i])
 
             dG_dw = np.zeros((n, H))
             for i in range(n):
@@ -751,7 +751,7 @@ class NNODE1IVP(SLFFNN):
 
         G = self.Gf_v(x, Yt, dYt_dx)
         dG_dYt = self.dG_dYf_v(x, Yt, dYt_dx)
-        dG_dYtdx = self.dG_dYdxf_v(x, Yt, dYt_dx)
+        dG_dYtdx = self.dG_ddYdxf_v(x, Yt, dYt_dx)
         dG_dw = np.broadcast_to(dG_dYt, (H, n)).T*dYt_dw + np.broadcast_to(dG_dYtdx, (H, n)).T*d2Yt_dwdx
         dG_du = np.broadcast_to(dG_dYt, (H, n)).T*dYt_du + np.broadcast_to(dG_dYtdx, (H, n)).T*d2Yt_dudx
         dG_dv = np.broadcast_to(dG_dYt, (H, n)).T*dYt_dv + np.broadcast_to(dG_dYtdx, (H, n)).T*d2Yt_dvdx
@@ -884,7 +884,7 @@ class NNODE1IVP(SLFFNN):
 
         dG_dYtdx = np.zeros(n)
         for i in range(n):
-            dG_dYtdx[i] = self.eq.dG_dYdxf(x[i], Yt[i], dYt_dx[i])
+            dG_dYtdx[i] = self.eq.dG_ddYdxf(x[i], Yt[i], dYt_dx[i])
 
         G = np.zeros(n)
         for i in range(n):
@@ -896,7 +896,7 @@ class NNODE1IVP(SLFFNN):
 
         dG_dYtdx = np.zeros(n)
         for i in range(n):
-            dG_dYtdx[i] = self.eq.dG_dYdxf(x[i], Yt[i], dYt_dx[i])
+            dG_dYtdx[i] = self.eq.ddG_dYdxf(x[i], Yt[i], dYt_dx[i])
 
         dG_dw = np.zeros((n, H))
         for i in range(n):
@@ -961,7 +961,7 @@ if __name__ == '__main__':
     training_opts['maxepochs'] = 1000
 
     # Test each training algorithm on each equation.
-    for eq in ('eq.lagaris_01',):
+    for eq in ('eq.lagaris_01', 'eq.lagaris_02'):
         print('Examining %s.' % eq)
         ode1ivp = ODE1IVP(eq)
         print(ode1ivp)
