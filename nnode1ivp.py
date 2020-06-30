@@ -962,8 +962,7 @@ if __name__ == '__main__':
         print()
 
         # Create and train the networks.
-        # for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
-        for trainalg in ('Newton-CG',):
+        for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE1IVP(ode1ivp)
             print(net)
