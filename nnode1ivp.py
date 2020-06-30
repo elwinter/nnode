@@ -173,7 +173,6 @@ class NNODE1IVP(SLFFNN):
         s = s_v(z)
         s1 = s1_v(s)
         N = s.dot(v)
-        Yt = self.Ytf_v(x, N)
         dN_dx = s1.dot(v*w)
         dYt_dx = self.dYt_dxf_v(x, N, dN_dx)
 
@@ -190,7 +189,7 @@ class NNODE1IVP(SLFFNN):
         z = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                z[i, k] = self.w[k]*x[i] + self.u[k]
+                z[i, k] = w[k]*x[i] + u[k]
 
         s = np.zeros((n, H))
         for i in range(n):
@@ -205,16 +204,12 @@ class NNODE1IVP(SLFFNN):
         N = np.zeros(n)
         for i in range(n):
             for k in range(H):
-                N[i] += s[i, k]*self.v[k]
-
-        yt = np.zeros(n)
-        for i in range(n):
-            yt[i] = self.__Ytf(x[i], N[i])
+                N[i] += s[i, k]*v[k]
 
         dN_dx = np.zeros(n)
         for i in range(n):
             for k in range(H):
-                dN_dx[i] += self.v[k]*s1[i, k]*self.w[k]
+                dN_dx[i] += v[k]*s1[i, k]*w[k]
 
         dYt_dx = np.zeros(n)
         for i in range(n):
@@ -283,7 +278,7 @@ class NNODE1IVP(SLFFNN):
 
             # Compute the input, the sigmoid function, and its derivatives, for
             # each hidden node and training point.
-            # x is nx1, w is 1xH
+            # x is nx1, w, u are 1xH
             # z, s, s1, s2 are nxH
             z = np.outer(x, w) + u
             s = s_v(z)
@@ -413,7 +408,7 @@ class NNODE1IVP(SLFFNN):
             s = np.zeros((n, H))
             for i in range(n):
                 for k in range(H):
-                    s[i, k] = sigma.sigma(z[i, k])
+                    s[i, k] = sigma.s(z[i, k])
 
             s1 = np.zeros((n, H))
             for i in range(n):
@@ -466,9 +461,6 @@ class NNODE1IVP(SLFFNN):
             for i in range(n):
                 for k in range(H):
                     d2N_dvdx[i, k] = s1[i, k]*w[k]
-
-            # Compute the value of the trial solution, its coefficients,
-            # and derivatives, for each training point.
 
             # Compute the value of the trial solution and its derivatives,
             # for each training point.
@@ -882,36 +874,24 @@ class NNODE1IVP(SLFFNN):
         for i in range(n):
             dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], dYt_dx[i])
 
-        dG_dYtdx = np.zeros(n)
+        dG_ddYtdx = np.zeros(n)
         for i in range(n):
-            dG_dYtdx[i] = self.eq.dG_ddYdxf(x[i], Yt[i], dYt_dx[i])
-
-        G = np.zeros(n)
-        for i in range(n):
-            G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i])
-
-        dG_dYt = np.zeros(n)
-        for i in range(n):
-            dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], dYt_dx[i])
-
-        dG_dYtdx = np.zeros(n)
-        for i in range(n):
-            dG_dYtdx[i] = self.eq.ddG_dYdxf(x[i], Yt[i], dYt_dx[i])
+            dG_ddYtdx[i] = self.eq.dG_ddYdxf(x[i], Yt[i], dYt_dx[i])
 
         dG_dw = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                dG_dw[i, k] = dG_dYt[i]*dYt_dw[i, k] + dG_dYtdx[i]*d2Yt_dwdx[i, k]
+                dG_dw[i, k] = dG_dYt[i]*dYt_dw[i, k] + dG_ddYtdx[i]*d2Yt_dwdx[i, k]
 
         dG_du = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                dG_du[i, k] = dG_dYt[i]*dYt_du[i, k] + dG_dYtdx[i]*d2Yt_dudx[i, k]
+                dG_du[i, k] = dG_dYt[i]*dYt_du[i, k] + dG_ddYtdx[i]*d2Yt_dudx[i, k]
 
         dG_dv = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                dG_dv[i, k] = dG_dYt[i]*dYt_dv[i, k] + dG_dYtdx[i]*d2Yt_dvdx[i, k]
+                dG_dv[i, k] = dG_dYt[i]*dYt_dv[i, k] + dG_ddYtdx[i]*d2Yt_dvdx[i, k]
 
         dE_dw = np.zeros(H)
         for k in range(H):
@@ -982,7 +962,8 @@ if __name__ == '__main__':
         print()
 
         # Create and train the networks.
-        for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
+        # for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
+        for trainalg in ('Newton-CG',):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE1IVP(ode1ivp)
             print(net)
