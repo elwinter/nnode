@@ -729,7 +729,7 @@ class NNODE2BVP(SLFFNN):
         if trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS'):
             jac = None
         elif trainalg in ('Newton-CG',):
-            jac = self.__compute_error_gradient_debug
+            jac = self.__compute_error_gradient
         res = minimize(self.__compute_error, p, method=trainalg, jac=jac,
                        args=(x), callback=callback)
         self.res = res
@@ -1187,7 +1187,7 @@ if __name__ == '__main__':
             print(net.res)
             print('The trained network is:')
             print(net)
-            Yt = net.run_debug(x_train)
+            Yt = net.run(x_train)
             dYt_dx = net.run_derivative(x_train)
             d2Yt_dx2 = net.run_derivative2(x_train)
             print('The trained solution is:')
