@@ -15,7 +15,7 @@ Methods:
     None
 
 Todo:
-    * Expand base functionality.
+    None
 """
 
 
@@ -24,7 +24,9 @@ from diffeq import DiffEq
 
 class ODE(DiffEq):
     """Base class for all ordinary differential equation objects"""
-    pass
+
+    def __init__(self):
+        super().__init__()
 
 
 if __name__ == '__main__':

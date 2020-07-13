@@ -15,7 +15,7 @@ Methods:
     None
 
 Todo:
-    * Expand base functionality.
+    None
 """
 
 
@@ -24,7 +24,13 @@ from ode import ODE
 
 class ODE1(ODE):
     """Base class for all 1st-order ordinary differential equation objects"""
-    pass
+
+    def __init__(self):
+        super().__init__()
+
+    def G(self, x, Y, dY_dx):
+        return None
+
 
 
 if __name__ == '__main__':

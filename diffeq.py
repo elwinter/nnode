@@ -9,19 +9,24 @@ Example:
         diffeq = DiffEq()
 
 Attributes:
-    None
+    G - Function for differential equation, in the form G() = 0
 
 Methods:
     None
 
 Todo:
-    * Expand base functionality.
+    None
 """
 
 
 class DiffEq:
     """Base class for all differential equation objects"""
-    pass
+
+    def __init__(self):
+        pass
+
+    def G(self):
+        return None
 
 
 if __name__ == '__main__':

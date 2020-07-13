@@ -15,14 +15,18 @@ Methods:
     None
 
 Todo:
-    * Expand base functionality.
+    None
 """
 
 from neuralnetwork import NeuralNetwork
 
 class SLFFNN(NeuralNetwork):
     """Base class for all single-layer feed-forward neural network objects"""
-    pass
+
+    def __init__(self):
+        """Initialize the neural network object."""
+        super().__init__()
+
 
 if __name__ == '__main__':
     net = SLFFNN()

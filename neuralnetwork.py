@@ -12,11 +12,11 @@ Attributes:
     None
 
 Methods:
-    train - Stub for training methods for subclasses
+    train() - Stub for training methods for subclasses
     run() - Stub for run methods for subclasses
 
 Todo:
-    * Expand base functionality.
+    None
 """
 
 class NeuralNetwork:

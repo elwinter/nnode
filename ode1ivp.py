@@ -13,12 +13,12 @@ Example:
 
 Attributes:
     name - String containing name of equation definition module
-    Gf - Function for equation
+    G - Function for equation
     ic - Scalar for initial condition Y(0)
-    dG_dYf - Function for derivative of Gf wrt Y
-    dG_ddYdxf - Function for derivative of Gf wrt dY/dx
-    Yaf - (Optional) function for analytical solution Ya(x)
-    dYa_dxf - (Optional) function for analytical derivative dY_x(x)
+    dG_dY - Function for derivative of Gf wrt Y
+    dG_ddYdx - Function for derivative of Gf wrt dY/dx
+    Ya - (Optional) function for analytical solution Ya(x)
+    dYa_dx - (Optional) function for analytical derivative dY_x(x)
 
 Methods:
 
@@ -41,34 +41,33 @@ class ODE1IVP(ODE1):
         Parameters:
         diffeqmod - The name of the Python module containing the problem definition.
         """
+        super().__init__()
         self.name = None
-        self.Gf = None
+        self.G = None
         self.ic = None
-        self.dG_dYf = None
-        self.dG_ddYdxf = None
-        self.Yaf = None
-        self.dYa_dxf = None
+        self.dG_dY = None
+        self.dG_ddYdx = None
+        self.Ya = None
+        self.dYa_dx = None
         if diffeqmod:
             self.name = diffeqmod
             odemod = import_module(diffeqmod)
-            assert odemod.Gf              # Function for the ODE as a whole
-            assert odemod.ic is not None  # Initial condition at x=0
-            assert odemod.dG_dYf          # Function for derivative of G wrt y
-            assert odemod.dG_ddYdxf       # Function for derivative of G wrt dy/dx
-            self.Gf = odemod.Gf
+            assert odemod.G
+            assert odemod.ic is not None
+            assert odemod.dG_dY
+            assert odemod.dG_ddYdx
+            self.G = odemod.G
             self.ic = odemod.ic
-            self.dG_dYf = odemod.dG_dYf
-            self.dG_ddYdxf = odemod.dG_ddYdxf
-            # Yaf() is the optional function for analytical solution ya
-            # dYa_dxf is the optional function for analytical derivative dya/dx
-            if odemod.Yaf:
-                self.Yaf = odemod.Yaf
-            if odemod.dYa_dxf:
-                self.dYa_dxf = odemod.dYa_dxf
+            self.dG_dY = odemod.dG_dY
+            self.dG_ddYdx = odemod.dG_ddYdx
+            if odemod.Ya:
+                self.Ya = odemod.Ya
+            if odemod.dYa_dx:
+                self.dYa_dx = odemod.dYa_dx
 
 
 if __name__ == '__main__':
     ode1ivp = ODE1IVP()
     print(ode1ivp)
-    ode1ivp = ODE1IVP('eq.lagaris_01')
+    ode1ivp = ODE1IVP('lagaris_01')
     print(ode1ivp)
