@@ -32,7 +32,7 @@ from math import exp
 
 def sigma(z):
     """Sigma transfer function"""
-    return 1 / (1 + exp(-z))
+    return 1/(1 + exp(-z))
 
 
 def dsigma_dz(z):
@@ -42,28 +42,26 @@ def dsigma_dz(z):
 
 def d2sigma_dz2(z):
     """Sigma transfer function 2nd derivative"""
-    return 2*exp(-2*z) / (1 + exp(-z))**3 - exp(-z)/(1 + exp(-z))**2
+    return 2*exp(-2*z)/(1 + exp(-z))**3 - exp(-z)/(1 + exp(-z))**2
 
 
 def d3sigma_dz3(z):
     """Sigma transfer function 3rd derivative"""
-    return \
-        6*exp(-3*z)/(1 + exp(-z))**4 - 6 * exp(-2*z)/(1 + exp(-z))**3 \
-        + exp(-z)/(1 + exp(-z))**2
+    return (6*exp(-3*z)/(1 + exp(-z))**4 - 6 * exp(-2*z)/(1 + exp(-z))**3
+            + exp(-z)/(1 + exp(-z))**2)
 
 
 def d4sigma_dz4(z):
     """Sigma transfer function 4th derivative"""
-    return \
-        24*exp(-4*z)/(1 + exp(-z))**5 - 36*exp(-3*z)/(1 + exp(-z))**4 + \
-        14*exp(-2*z)/(1 + exp(-z))**3 - exp(-z)/(1 + exp(-z))**2
+    return (24*exp(-4*z)/(1 + exp(-z))**5 - 36*exp(-3*z)/(1 + exp(-z))**4
+            + 14*exp(-2*z)/(1 + exp(-z))**3 - exp(-z)/(1 + exp(-z))**2)
 
 
 # Alternative forms as a function of sigma itself
 
 def s(z):
     """Sigma transfer function"""
-    return 1 / (1 + exp(-z))
+    return 1/(1 + exp(-z))
 
 
 def s1(s):
