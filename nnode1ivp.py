@@ -35,6 +35,7 @@ from kdelta import kdelta
 from ode1ivp import ODE1IVP
 import sigma
 from slffnn import SLFFNN
+from trainingdata import create_training_grid
 
 
 # Default values for method parameters
@@ -930,7 +931,7 @@ if __name__ == '__main__':
 
     # Create training data.
     nx = 10
-    x_train = np.linspace(0, 1, nx)
+    x_train = np.array(create_training_grid([nx]))
     print('The training points are:\n', x_train)
 
     # Options for training
@@ -961,8 +962,7 @@ if __name__ == '__main__':
         print()
 
         # Create and train the networks.
-        # for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
-        for trainalg in ('Newton-CG',):
+        for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
             print('Training using %s algorithm.' % trainalg)
             net = NNODE1IVP(ode1ivp)
             print(net)
