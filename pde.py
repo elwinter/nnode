@@ -1,5 +1,5 @@
 """
-Base class for partial differential equations
+PDE - Base class for partial differential equations
 
 This module provides the base functionality for all partial differential
 equation objects used in the nnode software.
@@ -15,7 +15,7 @@ Methods:
     None
 
 Todo:
-    * Expand base functionality.
+    None
 """
 
 
@@ -23,8 +23,10 @@ from diffeq import DiffEq
 
 
 class PDE(DiffEq):
-    """Base class for all PDE objects"""
-    pass
+    """Base class for all partial differential equation objects"""
+
+    def __init__(self):
+        super().__init__()
 
 
 if __name__ == '__main__':

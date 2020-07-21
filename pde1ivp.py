@@ -1,92 +1,76 @@
 """
-Base class for 2-D 1st-order partial differential equation initial value
-problems
+PDE1IVP - Base class for 1st-order partial differential equation initial-
+value problems
 
 This module provides the base functionality for all 1st-order partial
-differential equation initial value problem objects used in the nnode software.
+differential equation initial-value problem objects used in the nnode software.
 
 Example:
     Create an empty PDE1IVP object.
         pde1ivp = PDE1IVP()
+    Create an PDE1IVP object from a Python module.
+        pde1ivp = PDE1IVP(modname)
+
+The solution is assumed to be a function of m independent variables. In the
+methods below, x is a vector of independent variables, and delY is the
+Jacobian of the solution wrt the independent variables.
 
 Attributes:
-    None
+    name - String containing name of equation definition module
+    G - Function for equation
+    bc[] - Vector of boundary condition functions for each variable;
+      only first element in each row is used since IVP
+    dG_dY - Function for derivative of Gf wrt Y
+    dG_ddelY - Array of function for derivative of Gf wrt dY/dx[j]
+    Ya - (Optional) function for analytical solution Ya(x)
+    delYa - (Optional) Array of functions for analytical Jacobian of solution
 
 Methods:
-    None
 
 Todo:
-    * Expand base functionality.
 """
 
 
 from importlib import import_module
-from inspect import getsource
 
 from pde1 import PDE1
 
 
 class PDE1IVP(PDE1):
-    """Base class for 2-D 1st-order PDE IVPs"""
+    """Base class for all 1st-order partial differential equation initial-
+    value problem objects"""
 
     def __init__(self, diffeqmod=None):
+        """
+        Constructor
+        Parameters:
+        diffeqmod - The name of the Python module containing the problem definition.
+        """
+        super().__init__()
         self.name = None
-        self.Gf = None
-        self.dG_dYf = None
-        self.dG_ddelYf = None
-        self.bcf = None
-        self.bcdf = None
-        self.Yaf = None
-        self.delYaf = None
+        self.G = None
+        self.bc = None
+        self.dG_dY = None
+        self.dG_ddelY = None
+        self.Ya = None
+        self.delYa = None
         if diffeqmod:
             self.name = diffeqmod
             pdemod = import_module(diffeqmod)
-            assert pdemod.Gf          # Function for the PDE as a whole
-            assert pdemod.dG_dYf      # dG/dY   Y=Y(x,y)
-            assert pdemod.dG_ddelYf   # dG/dgrad(Y)
-            assert pdemod.bcf         # Array of initial condition functions
-            assert pdemod.bcdf        # Array of initial condition derivatives
-            assert pdemod.Yaf         # Analytical solution
-            assert pdemod.delYaf      # Analytical gradient
-            assert len(pdemod.dG_ddelYf) == 2  # HACK
-            assert len(pdemod.bcf) == 2        # HACK
-            assert len(pdemod.bcdf) == 2       # HACK
-            assert len(pdemod.delYaf) == 2     # HACK
-            self.Gf = pdemod.Gf
-            self.dG_dYf = pdemod.dG_dYf
-            self.dG_ddelYf = pdemod.dG_ddelYf
-            self.bcf = pdemod.bcf
-            self.bcdf = pdemod.bcdf
-            if pdemod.Yaf:
-                self.Yaf = pdemod.Yaf
-            if pdemod.delYaf:
-                self.delYaf = pdemod.delYaf
-
-    def __str__(self):
-        s = ''
-        s += 'PDE1IVP:\n'
-        s += "name = %s\n" % self.name
-        s += "Gf = %s\n" % (getsource(self.Gf).rstrip() if self.Gf else None)
-        s += "dG_dYf = %s\n" % (getsource(self.dG_dYf).rstrip()
-                                if self.dG_dYf else None)
-        for i in range(2):
-            s += "dG_ddelYf[%d] = %s\n" % \
-                (i, getsource(self.dG_ddelYf[i]).rstrip()
-                 if self.dG_ddelYf[i] else None)
-        for i in range(2):
-            s += "bcf[%d] = %s\n" % \
-                (i, getsource(self.bcf[i]).rstrip() if self.bcf[i] else None)
-        for i in range(2):
-            s += "bcdf[%d] = %s\n" % \
-                (i, getsource(self.bcdf[i]).rstrip() if self.bcdf[i] else None)
-        s += "Yaf = %s" % (getsource(self.Yaf).rstrip() if self.Yaf else None)
-        for i in range(2):
-            s += "delYaf[%d] = %s\n" % \
-                (i, getsource(self.delYaf[i]).rstrip()
-                 if self.delYaf[i] else None)
-        return s.rstrip()  # Strip trailing newline if any.
+            assert pdemod.G
+            assert pdemod.bc is not None
+            assert pdemod.dG_dY
+            assert pdemod.dG_ddelY
+            self.G = pdemod.G
+            self.bc = pdemod.bc
+            self.dG_dY = pdemod.dG_dY
+            self.dG_ddelY = pdemod.dG_ddelY
+            if pdemod.Ya:
+                self.Ya = pdemod.Ya
+            if pdemod.delYa:
+                self.delYa = pdemod.delYa
 
 
 if __name__ == '__main__':
-    pde1ivp = PDE1IVP('pde1_ivp_00')
+    pde1ivp = PDE1IVP()
     print(pde1ivp)
