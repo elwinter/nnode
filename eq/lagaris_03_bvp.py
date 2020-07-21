@@ -1,9 +1,10 @@
 """
 Problem 3 in Lagaris et al (2nd order ODE BVP)
 
-Note that an upper-case 'Y' is used to represent the Greek psi from the original equation.
+Note that an upper-case 'Y' is used to represent the Greek psi from
+the original equation.
 
-The equation is defined on the domain [0,1]:
+The equation is defined on the domain x in [0,1].
 
 The analytical form of the equation is:
     G(x, Y, dY/dx) = d2Y_dx2 + 1/5*dY_dx + Y + 1/5*exp(-x/5)*cos(x) = 0
