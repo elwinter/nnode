@@ -1,160 +1,121 @@
-###############################################################################
 """
-ODE1IVPTrialFunction - Class implementing the trial function for 1st-order
-ODE initial value problems
+ODE1IVPTrialFunction - Lagaris-style trial funcion for 1st-order ODE IVP
 
 The trial function takes the form:
 
-Yt(x) = A(x) + P(x)*N(x, p)
+Yt(xv, p) = A(xv) + P(xv)*N(xv, p)
 
 where:
 
-A(x) = boundary condition function that reduces to BC at boundaries
-P(x) = network coefficient function that vanishes at boundaries
-N(x, p) = scalar output of neural network with parameter vector p
-
-Example:
-    Create a default ODE1IVPTrialFunction object from boundary conditions
-        Yt_obj = ODE1IVPTrialFunction(bcf, delbcf)
-
-    Compute the value of the boundary condition function at a given point
-        A = Yt_obj.Af([x])
-
-    Compute the value of the network coefficient function at a given point
-        P = Yt_obj.Pf([x])
-
-    Compute the value of the trial function at a given point
-        Yt = Yt_obj.Ytf([x], N)
+xv is a vector of independent variables (xv = [x])
+p is a vector of network parameters
+A(xv) = boundary condition function that reduces to BC at boundaries
+P(xv) = network coefficient function that vanishes at boundaries
+N(xv, p) = scalar output of neural network with parameter vector p
 
 Notes:
-    Variables that end in 'f' are usually functions or arrays of functions.
+
+The equation applies to a unit domain 0 <= x <= 1
 
 Attributes:
-    bcf - Length 2 array of BC functions at (x)=0|1
-    delbcf - 1x2 array of BC gradient functions at (x)=0|1
 
 Methods:
-    Af([x, t]) - Compute boundary condition function at [x, t]
+    Af(xv) - Compute boundary condition function at xv.
 
-    delAf([x, t]) - Compute boundary condition function gradient at [x, t]
+    delAf(xv) - Compute boundary condition function gradient at xv.
 
-    del2Af([x, t]) - Compute boundary condition function Laplacian components
-        at [x, t]
+    deldelAf(xv) - Compute boundary condition function Hessian at xv.
 
-    Pf([x, t]) - Compute network coefficient function at [x, t]
+    Pf(xv) - Compute network coefficient function at xv.
 
-    delPf([x, t]) - Compute network coefficient function gradient at [x, t]
+    delPf(xv) - Compute network coefficient function gradient at xv.
 
-    del2Pf([x, t]) - Compute network coefficient function Laplacian components
-        at [x, t]
+    deldelPf(xv) - Compute network coefficient function Hessian at xv.
 
-    Ytf([x, t], N) - Compute trial function at [x, t] with network output N
+    Ytf(xv, N) - Compute trial function at xv with network output N.
 
-    delYtf([x, t], N, delN) - Compute trial function gradient at [x, t] with
+    delYtf(xv, N, delN) - Compute trial function gradient at xv with
         network output N and network output gradient delN.
 
-    del2Ytf([x, t], N, delN, del2N) - Compute trial function Laplacian
-        components at [x, t] with network output N, network output gradient
-        delN, and network output Laplacian components del2N
+    deldelYtf(xv, N, delN, deldelN) - Compute trial function Hessian
+        at xv with network output N, network output gradient
+        delN, and network output Hessian deldelN
 
 Todo:
-
 """
 
 
 import numpy as np
 
+from APtrialfunction import APTrialFunction
 
-class ODE1IVPTrialFunction():
-    """Trial function for 1st-order ODE IVP."""
+
+class ODE1IVPTrialFunction(APTrialFunction):
+    """Lagaris-style trial function for 1st-order ODE IVP"""
 
 
     # Public methods
 
     def __init__(self, bcf, delbcf):
         """Constructor"""
+        super().__init__()
         self.bcf = bcf
         self.delbcf = delbcf
 
-    def Af(self, x):
+    def Af(self, xv):
         """Boundary condition function"""
         return self.bcf[0](0)
 
-    def delAf(self, x):
+    def delAf(self, xv):
         """Boundary condition function gradient"""
-        return 0
+        return [0]
 
-    def Pf(self, x):
+    def Pf(self, xv):
         """Network coefficient function"""
-        return x
+        return xv[0]
 
-    def delPf(self, x):
+    def delPf(self, xv):
         """Network coefficient function gradient"""
         return 1
 
-    def Ytf(self, x, N):
+    def Ytf(self, xv, N):
         """Trial function"""
-        return self.Af(x) + self.Pf(x)*N
+        print(xv, N)
+        A = self.Af(xv)
+        P = self.Pf(xv)
+        Yt = A + P*N
+        return None
 
-    def delYtf(self, x, N, delN):
+    def delYtf(self, xv, N, delN):
         """Trial function gradient"""
-        return self.delAf(x) + self.Pf(x)*delN + self.delPf(x)*N
+        delA = self.delAf(xv)
+        P = self.Pf(xv)
+        delYt = []
+        delYt.append(delA[0] + P*delN[0] + delP[0]*n)
+        return delYt
 
-#################
-
-
-# Self-test code
-
-# The code is tested using the diff1d-halfsine problem.
-
-# from math import pi, sin, cos
 
 if __name__ == '__main__':
 
+    # Test inputs
+    ic_test = 0  # Initial condition
+    xv_test = [0]
+    N_test = 0
+    bcf_test = [ lambda x: ic_test ]
+    delbcf_test = [[ lambda x: 0 ]]
 
-    # Define initial condition.
-    A = 1
+    # Expected test outputs
+    A_ref = 0
+    delA_ref = [0]
+    P_ref = xv_test[0]
+    delP_ref = [1]
+    Yt_ref = 0
+    
+    tf = ODE1IVPTrialFunction(bcf_test, delbcf_test)
+    print(tf)
+    assert np.isclose(tf.Af(xv_test), A_ref)
+    assert np.isclose(tf.delAf(xv_test), delA_ref)
+    assert np.isclose(tf.Pf(xv_test), P_ref)
+    assert np.isclose(tf.delPf(xv_test), delP_ref)
+    assert np.isclose(tf.Ytf(xv_test, N_test), Yt_ref)
 
-    # Test boundary conditions
-    f0f = lambda x: A
-    f1f = None
-    bcf = [f0f, f1f]
-
-    # Test BC gradient
-    df0_dxf = lambda xt: 0
-    df1_dxf = lambda xt: None
-    delbcf = [df0_dxf, df1_dxf]
-
-    # Test values for tests
-    x_test = 0.4
-    N_test = 1.5
-    delN_test = 0.5
-
-    # Reference values for tests
-    A_ref = A
-    delA_ref = 0
-    P_ref = x_test
-    delP_ref = 1
-    Yt_ref = A + P_ref*N_test
-    delYt_ref = delA_ref + P_ref*delN_test + delP_ref*N_test
-
-    # Create a new trial function object.
-    tf = ODE1IVPTrialFunction(bcf, delbcf)
-
-    print("Testing boundary condition function.")
-    assert np.isclose(tf.Af(x_test), A_ref)
-
-    print("Testing boundary condition function gradient.")
-    assert np.isclose(tf.delAf(x_test), delA_ref)
-
-    print("Testing network coefficient function.")
-    assert np.isclose(tf.Pf(x_test), P_ref)
-
-    print("Testing network coefficient function gradient.")
-    assert np.isclose(tf.delPf(x_test), delP_ref)
-
-    print("Testing trial function.")
-    assert np.isclose(tf.Ytf(x_test, N_test), Yt_ref)
-
-    print("Testing trial function gradient.")
-    assert np.isclose(tf.delYtf(x_test, N_test, delN_test), delYt_ref)
