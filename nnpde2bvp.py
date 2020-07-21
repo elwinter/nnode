@@ -1,1060 +1,1277 @@
-# Notation notes:
-# The suffix 'f' usually denotes an object that is a function.
+"""
+NNPDE2BVP - Class to solve 2nd-order partial differential equation boundary
+value problems using a neural network
 
-# The suffix '_v' denotes a function that has been vectorized with
-# np.vectorize().
+This module provides the functionality to solve 2nd-order partial differential
+equation boundary value problems using a neural network.
 
-from scipy.optimize import minimize
+Example:
+    Create an empty NNODE2BVP object.
+        net = NNPDE2BVP()
+    Create an NNPDE2BVP object for a PDE2BVP object.
+        net = NNPDE2BVP(pde2bvp_obj)
+
+Attributes:
+
+Methods:
+
+Todo:
+"""
+
+
 from math import sqrt
 import numpy as np
+from scipy.optimize import minimize
 
 from kdelta import kdelta
 from pde2bvp import PDE2BVP
-from sigma import sigma, dsigma_dz, d2sigma_dz2, d3sigma_dz3
+import sigma
 from slffnn import SLFFNN
 
-#********************************************************************************
 
-# # Default values for program parameters
-default_clamp = False
-default_debug = False
-default_eta = 0.01
-default_maxepochs = 1000
-default_nhid = 10
-default_randomize = False
-default_rmseout = 'rmse.dat'
-default_trainalg = 'delta'
-default_umax = 1
-default_umin = -1
-default_verbose = False
-default_vmax = 1
-default_vmin = -1
-default_wmax = 1
-default_wmin = -1
+# Default values for method parameters
+DEFAULT_DEBUG = False
+DEFAULT_ETA = 0.01
+DEFAULT_MAXEPOCHS = 1000
+DEFAULT_NHID = 10
+DEFAULT_TRAINALG = 'delta'
+DEFAULT_UMAX = 1
+DEFAULT_UMIN = -1
+DEFAULT_VERBOSE = False
+DEFAULT_VMAX = 1
+DEFAULT_VMIN = -1
+DEFAULT_WMAX = 1
+DEFAULT_WMIN = -1
+DEFAULT_OPTS = {
+    'debug':     DEFAULT_DEBUG,
+    'eta':       DEFAULT_ETA,
+    'maxepochs': DEFAULT_MAXEPOCHS,
+    'nhid':      DEFAULT_NHID,
+    'umax':      DEFAULT_UMAX,
+    'umin':      DEFAULT_UMIN,
+    'verbose':   DEFAULT_VERBOSE,
+    'vmax':      DEFAULT_VMAX,
+    'vmin':      DEFAULT_VMIN,
+    'wmax':      DEFAULT_WMAX,
+    'wmin':      DEFAULT_WMIN
+    }
 
-#********************************************************************************
 
-# # The domain of the trial solution is assumed to be [[0, 1], [0, 1]].
+# Vectorize sigma functions for speed.
+s_v = np.vectorize(sigma.s)
+s1_v = np.vectorize(sigma.s1)
+s2_v = np.vectorize(sigma.s2)
+s3_v = np.vectorize(sigma.s3)
 
-# Define the coefficient functions for the trial solution, and their derivatives.
-def Af(xy, bcf):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    A = (
-        (1 - x)*f0f(y) + x*f1f(y)
-        + (1 - y)*(g0f(x) - (1 - x)*g0f(0) - x*g0f(1))
-        + y*(g1f(x) - (1 - x)*g1f(0) - x*g1f(1))
-    )
-    return A
-
-def dA_dxf(xy, bcf, bcdf):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    dA_dx = (
-        -f0f(y) + f1f(y) + (1 - y)*(dg0_dxf(x) + g0f(0) - g0f(1))
-        + y*(dg1_dxf(x) + g1f(0) - g1f(1))
-        )
-    return dA_dx
-
-def dA_dyf(xy, bcf, bcdf):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    dA_dy = (
-        (1 - x)*df0_dyf(y) + x*df1_dyf(y)
-        - (g0f(x) - (1 - x)*g0f(0) - x*g0f(1))
-        + (g1f(x) - (1 - x)*g1f(0) - x*g1f(1))
-    )
-    return dA_dy
-
-delAf = (dA_dxf, dA_dyf)
-
-def d2A_dxdxf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    return (1 - y)*d2g0_dx2f(x) + y*d2g1_dx2f(x)
-
-def d2A_dxdyf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    return (
-        -df0_dyf(y) + df1_dyf(y) - dg0_dxf(x) + dg1_dxf(x) -
-        g0f(0) + g0f(1) + g1f(0) - g1f(1)
-    )
-
-def d2A_dydxf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    return (
-        -df0_dyf(y) + df1_dyf(y) - dg0_dxf(x) + dg1_dxf(x) -
-        g0f(0) + g0f(1) + g1f(0) - g1f(1)
-    )
-
-def d2A_dydyf(xy, bcf, bcdf, bcd2f):
-    (x, y) = xy
-    ((f0f, g0f), (f1f, g1f)) = bcf
-    ((df0_dyf, dg0_dxf), (df1_dyf, dg1_dxf)) = bcdf
-    ((d2f0_dy2f, d2g0_dx2f), (d2f1_dy2f, d2g1_dx2f)) = bcd2f
-    return (1 - x)*d2f0_dy2f(y) + y*d2f1_dy2f(y)
-
-deldelAf = ((d2A_dxdxf, d2A_dxdyf),
-            (d2A_dydxf, d2A_dydyf))
-
-def Pf(xy):
-    (x, y) = xy
-    P = x*(1 - x)*y*(1 - y)
-    return P
-
-def dP_dxf(xy):
-    (x, y) = xy
-    dP_dx = (1 - 2*x)*y*(1 - y)
-    return dP_dx
-
-def dP_dyf(xy):
-    (x, y) = xy
-    dP_dy = x*(1 - x)*(1 - 2*y)
-    return dP_dy
-
-delPf = (dP_dxf, dP_dyf)
-
-def d2P_dxdxf(xy):
-    (x, y) = xy
-    return -2*y*(1 - y)
-
-def d2P_dxdyf(xy):
-    (x, y) = xy
-    return (1 - 2*x)*(1 - 2*y)
-
-def d2P_dydxf(xy):
-    (x, y) = xy
-    return (1 - 2*x)*(1 - 2*y)
-
-def d2P_dydyf(xy):
-    (x, y) = xy
-    return -2*x*(1 - x)
-
-deldelPf = ((d2P_dxdxf, d2P_dxdyf),
-            (d2P_dydxf, d2P_dydyf))
-
-# Define the trial solution.
-def Ytf(xy, N, bcf):
-    A = Af(xy, bcf)
-    P = Pf(xy)
-    Yt = A + P*N
-    return Yt
-
-# Vectorize sigma functions.
-# sigma_v = np.vectorize(sigma)
-# dsigma_dz_v = np.vectorize(dsigma_dz)
-# d2sigma_dz2_v = np.vectorize(d2sigma_dz2)
 
 class NNPDE2BVP(SLFFNN):
+    """Solve a 2nd-order PDE BVP with a single-layer feedforward neural network."""
 
-    def __init__(self, pde2bvp, nhid=default_nhid):
+    # Public methods
 
-        # PDE, in the form G(x,Y,delY,deldelY)=0.
-        self.Gf = pde2bvp.Gf
+    def __init__(self, eq, nhid=DEFAULT_NHID):
+        super().__init__()
 
-        # dG/dY
-        self.dG_dYf = pde2bvp.dG_dYf
+        # Save the differential equation object.
+        self.eq = eq
 
-        # dG/d(delY)
-        self.dG_ddelYf = pde2bvp.dG_ddelYf
-
-        # dG/d(deldelY)
-        self.dG_ddeldelYf = pde2bvp.dG_ddeldelYf
-
-        # Boundary condition functions
-        self.bcf = pde2bvp.bcf
-
-        # Boundary condition derivatives
-        self.bcdf = pde2bvp.bcdf
-
-        # Boundary condition 2nd derivatives
-        self.bcd2f = pde2bvp.bcd2f
-
-        # Analytical solution (optional)
-        if pde2bvp.Yaf:
-            self.Yaf = pde2bvp.Yaf
-
-        # Analytical gradient (optional)
-        if pde2bvp.delYaf:
-            self.delYaf = pde2bvp.delYaf
-
-        # Analytical Hessian (optional)
-        if pde2bvp.deldelYaf:
-            self.deldelYaf = pde2bvp.deldelYaf
-
-        # Create arrays to hold the weights and biases, initially all 0.
-        self.w = np.zeros((2, nhid))
+        # Initialize all network parameters to 0.
+        self.w = np.zeros(nhid)
         self.u = np.zeros(nhid)
         self.v = np.zeros(nhid)
 
-    def __str__(self):
-        s = "NNPDE2BVP:\n"
-        s += "w = %s" % self.w + "\n"
-        s += "u = %s" % self.u + "\n"
-        s += "v = %s" % self.v + "\n"
-        return s
+        # Clear the result structure for minimize() calls.
+        self.res = None
 
-    def train(self,
-              x,                             # x-values for training points
-              trainalg = default_trainalg,   # Training algorithm
-              nhid = default_nhid,           # Node count in hidden layer
-              maxepochs = default_maxepochs, # Max training epochs
-              eta = default_eta,             # Learning rate
-              clamp = default_clamp,         # Turn on parameter clamping
-              randomize = default_randomize, # Randomize training sample order
-              wmin = default_wmin,           # Minimum hidden weight value
-              wmax = default_wmax,           # Maximum hidden weight value
-              umin = default_umin,           # Minimum hidden bias value
-              umax = default_umax,           # Maximum hidden bias value
-              vmin = default_vmin,           # Minimum output weight value
-              vmax = default_vmax,           # Maximum output weight value 
-              rmseout = default_rmseout,     # Output file for ODE RMS error
-              debug = default_debug,
-              verbose = default_verbose
-    ):
-        print('trainalg =', trainalg)
+        # Initialize iteration counter.
+        self.nit = 0
+
+        # Pre-vectorize (_v suffix) functions for efficiency.
+        self.Gf_v = np.vectorize(self.eq.Gf)
+        print(self.eq.dG_dYf.__name__)
+        self.dG_dYf_v = np.vectorize(self.eq.dG_dYf)
+        # m = len(self.eq.dG_ddelYf)
+        # print('m =', m)
+        self.dG_ddelYf_v = []
+        for f in self.eq.dG_ddelYf:
+            print(f.__name__)
+            self.dG_ddelYf_v.append(np.vectorize(f))
+        self.dG_ddeldelYf_v = []
+        for fs in self.eq.dG_ddeldelYf:
+            fs_v = []
+            for f in fs:
+                print(f.__name__)
+                fs_v.append(np.vectorize(f))
+            self.dG_ddeldelYf_v.append(fs_v)
+        self.Ytf_v = np.vectorize(self.__Ytf)
+        self.dYt_dxf_v = np.vectorize(self.__dYt_dxf)
+        self.d2Yt_dx2f_v = np.vectorize(self.__d2Yt_dx2f)
+
+    def __str__(self):
+        s = ''
+        s += "%s\n" % self.eq.name
+        s += "w = %s\n" % self.w
+        s += "u = %s\n" % self.u
+        s += "v = %s\n" % self.v
+        return s.rstrip()
+
+    def train(self, x, trainalg=DEFAULT_TRAINALG, opts=DEFAULT_OPTS):
+        """Train the network to solve a 2nd-order ODE BVP. """
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
+
         if trainalg == 'delta':
-            print('Calling self.train_delta().')
-            self.train_delta(x, nhid = nhid, maxepochs = maxepochs, eta = eta,
-                             clamp = clamp, randomize = randomize,
-                             wmin = wmin, wmax = wmax,
-                             umin = umin, umax = umax,
-                             vmin = vmin, vmax = vmax,
-                             rmseout = rmseout, debug = debug, verbose = verbose)
-        elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS',
-                          'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-            print('Calling self.train_minimize().')
-            self.train_minimize(x, trainalg=trainalg,
-                                wmin = wmin, wmax = wmax,
-                                umin = umin, umax = umax,
-                                vmin = vmin, vmax = vmax,
-                                debug = debug, verbose = verbose)
+            self.__train_delta(x, my_opts)
+        elif trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
+            self.__train_minimize(x, trainalg, my_opts)
         else:
             print('ERROR: Invalid training algorithm (%s)!' % trainalg)
-            exit(0)
-
-    def train_delta(self,
-              x,                             # x-values for training points
-              nhid = default_nhid,           # Node count in hidden layer
-              maxepochs = default_maxepochs, # Max training epochs
-              eta = default_eta,             # Learning rate
-              clamp = default_clamp,         # Turn on parameter clamping
-              randomize = default_randomize, # Randomize training sample order
-              wmin = default_wmin,           # Minimum hidden weight value
-              wmax = default_wmax,           # Maximum hidden weight value
-              umin = default_umin,           # Minimum hidden bias value
-              umax = default_umax,           # Maximum hidden bias value
-              vmin = default_vmin,           # Minimum output weight value
-              vmax = default_vmax,           # Maximum output weight value 
-              rmseout = default_rmseout,     # Output file for ODE RMS error
-              debug = default_debug,
-              verbose = default_verbose
-    ):
-        """Train the network to solve a 2nd-order ODE IVP. """
-        if debug: print('x =', x)
-        if debug: print('nhid =', nhid)
-        if debug: print('maxepochs =', maxepochs)
-        if debug: print('eta =', eta)
-        if debug: print('clamp =', clamp)
-        if debug: print('randomize =', randomize)
-        if debug: print('wmin =', wmin)
-        if debug: print('wmax =', wmax)
-        if debug: print('umin =', umin)
-        if debug: print('umax =', umax)
-        if debug: print('vmin =', vmin)
-        if debug: print('vmax =', vmax)
-        if debug: print('rmseout =', rmseout)
-        if debug: print('debug =', debug)
-        if debug: print('verbose =', verbose)
-
-        # Copy equation characteristics for local use.
-        bcf = self.bcf
-        bcdf = self.bcdf
-        bcd2f = self.bcd2f
-        dG_dYf = self.dG_dYf
-        dG_ddelYf = self.dG_ddelYf
-        dG_ddeldelYf = self.dG_ddeldelYf
-
-        #------------------------------------------------------------------------
-
-        # Determine the number of training points.
-        n = len(x)
-        if debug: print('n =', n)
-
-        # Change notation for convenience.
-        m = len(self.bcf)
-        if debug: print('m =', m)  # Will always be 2 in this code.
-        H = nhid
-        if debug: print('H =', H)
-
-        #------------------------------------------------------------------------
-
-        # Create the network.
-
-        # Create an array to hold the weights connecting the input
-        # node to the hidden nodes. The weights are initialized with a
-        # uniform random distribution.
-        self.w = np.random.uniform(wmin, wmax, (2, H))
-        if debug: print('w =', self.w)
-
-        # Create an array to hold the biases for the hidden nodes. The
-        # biases are initialized with a uniform random distribution.
-        self.u = np.random.uniform(umin, umax, H)
-        if debug: print('u =', self.u)
-
-        # Create an array to hold the weights connecting the hidden
-        # nodes to the output node. The weights are initialized with a
-        # uniform random distribution.
-        self.v = np.random.uniform(vmin, vmax, H)
-        if debug: print('v =', self.v)
-
-        # Create arrays to hold RMSE and parameter history.
-        rmse_history = np.zeros(maxepochs)
-        w_history = np.zeros((maxepochs, 2, H))
-        u_history = np.zeros((maxepochs, H))
-        v_history = np.zeros((maxepochs, H))
-
-        #------------------------------------------------------------------------
-
-        # Initial parameter deltas are 0.
-        dE_dw = np.zeros((2, H))
-        dE_du = np.zeros(H)
-        dE_dv = np.zeros(H)
-
-        verbose = True
-
-        # Run the network.
-        for epoch in range(maxepochs):
-            if debug: print('Starting epoch %d.' % epoch)
-
-            # Compute the new values of the network parameters.
-            self.w -= eta*dE_dw
-            self.u -= eta*dE_du
-            self.v -= eta*dE_dv
-            if debug: print('w =', self.w)
-            if debug: print('u =', self.u)
-            if debug: print('v =', self.v)
-
-            # If desired, clamp the parameter values at the limits.
-            if clamp:
-                self.w[self.w < wmin] = wmin
-                self.w[self.w > wmax] = wmax
-                self.u[self.u < umin] = umin
-                self.u[self.u > umax] = umax
-                self.v[self.v < vmin] = vmin
-                self.v[self.v > vmax] = vmax
-
-            # Save the current parameter values in the history.
-            if debug: print('Saving current parameter values.')
-            w_history[epoch] = self.w
-            u_history[epoch] = self.u
-            v_history[epoch] = self.v
-
-            # If the randomize flag is set, shuffle the order of the
-            # training points.
-            if randomize:
-                if debug: print('Randomizing training sample order.')
-                np.random.shuffle(x)
-
-            #--------------------------------------------------------------------
-
-            # Compute the net input, the sigmoid function and its derivatives,
-            # for each hidden node and each training point.
-            z =  np.zeros((n, H))
-            s =  np.zeros((n, H))
-            s1 = np.zeros((n, H))
-            s2 = np.zeros((n, H))
-            s3 = np.zeros((n, H))
-            for i in range(n):
-                for k in range(H):
-                    z[i,k] = self.u[k]
-                    for j in range(m):
-                        z[i,k] += self.w[j,k]*x[i,j]
-                        s[i,k] = sigma(z[i,k])
-                        s1[i,k] = dsigma_dz(z[i,k])
-                        s2[i,k] = d2sigma_dz2(z[i,k])
-                        s3[i,k] = d3sigma_dz3(z[i,k])
-            if debug: print('z =', z)
-            if debug: print('s =', s)
-            if debug: print('s1 =', s1)
-            if debug: print('s2 =', s2)
-            if debug: print('s3 =', s3)
-
-            #--------------------------------------------------------------------
-
-            # Compute the network output and its derivatives, for each
-            # training point.
-            N = np.zeros(n)
-            dN_dx = np.zeros((n, m))
-            dN_dv = np.zeros((n, H))
-            dN_du = np.zeros((n, H))
-            dN_dw = np.zeros((n, m, H))
-            d2N_dvdx = np.zeros((n, m, H))
-            d2N_dudx = np.zeros((n, m, H))
-            d2N_dwdx = np.zeros((n, m, m, H))
-            d2N_dxdy = np.zeros((n, m, m))
-            d3N_dvdxdy = np.zeros((n, m, m, H))
-            d3N_dudxdy = np.zeros((n, m, m, H))
-            d3N_dwdxdy = np.zeros((n, m, m, m, H))
-            for i in range(n):
-                for k in range(H):
-                    N[i] += self.v[k]*s[i,k]
-                    dN_dv[i,k] = s[i,k]
-                    dN_du[i,k] = self.v[k]*s1[i,k]
-                    for j in range(m):
-                        dN_dx[i,j] += self.v[k]*s1[i,k]*self.w[j,k]
-                        dN_dw[i,j,k] = self.v[k]*s1[i,k]*x[i,j]
-                        d2N_dvdx[i,j,k] = s1[i,k]*self.w[j,k]
-                        d2N_dudx[i,j,k] = self.v[k]*s2[i,k]*self.w[j,k]
-                        for jj in range(m):
-                            d2N_dxdy[i,j,jj] += self.v[k]*s2[i,k]*self.w[j,k]*self.w[jj,k]
-                            d2N_dwdx[i,j,jj,k] = self.v[k]*(s1[i,k]*kdelta(j,jj) +
-                                                       s2[i,k]*self.w[jj,k]*x[i,j])
-                            d3N_dvdxdy[i,j,jj,k] = s2[i,k]*self.w[j,k]*self.w[jj,k]
-                            d3N_dudxdy[i,j,jj,k] = self.v[k]*s3[i,k]*self.w[j,k]*self.w[jj,k]
-                            for jjj in range(m):
-                                d3N_dwdxdy[i,j,jj,jjj,k] = (
-                                    self.v[k]*s2[i,k]*(self.w[jj,k]*kdelta(j,jjj)
-                                                  + self.w[jjj,k]*kdelta(j,jj)) +
-                                    self.v[k]*s3[i,k]*self.w[jj,k]*self.w[jjj,k]*x[i,j]
-                                )
-            if debug: print('N =', N)
-            if debug: print('dN_dx =', dN_dx)
-            if debug: print('dN_dv =', dN_dv)
-            if debug: print('dN_du =', dN_du)
-            if debug: print('dN_dw =', dN_dw)
-            if debug: print('d2N_dvdx =', d2N_dvdx)
-            if debug: print('d2N_dudx =', d2N_dudx)
-            if debug: print('d2N_dwdx =', d2N_dwdx)
-            if debug: print('d2N_dxdy =', d2N_dxdy)
-            if debug: print('d3N_dvdxdy =', d3N_dvdxdy)
-            if debug: print('d3N_dudxdy =', d3N_dudxdy)
-            if debug: print('d3N_dwdxdy =', d3N_dwdxdy)
-
-            # Compute the value of the trial solution and its derivatives,
-            # for each training point.
-            A = np.zeros(n)
-            dA_dx = np.zeros((n, m))
-            d2A_dxdy = np.zeros((n, m, m))
-            P = np.zeros(n)
-            dP_dx = np.zeros((n, m))
-            d2P_dxdy = np.zeros((n, m, m))
-            Yt = np.zeros(n)
-            dYt_dx = np.zeros((n, m))
-            dYt_dv = np.zeros((n, H))
-            dYt_du = np.zeros((n, H))
-            dYt_dw = np.zeros((n, m, H))
-            d2Yt_dvdx = np.zeros((n, m, H))
-            d2Yt_dudx = np.zeros((n, m, H))
-            d2Yt_dwdx = np.zeros((n, m, m, H))
-            d2Yt_dxdy = np.zeros((n, m, m))
-            d3Yt_dvdxdy = np.zeros((n, m, m, H))
-            d3Yt_dudxdy = np.zeros((n, m, m, H))
-            d3Yt_dwdxdy = np.zeros((n, m, m, m, H))
-            for i in range(n):
-                A[i] = Af(x[i], bcf)
-                P[i] = Pf(x[i])
-                Yt[i] = Ytf(x[i], N[i], bcf)
-                for j in range(m):
-                    dA_dx[i,j] = delAf[j](x[i], bcf, bcdf)
-                    dP_dx[i,j] = delPf[j](x[i])
-                    dYt_dx[i,j] = dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
-                    for jj in range(m):
-                        d2A_dxdy[i,j,jj] = deldelAf[j][jj](x[i], bcf, bcdf, bcd2f)
-                        d2P_dxdy[i,j,jj] = deldelPf[j][jj](x[i])
-                        d2Yt_dxdy[i,j,jj] = (
-                            d2A_dxdy[i,j,jj] +
-                            P[i]*d2N_dxdy[i,j,jj] +
-                            dP_dx[i,j]*dN_dx[i,jj] +
-                            dP_dx[i,jj]*dN_dx[i,j] +
-                            d2P_dxdy[i,j,jj]*N[i]
-                        )
-                for k in range(H):
-                    dYt_dv[i,k] = P[i]*dN_dv[i,k]
-                    dYt_du[i,k] = P[i]*dN_du[i,k]
-                    for j in range(m):
-                        dYt_dw[i,j,k] = P[i]*dN_dw[i,j,k]
-                        d2Yt_dvdx[i,j,k] = (
-                            P[i]*d2N_dvdx[i,j,k] + dP_dx[i,j]*dN_dv[i,k]
-                        )
-                        d2Yt_dudx[i,j,k] = (
-                            P[i]*d2N_dudx[i,j,k] + dP_dx[i,j]*dN_du[i,k]
-                        )
-                        for jj in range(m):
-                            d2Yt_dwdx[i,jj,j,k] = (
-                                P[i]*d2N_dwdx[i,jj,j,k] + dP_dx[i,j]*dN_dw[i,j,k]
-                            )
-                            d3Yt_dvdxdy[i,j,jj,k] = (
-                                P[i]*d3N_dvdxdy[i,j,jj,k] +
-                                dP_dx[i,j]*d2N_dvdx[i,jj,k] +
-                                dP_dx[i,jj]*d2N_dvdx[i,j,k] +
-                                d2P_dxdy[i,j,jj]*dN_dv[i,k]
-                            )
-                            d3Yt_dudxdy[i,j,jj,k] = (
-                                P[i]*d3N_dudxdy[i,j,jj,k] +
-                                dP_dx[i,j]*d2N_dudx[i,jj,k] +
-                                dP_dx[i,jj]*d2N_dudx[i,j,k] +
-                                d2P_dxdy[i,j,jj]*dN_du[i,k]
-                            )
-                            for jjj in range(m):
-                                d3Yt_dwdxdy[i,jjj,j,jj,k] = (
-                                    P[i]*d3N_dwdxdy[i,jjj,j,jj,k] +
-                                    dP_dx[i,j]*d2N_dwdx[i,jjj,jj,k] +
-                                    dP_dx[i,jj]*d2N_dwdx[i,jj,j,k] +
-                                    d2P_dxdy[i,j,jj]*dN_dw[i,jjj,k]
-                                )
-            if debug: print('A =', A)
-            if debug: print('dA_dx =', dA_dx)
-            if debug: print('d2A_dxdy =', d2A_dxdy)
-            if debug: print('P =', P)
-            if debug: print('dP_dx =', dP_dx)
-            if debug: print('d2P_dxdy =', d2P_dxdy)
-            if debug: print('Yt =', Yt)
-            if debug: print('dYt_dx =', dYt_dx)
-            if debug: print('dYt_dv =', dYt_dv)
-            if debug: print('dYt_du =', dYt_du)
-            if debug: print('dYt_dw =', dYt_dw)
-            if debug: print('d2Yt_dvdx =', d2Yt_dvdx)
-            if debug: print('d2Yt_dudx =', d2Yt_dudx)
-            if debug: print('d2Yt_dwdx =', d2Yt_dwdx)
-            if debug: print('d2Yt_dxdy =', d2Yt_dxdy)
-            if debug: print('d3Yt_dvdxdy =', d3Yt_dvdxdy)
-            if debug: print('d3Yt_dudxdy =', d3Yt_dudxdy)
-            if debug: print('d3Yt_dwdxdy =', d3Yt_dwdxdy)
-
-            # Compute the value of the original differential equation
-            # for each training point, and its derivatives.
-            G = np.zeros(n)
-            dG_dYt = np.zeros(n)
-            dG_ddelYt = np.zeros((n, m))
-            dG_ddeldelYt = np.zeros((n, m, m))
-            dG_dv = np.zeros((n, H))
-            dG_du = np.zeros((n, H))
-            dG_dw = np.zeros((n, m, H))
-            for i in range(n):
-                G[i] = self.Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dxdy[i])
-                dG_dYt[i] = self.dG_dYf(x[i], Yt[i], dYt_dx[i], d2Yt_dxdy[i])
-                for j in range(m):
-                    dG_ddelYt[i,j] = self.dG_ddelYf[j](x[i], Yt[i],
-                                                  dYt_dx[i], d2Yt_dxdy[i])
-                    for jj in range(m):
-                        dG_ddeldelYt[i,j,jj] = self.dG_ddeldelYf[j][jj](x[i], Yt[i],
-                                                                   dYt_dx[i],
-                                                                   d2Yt_dxdy[i])
-                for k in range(H):
-                    dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
-                    dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
-                    for j in range(m):
-                        dG_dv[i,k] += dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k]
-                        dG_du[i,k] += dG_ddelYt[i,j]*d2Yt_dudx[i,j,k]
-                        dG_dw[i,j,k] = dG_dYt[i]*dYt_dw[i,j,k]
-                        for l in range(m):
-                            dG_dw[i,j,k] += dG_ddelYt[i,l]*d2Yt_dwdx[i,j,l,k]
-                            for ll in range(m):
-                                dG_dw[i,j,k] += (
-                                    dG_ddeldelYt[i,l,ll]*d3Yt_dwdxdy[i,j,l,ll,k]
-                                )
-                        for jj in range(m):
-                            dG_dv[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dvdxdy[i,j,jj,k]
-                            dG_du[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dudxdy[i,j,jj,k]
-            if debug: print('G =', G)
-            if debug: print('dG_dYt =', dG_dYt)
-            if debug: print('dG_ddelYt =', dG_ddelYt)
-            if debug: print('dG_ddeldelYt =', dG_ddeldelYt)
-            if debug: print('dG_dv =', dG_dv)
-            if debug: print('dG_du =', dG_du)
-            if debug: print('dG_dw =', dG_dw)
-
-            # Compute the error function for this pass.
-            E = sum(G**2)
-            if debug: print('E =', E)
-
-            # Compute the partial derivatives of the error with
-            # respect to the network parameters.
-            dE_dv = np.zeros(H)
-            dE_du = np.zeros(H)
-            dE_dw = np.zeros((m, H))
-            for k in range(H):
-                for i in range(n):
-                    dE_dv[k] += 2*G[i]*dG_dv[i,k]
-                    dE_du[k] += 2*G[i]*dG_du[i,k]
-                for j in range(m):
-                    for i in range(n):
-                        dE_dw[j,k] += 2*G[i]*dG_dw[i,j,k]
-            if debug: print('dE_dv =', dE_dv)
-            if debug: print('dE_du =', dE_du)
-            if debug: print('dE_dw =', dE_dw)
-
-            # Record the current RMSE.
-            rmse = sqrt(E/n)
-            rmse_history[epoch] = rmse
-            if verbose: print(epoch, rmse)
-
-    def train_minimize(self,
-                       x,                          # x-values for training points
-                       trainalg=default_trainalg,   # Training algorithm
-                       wmin = default_wmin,         # Minimum hidden weight value
-                       wmax = default_wmax,         # Maximum hidden weight value
-                       umin = default_umin,         # Minimum hidden bias value
-                       umax = default_umax,         # Maximum hidden bias value
-                       vmin = default_vmin,         # Minimum output weight value
-                       vmax = default_vmax,         # Maximum output weight value 
-                       debug = default_debug,
-                       verbose = default_verbose
-    ):
-        """Train the network to solve a 2nd-order ODE IVP. """
-
-        if debug: print('x =', x)
-        if debug: print('trainalg =', trainalg)
-        if debug: print('wmin =', wmin)
-        if debug: print('wmax =', wmax)
-        if debug: print('umin =', umin)
-        if debug: print('umax =', umax)
-        if debug: print('vmin =', vmin)
-        if debug: print('vmax =', vmax)
-        if debug: print('debug =', debug)
-        if debug: print('verbose =', verbose)
-
-        #-----------------------------------------------------------------------
-
-        # Sanity-check arguments.
-        assert len(x) > 0
-        assert trainalg
-        assert vmin < vmax
-        assert wmin < wmax
-        assert umin < umax
-
-        #------------------------------------------------------------------------
-
-        # Determine the number of training points.
-        n = len(x)
-        if debug: print('n =', n)
-
-        # Change notation for convenience.
-        m = len(self.bcf)
-        if debug: print('m =', m)
-        H = len(self.w[0])
-        if debug: print('H =', H)
-
-        #------------------------------------------------------------------------
-
-        # Create an array to hold the weights connecting the input
-        # node to the hidden nodes. The weights are initialized with a
-        # uniform random distribution.
-        w = np.random.uniform(wmin, wmax, (m, H))
-        if debug: print('w =', w)
-
-        # Create an array to hold the biases for the hidden nodes. The
-        # biases are initialized with a uniform random distribution.
-        u = np.random.uniform(umin, umax, H)
-        if debug: print('u =', u)
-
-        # Create an array to hold the weights connecting the hidden
-        # nodes to the output node. The weights are initialized with a
-        # uniform random distribution.
-        v = np.random.uniform(vmin, vmax, H)
-        if debug: print('v =', v)
-
-        #------------------------------------------------------------------------
-
-        # Assemble the network parameters into a single 1-D vector for
-        # use by the minimize() method.
-        # p = [w, u, v]
-        p = np.hstack((w[0], w[1], u, v))
-
-        # Minimize the error function to get the new parameter values.
-        if trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS'):
-            res = minimize(self.computeError, p, method=trainalg,
-                           args = (x),
-                           options = {'maxiter': 20000, 'disp': True})
-#                           callback=print_progress)
-        elif trainalg in ('Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
-            res = minimize(self.computeError, p, method=trainalg,
-                           jac=self.computeErrorGradient, args = (x))
-        if debug: print(res)
-
-        # Unpack the optimized network parameters.
-        self.w[0] = res.x[0:H]
-        self.w[1] = res.x[H:2*H]
-        self.u = res.x[2*H:3*H]
-        self.v = res.x[3*H:4*H]
-        if debug: print('Final w =', self.w)
-        if debug: print('Final u =', self.u)
-        if debug: print('Final v =', self.v)
-
-    def computeError(self, p, x):
-
-        n = len(x)
-        m = len(x[0])
-        H = int(len(p)/4)
-
-        w = np.zeros((m, H))
-        w[0] = p[0:H]
-        w[1] = p[H:2*H]
-        u = p[2*H:3*H]
-        v = p[3*H:4*H]
-
-        z =  np.zeros((n, H))
-        s =  np.zeros((n, H))
-        s1 = np.zeros((n, H))
-        s2 = np.zeros((n, H))
-        # s3 = np.zeros((n, H))
-        for i in range(n):
-            for k in range(H):
-                z[i,k] = u[k]
-                for j in range(m):
-                    z[i,k] += w[j,k]*x[i,j]
-                s[i,k] = sigma(z[i,k])
-                s1[i,k] = dsigma_dz(z[i,k])
-                s2[i,k] = d2sigma_dz2(z[i,k])
-
-        N = np.zeros(n)
-        dN_dx = np.zeros((n, m))
-        d2N_dxdy = np.zeros((n, m, m))
-        for i in range(n):
-            for k in range(H):
-                N[i] += v[k]*s[i,k]
-                for j in range(m):
-                    dN_dx[i,j] += v[k]*s1[i,k]*w[j,k]
-                    for jj in range(m):
-                        d2N_dxdy[i,j,jj] += v[k]*s2[i,k]*w[j,k]*w[jj,k]
-
-        dA_dx = np.zeros((n, m))
-        d2A_dxdy = np.zeros((n, m, m))
-        P = np.zeros(n)
-        dP_dx = np.zeros((n, m))
-        d2P_dxdy = np.zeros((n, m, m))
-        Yt = np.zeros(n)
-        dYt_dx = np.zeros((n, m))
-        d2Yt_dxdy = np.zeros((n, m, m))
-        for i in range(n):
-            P[i] = Pf(x[i])
-            Yt[i] = Ytf(x[i], N[i], self.bcf)
-            for j in range(m):
-                dA_dx[i,j] = delAf[j](x[i], self.bcf, self.bcdf)
-                dP_dx[i,j] = delPf[j](x[i])
-                dYt_dx[i,j] = dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
-                for jj in range(m):
-                    d2A_dxdy[i,j,jj] = deldelAf[j][jj](x[i], self.bcf, self.bcdf, self.bcd2f)
-                    d2P_dxdy[i,j,jj] = deldelPf[j][jj](x[i])
-                    d2Yt_dxdy[i,j,jj] = (
-                        d2A_dxdy[i,j,jj] +
-                        P[i]*d2N_dxdy[i,j,jj] +
-                        dP_dx[i,j]*dN_dx[i,jj] +
-                        dP_dx[i,jj]*dN_dx[i,j] +
-                        d2P_dxdy[i,j,jj]*N[i]
-                    )
-
-        G = np.zeros(n)
-        for i in range(n):
-            G[i] =self.Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dxdy[i])
-
-        E = np.sum(G**2)
-        return E
-
-    def computeErrorGradient(self, p, x):
-
-        n = len(x)
-        m = len(x[0])
-        H = int(len(p)/4)
-
-        w = np.zeros((m, H))
-        w[0] = p[0:H]
-        w[1] = p[H:2*H]
-        u = p[2*H:3*H]
-        v = p[3*H:4*H]
-
-        z =  np.zeros((n, H))
-        s =  np.zeros((n, H))
-        s1 = np.zeros((n, H))
-        s2 = np.zeros((n, H))
-        s3 = np.zeros((n, H))
-        for i in range(n):
-            for k in range(H):
-                z[i,k] = u[k]
-                for j in range(m):
-                    z[i,k] += w[j,k]*x[i,j]
-                s[i,k] = sigma(z[i,k])
-                s1[i,k] = dsigma_dz(z[i,k])
-                s2[i,k] = d2sigma_dz2(z[i,k])
-                s3[i,k] = d3sigma_dz3(z[i,k])
-
-        N = np.zeros(n)
-        dN_dx = np.zeros((n, m))
-        dN_dv = np.zeros((n, H))
-        dN_du = np.zeros((n, H))
-        dN_dw = np.zeros((n, m, H))
-        d2N_dvdx = np.zeros((n, m, H))
-        d2N_dudx = np.zeros((n, m, H))
-        d2N_dwdx = np.zeros((n, m, m, H))
-        d2N_dxdy = np.zeros((n, m, m))
-        d3N_dvdxdy = np.zeros((n, m, m, H))
-        d3N_dudxdy = np.zeros((n, m, m, H))
-        d3N_dwdxdy = np.zeros((n, m, m, m, H))
-        for i in range(n):
-            for k in range(H):
-                N[i] += v[k]*s[i,k]
-                dN_dv[i,k] = s[i,k]
-                dN_du[i,k] = v[k]*s1[i,k]
-                for j in range(m):
-                    dN_dx[i,j] += v[k]*s1[i,k]*w[j,k]
-                    dN_dw[i,j,k] = v[k]*s1[i,k]*x[i,j]
-                    d2N_dvdx[i,j,k] = s1[i,k]*w[j,k]
-                    d2N_dudx[i,j,k] = v[k]*s2[i,k]*w[j,k]
-                    for jj in range(m):
-                        d2N_dxdy[i,j,jj] += v[k]*s2[i,k]*w[j,k]*w[jj,k]
-                        d2N_dwdx[i,j,jj,k] = v[k]*(s1[i,k]*kdelta(j,jj) +
-                                                   s2[i,k]*w[jj,k]*x[i,j])
-                        d3N_dvdxdy[i,j,jj,k] = s2[i,k]*w[j,k]*w[jj,k]
-                        d3N_dudxdy[i,j,jj,k] = v[k]*s3[i,k]*w[j,k]*w[jj,k]
-                        for jjj in range(m):
-                            d3N_dwdxdy[i,j,jj,jjj,k] = (
-                                v[k]*s2[i,k]*(w[jj,k]*kdelta(j,jjj)
-                                              + w[jjj,k]*kdelta(j,jj)) +
-                                v[k]*s3[i,k]*w[jj,k]*w[jjj,k]*x[i,j]
-                            )
-
-        dA_dx = np.zeros((n, m))
-        d2A_dxdy = np.zeros((n, m, m))
-        P = np.zeros(n)
-        dP_dx = np.zeros((n, m))
-        d2P_dxdy = np.zeros((n, m, m))
-        Yt = np.zeros(n)
-        dYt_dx = np.zeros((n, m))
-        dYt_dv = np.zeros((n, H))
-        dYt_du = np.zeros((n, H))
-        dYt_dw = np.zeros((n, m, H))
-        d2Yt_dvdx = np.zeros((n, m, H))
-        d2Yt_dudx = np.zeros((n, m, H))
-        d2Yt_dwdx = np.zeros((n, m, m, H))
-        d2Yt_dxdy = np.zeros((n, m, m))
-        d3Yt_dvdxdy = np.zeros((n, m, m, H))
-        d3Yt_dudxdy = np.zeros((n, m, m, H))
-        d3Yt_dwdxdy = np.zeros((n, m, m, m, H))
-        for i in range(n):
-            P[i] = Pf(x[i])
-            Yt[i] = Ytf(x[i], N[i], self.bcf)
-            for j in range(m):
-                dA_dx[i,j] = delAf[j](x[i], self.bcf, self.bcdf)
-                dP_dx[i,j] = delPf[j](x[i])
-                dYt_dx[i,j] = dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
-                for jj in range(m):
-                    d2A_dxdy[i,j,jj] = deldelAf[j][jj](x[i], self.bcf, self.bcdf, self.bcd2f)
-                    d2P_dxdy[i,j,jj] = deldelPf[j][jj](x[i])
-                    d2Yt_dxdy[i,j,jj] = (
-                        d2A_dxdy[i,j,jj] +
-                        P[i]*d2N_dxdy[i,j,jj] +
-                        dP_dx[i,j]*dN_dx[i,jj] +
-                        dP_dx[i,jj]*dN_dx[i,j] +
-                        d2P_dxdy[i,j,jj]*N[i]
-                    )
-            for k in range(H):
-                dYt_dv[i,k] = P[i]*dN_dv[i,k]
-                dYt_du[i,k] = P[i]*dN_du[i,k]
-                for j in range(m):
-                    dYt_dw[i,j,k] = P[i]*dN_dw[i,j,k]
-                    d2Yt_dvdx[i,j,k] = (
-                        P[i]*d2N_dvdx[i,j,k] + dP_dx[i,j]*dN_dv[i,k]
-                    )
-                    d2Yt_dudx[i,j,k] = (
-                        P[i]*d2N_dudx[i,j,k] + dP_dx[i,j]*dN_du[i,k]
-                    )
-                    for jj in range(m):
-                        d2Yt_dwdx[i,jj,j,k] = (
-                            P[i]*d2N_dwdx[i,jj,j,k] + dP_dx[i,j]*dN_dw[i,j,k]
-                        )
-                        d3Yt_dvdxdy[i,j,jj,k] = (
-                            P[i]*d3N_dvdxdy[i,j,jj,k] +
-                            dP_dx[i,j]*d2N_dvdx[i,jj,k] +
-                            dP_dx[i,jj]*d2N_dvdx[i,j,k] +
-                            d2P_dxdy[i,j,jj]*dN_dv[i,k]
-                        )
-                        d3Yt_dudxdy[i,j,jj,k] = (
-                            P[i]*d3N_dudxdy[i,j,jj,k] +
-                            dP_dx[i,j]*d2N_dudx[i,jj,k] +
-                            dP_dx[i,jj]*d2N_dudx[i,j,k] +
-                            d2P_dxdy[i,j,jj]*dN_du[i,k]
-                        )
-                        for jjj in range(m):
-                            d3Yt_dwdxdy[i,jjj,j,jj,k] = (
-                                P[i]*d3N_dwdxdy[i,jjj,j,jj,k] +
-                                dP_dx[i,j]*d2N_dwdx[i,jjj,jj,k] +
-                                dP_dx[i,jj]*d2N_dwdx[i,jj,j,k] +
-                                d2P_dxdy[i,j,jj]*dN_dw[i,jjj,k]
-                            )
-
-        G = np.zeros(n)
-        dG_dYt = np.zeros(n)
-        dG_ddelYt = np.zeros((n, m))
-        dG_ddeldelYt = np.zeros((n, m, m))
-        dG_dv = np.zeros((n, H))
-        dG_du = np.zeros((n, H))
-        dG_dw = np.zeros((n, m, H))
-        for i in range(n):
-            G[i] = self.Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dxdy[i])
-            dG_dYt[i] = self.dG_dYf(x[i], Yt[i], dYt_dx[i], d2Yt_dxdy[i])
-            for j in range(m):
-                dG_ddelYt[i,j] = self.dG_ddelYf[j](x[i], Yt[i],
-                                              dYt_dx[i], d2Yt_dxdy[i])
-                for jj in range(m):
-                    dG_ddeldelYt[i,j,jj] = self.dG_ddeldelYf[j][jj](x[i], Yt[i],
-                                                               dYt_dx[i],
-                                                               d2Yt_dxdy[i])
-            for k in range(H):
-                dG_dv[i,k] = dG_dYt[i]*dYt_dv[i,k]
-                dG_du[i,k] = dG_dYt[i]*dYt_du[i,k]
-                for j in range(m):
-                    dG_dv[i,k] += dG_ddelYt[i,j]*d2Yt_dvdx[i,j,k]
-                    dG_du[i,k] += dG_ddelYt[i,j]*d2Yt_dudx[i,j,k]
-                    dG_dw[i,j,k] = dG_dYt[i]*dYt_dw[i,j,k]
-                    for l in range(m):
-                        dG_dw[i,j,k] += dG_ddelYt[i,l]*d2Yt_dwdx[i,j,l,k]
-                        for ll in range(m):
-                            dG_dw[i,j,k] += (
-                                dG_ddeldelYt[i,l,ll]*d3Yt_dwdxdy[i,j,l,ll,k]
-                            )
-                    for jj in range(m):
-                        dG_dv[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dvdxdy[i,j,jj,k]
-                        dG_du[i,k] += dG_ddeldelYt[i,j,jj]*d3Yt_dudxdy[i,j,jj,k]
-
-        dE_dv = np.zeros(H)
-        dE_du = np.zeros(H)
-        dE_dw = np.zeros((m, H))
-        for k in range(H):
-            for i in range(n):
-                dE_dv[k] += 2*G[i]*dG_dv[i,k]
-                dE_du[k] += 2*G[i]*dG_du[i,k]
-            for j in range(m):
-                for i in range(n):
-                    dE_dw[j,k] += 2*G[i]*dG_dw[i,j,k]
-
-        jac = np.hstack((dE_dw[0], dE_dw[1], dE_du, dE_dv))
-        return jac
-
-    def print_progress(xk):
-        print('xk =', xk)
+            exit(1)
 
     def run(self, x):
+        """Compute the trained solution."""
+        w = self.w
+        u = self.u
+        v = self.v
+
+        z = np.outer(x, w) + u
+        s = s_v(z)
+        N = s.dot(v)
+        Yt = self.Ytf_v(x, N)
+
+        return Yt
+
+    def run_debug(self, x):
+        """Compute the trained solution (debug version)."""
         n = len(x)
-        m = len(x[0])
-        H = len(self.w[0])
+        H = len(self.v)
+        w = self.w
+        u = self.u
+        v = self.v
+
         z = np.zeros((n, H))
         for i in range(n):
             for k in range(H):
-                z[i,k] = self.u[k]
-                for j in range(m):
-                    z[i,k] += self.w[j,k]*x[i,j]
-        s = np.vectorize(sigma)(z)
-        N = s.dot(self.v)
+                z[i, k] = w[k]*x[i] + u[k]
+
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i, k] = sigma.s(z[i, k])
+
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += s[i, k]*v[k]
+
         Yt = np.zeros(n)
         for i in range(n):
-            Yt[i] = Ytf(x[i], N[i], self.bcf)
+            Yt[i] = self.__Ytf(x[i], N[i])
+
         return Yt
 
     def run_derivative(self, x):
-        n = len(x)
-        m = len(x[0])
-        H = len(self.w[0])
+        """Compute the trained derivative."""
+        w = self.w
+        u = self.u
+        v = self.v
 
-        z =  np.zeros((n, H))
-        s =  np.zeros((n, H))
-        s1 = np.zeros((n, H))
-        for i in range(n):
-            for k in range(H):
-                z[i,k] = self.u[k]
-                for j in range(m):
-                    z[i,k] += self.w[j,k]*x[i,j]
-                    s[i,k] = sigma(z[i,k])
-                    s1[i,k] = dsigma_dz(z[i,k])
-
-        N = np.zeros(n)
-        dN_dx = np.zeros((n, m))
-        for i in range(n):
-            for k in range(H):
-                N[i] += self.v[k]*s[i,k]
-                for j in range(m):
-                    dN_dx[i,j] += self.v[k]*s1[i,k]*self.w[j,k]
-
-        dA_dx = np.zeros((n, m))
-        P = np.zeros(n)
-        dP_dx = np.zeros((n, m))
-        dYt_dx = np.zeros((n, m))
-        for i in range(n):
-            P[i] = Pf(x[i])
-            for j in range(m):
-                dA_dx[i,j] = delAf[j](x[i], self.bcf, self.bcdf)
-                dP_dx[i,j] = delPf[j](x[i])
-                dYt_dx[i,j] = dA_dx[i,j] + P[i]*dN_dx[i,j] + dP_dx[i,j]*N[i]
+        z = np.outer(x, w) + u
+        s = s_v(z)
+        s1 = s1_v(s)
+        N = s.dot(v)
+        dN_dx = s1.dot(v*w)
+        dYt_dx = self.__dYt_dxf(x, N, dN_dx)
 
         return dYt_dx
 
-#--------------------------------------------------------------------------------
+    def run_derivative_debug(self, x):
+        """Compute the trained derivative (debug version)."""
+        n = len(x)
+        H = len(self.v)
+        w = self.w
+        u = self.u
+        v = self.v
+
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i, k] = w[k]*x[i] + u[k]
+
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i, k] = sigma.s(z[i, k])
+
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i, k] = sigma.s1(s[i, k])
+
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += s[i, k]*v[k]
+
+        dN_dx = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                dN_dx[i] += v[k]*s1[i, k]*w[k]
+
+        dYt_dx = np.zeros(n)
+        for i in range(n):
+            dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i], d2N_dx2[i])
+
+        return dYt_dx
+
+    def run_derivative2(self, x):
+        """Compute the trained 2nd derivative."""
+        w = self.w
+        u = self.u
+        v = self.v
+
+        z = np.outer(x, w) + u
+        s = s_v(z)
+        s1 = s1_v(s)
+        s2 = s2_v(s)
+        N = s.dot(v)
+        dN_dx = s1.dot(v*w)
+        d2N_dx2 = s2.dot(v*w**2)
+        d2Yt_dx2 = self.__d2Yt_dx2f(x, N, dN_dx, d2N_dx2)
+
+        return d2Yt_dx2
+
+    def run_derivative2_debug(self, x):
+        """Compute the trained 2nd derivative (debug version)."""
+        n = len(x)
+        H = len(self.v)
+        w = self.w
+        u = self.u
+        v = self.v
+
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i, k] = w[k]*x[i] + u[k]
+
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i, k] = sigma.s(z[i, k])
+
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i, k] = sigma.s1(s[i, k])
+
+        s2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s2[i, k] = sigma.s2(s[i, k])
+
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += s[i, k]*v[k]
+
+        dN_dx = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                dN_dx[i] += v[k]*s1[i, k]*w[k]
+
+                
+        d2N_dx2 = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                d2N_dx2[i] += v[k]*s2[i, k]*w[k]**2
+
+        d2Yt_dx2 = np.zeros(n)
+        for i in range(n):
+            d2Yt_dx2[i] = self.__d2Yt_dx2f(x[i], N[i], dN_dx[i], d2N_dx2[i])
+
+        return d2Yt_dx2
+
+    # Internal methods below this point
+
+    def __Ytf(self, x, N):
+        """Trial function"""
+        return self.eq.bc0*(1 - x) + self.eq.bc1*x + x*(1 - x)*N
+
+    def __dYt_dxf(self, x, N, dN_dx):
+        """First derivative of trial function"""
+        return -self.eq.bc0 + self.eq.bc1 + x*(1 - x)*dN_dx + (1 - 2*x)*N
+
+    def __d2Yt_dx2f(self, x, N, dN_dx, d2N_dx2):
+        """2nd derivative of trial function"""
+        return x*(1 - x)*d2N_dx2 + 2*(1 - 2*x)*dN_dx - 2*N
+
+    def __train_delta(self, x, opts=DEFAULT_OPTS):
+        """Train the network using the delta method. """
+
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
+
+        # Sanity-check arguments.
+        assert len(x) > 0
+        assert opts['maxepochs'] > 0
+        assert opts['eta'] > 0
+        assert opts['vmin'] < opts['vmax']
+        assert opts['wmin'] < opts['wmax']
+        assert opts['umin'] < opts['umax']
+
+        # Determine the number of training points, and change notation for
+        # convenience.
+        n = len(x)  # Number of training points
+        H = len(self.v)
+        debug = my_opts['debug']
+        verbose = my_opts['verbose']
+        eta = my_opts['eta']  # Learning rate
+        maxepochs = my_opts['maxepochs']  # Number of training epochs
+        wmin = my_opts['wmin']  # Network parameter limits
+        wmax = my_opts['wmax']
+        umin = my_opts['umin']
+        umax = my_opts['umax']
+        vmin = my_opts['vmin']
+        vmax = my_opts['vmax']
+
+        # Create the hidden node weights, biases, and output node weights.
+        w = np.random.uniform(wmin, wmax, H)
+        u = np.random.uniform(umin, umax, H)
+        v = np.random.uniform(vmin, vmax, H)
+
+        # Initial parameter deltas are 0.
+        dE_dw = np.zeros(H)
+        dE_du = np.zeros(H)
+        dE_dv = np.zeros(H)
+
+        # Train the network.
+        for epoch in range(my_opts['maxepochs']):
+            if verbose:
+                print('Starting epoch %d.' % epoch)
+
+            # Compute the new values of the network parameters.
+            w -= eta*dE_dw
+            u -= eta*dE_du
+            v -= eta*dE_dv
+
+            # Compute the input, the sigmoid function, and its derivatives, for
+            # each hidden node and training point.
+            # x is nx1, w, u are 1xH
+            # z, s, s1, s2, s3 are nxH
+            z = np.outer(x, w) + u
+            s = s_v(z)
+            s1 = s1_v(s)
+            s2 = s2_v(s)
+            s3 = s3_v(s)
+
+            # Compute the network output and its derivatives, for each
+            # training point.
+            # s, v are Hx1
+            # N is scalar
+            N = s.dot(v)
+            dN_dx = s1.dot(v*w)
+            d2N_dx2 = s2.dot(v*w**2)
+            dN_dw = s1*np.outer(x, v)
+            dN_du = s1*v
+            dN_dv = np.copy(s)
+            d2N_dwdx = v*(s1 + s2*np.outer(x, w))
+            d2N_dudx = v*s2*w
+            d2N_dvdx = s1*w
+            d3N_dwdx2 = v*(2*s2*w + s3*np.outer(x, w**2))
+            d3N_dudx2 = v*s3*w**2
+            d3N_dvdx2 = s2*w**2
+
+            # Compute the value of the trial solution, its coefficients,
+            # and derivatives, for each training point.
+            Yt = self.Ytf_v(x, N)
+            dYt_dx = self.dYt_dxf_v(x, N, dN_dx)
+            d2Yt_dx2 = self.__d2Yt_dx2f(x, N, dN_dx, d2N_dx2)
+            # Temporary broadcast versions of P, dP_dx, d2P_dx2. 
+            P_b = np.broadcast_to(x*(1 - x), (H, n)).T
+            dP_dx_b = np.broadcast_to(1 - 2*x, (H, n)).T
+            d2P_dx2_b = np.broadcast_to(-2, (H, n)).T
+            dYt_dw = P_b*dN_dw
+            dYt_du = P_b*dN_du
+            dYt_dv = P_b*dN_dv
+            d2Yt_dwdx = P_b*d2N_dwdx + dP_dx_b*dN_dw
+            d2Yt_dudx = P_b*d2N_dudx + dP_dx_b*dN_du
+            d2Yt_dvdx = P_b*d2N_dvdx + dP_dx_b*dN_dv
+            d3Yt_dwdx2 = P_b*d3N_dwdx2 + 2*dP_dx_b*d2N_dwdx + d2P_dx2_b*dN_dw
+            d3Yt_dudx2 = P_b*d3N_dudx2 + 2*dP_dx_b*d2N_dudx + d2P_dx2_b*dN_du
+            d3Yt_dvdx2 = P_b*d3N_dvdx2 + 2*dP_dx_b*d2N_dvdx + d2P_dx2_b*dN_dv
+
+            # Compute the value of the original differential equation for
+            # each training point, and its derivatives.
+            G = self.Gf_v(x, Yt, dYt_dx, d2Yt_dx2)
+            dG_dYt = self.dG_dYf_v(x, Yt, dYt_dx, d2Yt_dx2)
+            dG_ddYtdx = self.dG_ddYdxf_v(x, Yt, dYt_dx, d2Yt_dx2)
+            dG_dd2Ytdx2 = self.dG_dd2Ydx2f_v(x, Yt, dYt_dx, d2Yt_dx2)
+            # Temporary broadcast versions of dG_dyt and dG_dytdx.
+            dG_dYt_b = np.broadcast_to(dG_dYt, (H, n)).T
+            dG_ddYtdx_b = np.broadcast_to(dG_ddYtdx, (H, n)).T
+            dG_dd2Ytdx2_b = np.broadcast_to(dG_dd2Ytdx2, (H, n)).T
+            dG_dw = dG_dYt_b*dYt_dw + dG_ddYtdx_b*d2Yt_dwdx + dG_dd2Ytdx2_b*d3Yt_dwdx2
+            dG_du = dG_dYt_b*dYt_du + dG_ddYtdx_b*d2Yt_dudx + dG_dd2Ytdx2_b*d3Yt_dudx2
+            dG_dv = dG_dYt_b*dYt_dv + dG_ddYtdx_b*d2Yt_dvdx + dG_dd2Ytdx2_b*d3Yt_dvdx2
+
+            # Compute the error function for this epoch.
+            E = np.sum(G**2)
+
+            # Compute the partial derivatives of the error with respect to the
+            # network parameters.
+            # Temporary boradcast version of G.
+            G_b = np.broadcast_to(G, (H, n)).T
+            dE_dw = 2*np.sum(G_b*dG_dw, axis=0)
+            dE_du = 2*np.sum(G_b*dG_du, axis=0)
+            dE_dv = 2*np.sum(G_b*dG_dv, axis=0)
+
+            # Compute RMS error for this epoch.
+            rmse = sqrt(E/n)
+            if opts['verbose']:
+                print(epoch, rmse)
+
+        # Save the optimized parameters.
+        self.w = w
+        self.u = u
+        self.v = v
+
+    def __train_delta_debug(self, x, opts=DEFAULT_OPTS):
+        """Train using the delta method (debug version). """
+
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
+
+        # Sanity-check arguments.
+        assert len(x) > 0
+        assert opts['maxepochs'] > 0
+        assert opts['eta'] > 0
+        assert opts['vmin'] < opts['vmax']
+        assert opts['wmin'] < opts['wmax']
+        assert opts['umin'] < opts['umax']
+
+        # Determine the number of training points, and change notation for
+        # convenience.
+        n = len(x)  # Number of training points
+        H = len(self.v)
+        debug = my_opts['debug']
+        verbose = my_opts['verbose']
+        eta = my_opts['eta']  # Learning rate
+        maxepochs = my_opts['maxepochs']  # Number of training epochs
+        wmin = my_opts['wmin']  # Network parameter limits
+        wmax = my_opts['wmax']
+        umin = my_opts['umin']
+        umax = my_opts['umax']
+        vmin = my_opts['vmin']
+        vmax = my_opts['vmax']
+
+        # Create the hidden node weights, biases, and output node weights.
+        w = np.random.uniform(wmin, wmax, H)
+        u = np.random.uniform(umin, umax, H)
+        v = np.random.uniform(vmin, vmax, H)
+
+        # Initial parameter deltas are 0.
+        dE_dw = np.zeros(H)
+        dE_du = np.zeros(H)
+        dE_dv = np.zeros(H)
+
+        # Train the network.
+        for epoch in range(maxepochs):
+            if verbose:
+                print('Starting epoch %d.' % epoch)
+
+            # Compute the new values of the network parameters.
+            for k in range(H):
+                w[k] -= eta*dE_dw[k]
+
+            for k in range(H):
+                u[k] -= eta*dE_du[k]
+
+            for k in range(H):
+                v[k] -= eta*dE_dv[k]
+
+            # Compute the input, the sigmoid function, and its derivatives, for
+            # each hidden node and each training point.
+            z = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    z[i, k] = w[k]*x[i] + u[k]
+
+            s = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s[i, k] = sigma.s(z[i, k])
+            
+            s1 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s1[i, k] = sigma.s1(s[i, k])
+
+            s2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s2[i, k] = sigma.s2(s[i, k])
+
+            s3 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    s3[i, k] = sigma.s3(s[i, k])
+            
+            # Compute the network output and its derivatives, for each
+            # training point.
+            N = np.zeros(n)
+            for i in range(n):
+                for k in range(H):
+                    N[i] += v[k]*s[i, k]
+            
+            dN_dx = np.zeros(n)
+            for i in range(n):
+                for k in range(H):
+                    dN_dx[i] += v[k]*s1[i, k]*w[k]
+            
+            d2N_dx2 = np.zeros(n)
+            for i in range(n):
+                for k in range(H):
+                    d2N_dx2[i] += v[k]*s2[i, k]*w[k]**2
+
+            dN_dw = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dN_dw[i, k] = v[k]*s1[i, k]*x[i]
+            
+            dN_du = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dN_du[i, k] = v[k]*s1[i, k]
+            
+            dN_dv = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dN_dv[i, k] = s[i, k]
+            
+            d2N_dwdx = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d2N_dwdx[i, k] = v[k]*(s1[i, k] + s2[i, k]*w[k]*x[i])
+            
+            d2N_dudx = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d2N_dudx[i, k] = v[k]*s2[i, k]*w[k]
+            
+            d2N_dvdx = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d2N_dvdx[i, k] = s1[i, k]*w[k]
+
+            d3N_dwdx2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d3N_dwdx2[i, k] = v[k]*(2*s2[i, k]*w[k] + s3[i, k]*w[k]**2*x[i])
+            
+            d3N_dudx2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d3N_dudx2[i, k] = v[k]*s3[i, k]*w[k]**2
+            
+            d3N_dvdx2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d3N_dvdx2[i, k] = s2[i, k]*w[k]**2
+            
+            # Compute the value of the trial solution and its derivatives,
+            # for each training point.
+            Yt = np.zeros(n)
+            for i in range(n):
+                Yt[i] = self.__Ytf(x[i], N[i])
+            
+            dYt_dx = np.zeros(n)
+            for i in range(n):
+                dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i])
+
+            d2Yt_dx2 = np.zeros(n)
+            for i in range(n):
+                d2Yt_dx2[i] = self.__d2Yt_dx2f(x[i], N[i], dN_dx[i], d2N_dx2[i])
+            
+            dYt_dw = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dYt_dw[i, k] = x[i]*(1 - x[i])*dN_dw[i, k]
+            
+            dYt_du = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dYt_du[i, k] = x[i]*(1 - x[i])*dN_du[i, k]
+
+            dYt_dv = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dYt_dv[i, k] = x[i]*(1 - x[i])*dN_dv[i, k]
+
+            d2Yt_dwdx = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d2Yt_dwdx[i, k] = x[i]*(1 - x[i])*d2N_dwdx[i, k] + (1 - 2*x[i])*dN_dw[i, k]
+            
+            d2Yt_dudx = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d2Yt_dudx[i, k] = x[i]*(1 - x[i])*d2N_dudx[i, k] + (1 - 2*x[i])*dN_du[i, k]
+
+            d2Yt_dvdx = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d2Yt_dvdx[i, k] = x[i]*(1 - x[i])*d2N_dvdx[i, k] + (1 - 2*x[i])*dN_dv[i, k]
+
+            d3Yt_dwdx2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d3Yt_dwdx2[i, k] = x[i]*(1 - x[i])*d3N_dwdx2[i, k] + 2*(1 - 2*x[i])*d2N_dwdx[i, k] - 2*dN_dw[i, k]
+
+            d3Yt_dudx2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d3Yt_dudx2[i, k] = x[i]*(1 - x[i])*d3N_dudx2[i, k] + 2*(1 - 2*x[i])*d2N_dudx[i, k] - 2*dN_du[i, k]
+
+            d3Yt_dvdx2 = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    d3Yt_dvdx2[i, k] = x[i]*(1 - x[i])*d3N_dvdx2[i, k] + 2*(1 - 2*x[i])*d2N_dvdx[i, k] - 2*dN_dv[i, k]
+
+            # Compute the value of the original differential equation for
+            # each training point, and its derivatives.
+            G = np.zeros(n)
+            for i in range(n):
+                G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+            dG_dYt = np.zeros(n)
+            for i in range(n):
+                dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+            dG_ddYtdx = np.zeros(n)
+            for i in range(n):
+                dG_ddYtdx[i] = self.eq.dG_ddYdxf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+            dG_dd2Ytdx2 = np.zeros(n)
+            for i in range(n):
+                dG_dd2Ytdx2[i] = self.eq.dG_dd2Ydx2f(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+            dG_dw = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dG_dw[i, k] = dG_dYt[i]*dYt_dw[i, k] + dG_ddYtdx[i]*d2Yt_dwdx[i, k] + dG_dd2Ytdx2[i]*d3Yt_dwdx2[i, k]
+            
+            dG_du = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dG_du[i, k] = dG_dYt[i]*dYt_du[i, k] + dG_ddYtdx[i]*d2Yt_dudx[i, k] + dG_dd2Ytdx2[i]*d3Yt_dudx2[i, k]
+
+            dG_dv = np.zeros((n, H))
+            for i in range(n):
+                for k in range(H):
+                    dG_dv[i, k] = dG_dYt[i]*dYt_dv[i, k] + dG_ddYtdx[i]*d2Yt_dvdx[i, k] + dG_dd2Ytdx2[i]*d3Yt_dvdx2[i, k]
+
+            # Compute the error function for this epoch.
+            E = 0
+            for i in range(n):
+                E += G[i]**2
+
+            # Compute the partial derivatives of the error with respect to the
+            # network parameters.
+            dE_dw = np.zeros(H)
+            for k in range(H):
+                for i in range(n):
+                    dE_dw[k] += 2*G[i]*dG_dw[i, k]
+            
+            dE_du = np.zeros(H)
+            for k in range(H):
+                for i in range(n):
+                    dE_du[k] += 2*G[i]*dG_du[i, k]
+
+            dE_dv = np.zeros(H)
+            for k in range(H):
+                for i in range(n):
+                    dE_dv[k] += 2*G[i]*dG_dv[i, k]
+  
+            # Compute the RMS error for this epoch.
+            rmse = sqrt(E/n)
+            if opts['verbose']:
+                print(epoch, rmse)
+
+        # Save the optimized parameters.
+        self.w = w
+        self.u = u
+        self.v = v
+
+    def __train_minimize(self, x, trainalg, opts=DEFAULT_OPTS):
+        """Train the network using the SciPy minimize() function. """
+
+        my_opts = dict(DEFAULT_OPTS)
+        my_opts.update(opts)
+
+        # Sanity-check arguments.
+        assert len(x) > 0
+        assert opts['vmin'] < opts['vmax']
+        assert opts['wmin'] < opts['wmax']
+        assert opts['umin'] < opts['umax']
+
+        # Create the hidden node weights, biases, and output node weights.
+        H = len(self.v)
+        wmin = my_opts['wmin']  # Network parameter limits
+        wmax = my_opts['wmax']
+        umin = my_opts['umin']
+        umax = my_opts['umax']
+        vmin = my_opts['vmin']
+        vmax = my_opts['vmax']
+
+        # Create the hidden node weights, biases, and output node weights.
+        w = np.random.uniform(wmin, wmax, H)
+        u = np.random.uniform(umin, umax, H)
+        v = np.random.uniform(vmin, vmax, H)
+
+        # Assemble the network parameters into a single 1-D vector for
+        # use by the minimize() method.
+        p = np.hstack((w, u, v))
+
+        # Add the status callback if requested.
+        callback = None
+        if my_opts['verbose']:
+            callback = self.__print_progress
+
+        # Minimize the error function to get the new parameter values.
+        if trainalg in ('Nelder-Mead', 'Powell', 'CG', 'BFGS'):
+            jac = None
+        elif trainalg in ('Newton-CG',):
+            jac = self.__compute_error_gradient
+        res = minimize(self.__compute_error, p, method=trainalg, jac=jac,
+                       args=(x), callback=callback)
+        self.res = res
+
+        # Unpack the optimized network parameters.
+        self.w = res.x[0:H]
+        self.u = res.x[H:2*H]
+        self.v = res.x[2*H:3*H]
+
+    def __compute_error(self, p, x):
+        """Compute the error function using the current parameter values."""
+
+        # Unpack the network parameters (hsplit() returns views, so no copies made).
+        H = len(self.v)
+        (w, u, v) = np.hsplit(p, 3)
+
+        # Compute the forward pass through the network.
+        z = np.outer(x, w) + u
+        s = s_v(z)
+        s1 = s1_v(s)
+        s2 = s2_v(s)
+        N = s.dot(v)
+        dN_dx = s1.dot(v*w)
+        d2N_dx2 = s2.dot(v*w**2)
+        Yt = self.Ytf_v(x, N)
+        dYt_dx = self.dYt_dxf_v(x, N, dN_dx)
+        d2Yt_dx2 = self.d2Yt_dx2f_v(x, N, dN_dx, d2N_dx2)
+        G = self.Gf_v(x, Yt, dYt_dx, d2Yt_dx2)
+        E = np.sum(G**2)
+
+        return E
+
+    def __compute_error_debug(self, p, x):
+        """Compute the error function using the current parameter values (debug version)."""
+
+        # Fetch the number of training points.
+        n = len(x)
+
+        # Unpack the network parameters.
+        H = len(self.v)
+        (w, u, v) = np.hsplit(p, 3)
+
+        # Compute the forward pass through the network.
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i, k] = x[i]*w[k] + u[k]
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i, k] = sigma.s(z[i, k])
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i, k] = sigma.s1(s[i, k])
+        s2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s2[i, k] = sigma.s2(s[i, k])
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += v[k]*s[i, k]
+        dN_dx = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                dN_dx[i] += s1[i, k]*v[k]*w[k]
+        d2N_dx2 = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                d2N_dx2[i] += v[k]*s2[i, k]*w[k]**2
+        Yt = np.zeros(n)
+        for i in range(n):
+            Yt[i] = self.__Ytf(x[i], N[i])
+        dYt_dx = np.zeros(n)
+        for i in range(n):
+            dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i])
+        d2Yt_dx2 = np.zeros(n)
+        for i in range(n):
+            d2Yt_dx2[i] = self.__d2Yt_dx2f(x[i], N[i], dN_dx[i], d2N_dx2[i])
+        G = np.zeros(n)
+        for i in range(n):
+            G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+        E = 0
+        for i in range(n):
+            E += G[i]**2
+
+        return E
+
+    def __compute_error_gradient(self, p, x):
+        """Compute the gradient of the error function wrt network
+        parameters."""
+
+        # Fetch the number of training points.
+        n = len(x)
+
+        # Unpack the network parameters (hsplit() returns views, so no copies made).
+        H = len(self.v)
+        (w, u, v) = np.hsplit(p, 3)
+
+        # Compute the forward pass through the network.
+        z = np.outer(x, w) + u
+        s = s_v(z)
+        s1 = s1_v(s)
+        s2 = s2_v(s)
+        s3 = s3_v(s)
+
+        # WARNING: Numpy and loop code below can give different results with Newton-CG after
+        # a few iterations. The differences are very slight, but they result in significantly
+        # different values for the weights and biases. To avoid this for now, loop code has been
+        # retained for some computations below.
+
+        # N = s.dot(v)
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += s[i, k]*v[k]
+
+        # dN_dx = s1.dot(v*w)
+        dN_dx = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                dN_dx[i] += s1[i, k]*v[k]*w[k]
+
+        d2N_dx2 = s2.dot(v*w**2)
+
+        # dN_dw = s1*np.outer(x, v)
+        dN_dw = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_dw[i, k] = s1[i, k]*x[i]*v[k]
+
+        dN_du = s1*v
+        dN_dv = s
+
+        # d2N_dwdx = v*(s1 + s2*np.outer(x, w))
+        d2N_dwdx = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d2N_dwdx[i, k] = v[k]*(s1[i, k] + s2[i, k]*x[i]*w[k])
+
+        d2N_dudx = v*s2*w
+        d2N_dvdx = s1*w
+        d3N_dwdx2 = v*(2*s2*w + s3*np.outer(x, w**2))
+        d3N_dudx2 = v*s3*w**2
+        d3N_dvdx2 = s2*w**2
+        Yt = self.__Ytf(x, N)
+        dYt_dx = self.__dYt_dxf(x, N, dN_dx)
+        d2Yt_dx2 = self.__d2Yt_dx2f(x, N, dN_dx, d2N_dx2)
+        P_b = np.broadcast_to(x*(1 - x), (H, n)).T
+        dP_dx_b = np.broadcast_to(1 - 2*x, (H, n)).T
+        d2P_dx2_b = np.broadcast_to(-2, (H, n)).T
+        dYt_dw = P_b*dN_dw
+        dYt_du = P_b*dN_du
+        dYt_dv = P_b*dN_dv
+        d2Yt_dwdx = P_b*d2N_dwdx + dP_dx_b*dN_dw
+        d2Yt_dudx = P_b*d2N_dudx + dP_dx_b*dN_du
+        d2Yt_dvdx = P_b*d2N_dvdx + dP_dx_b*dN_dv
+        d3Yt_dwdx2 = P_b*d3N_dwdx2 + 2*dP_dx_b*d2N_dwdx + d2P_dx2_b*dN_dw
+        d3Yt_dudx2 = P_b*d3N_dudx2 + 2*dP_dx_b*d2N_dudx + d2P_dx2_b*dN_du
+        d3Yt_dvdx2 = P_b*d3N_dvdx2 + 2*dP_dx_b*d2N_dvdx + d2P_dx2_b*dN_dv
+
+        G = self.Gf_v(x, Yt, dYt_dx, d2Yt_dx2)
+        dG_dYt = self.dG_dYf_v(x, Yt, dYt_dx, d2Yt_dx2)
+        dG_ddYtdx = self.dG_ddYdxf_v(x, Yt, dYt_dx, d2Yt_dx2)
+        dG_dd2Ytdx2 = self.dG_dd2Ydx2f_v(x, Yt, dYt_dx, d2Yt_dx2)
+        # Temporary broadcast versions of dG_dyt and dG_dytdx.
+        dG_dYt_b = np.broadcast_to(dG_dYt, (H, n)).T
+        dG_ddYtdx_b = np.broadcast_to(dG_ddYtdx, (H, n)).T
+        dG_dd2Ytdx2_b = np.broadcast_to(dG_dd2Ytdx2, (H, n)).T
+        dG_dw = dG_dYt_b*dYt_dw + dG_ddYtdx_b*d2Yt_dwdx + dG_dd2Ytdx2_b*d3Yt_dwdx2
+        dG_du = dG_dYt_b*dYt_du + dG_ddYtdx_b*d2Yt_dudx + dG_dd2Ytdx2_b*d3Yt_dudx2
+        dG_dv = dG_dYt_b*dYt_dv + dG_ddYtdx_b*d2Yt_dvdx + dG_dd2Ytdx2_b*d3Yt_dvdx2
+
+        G_b = np.broadcast_to(G, (H, n)).T
+        dE_dw = 2*np.sum(G_b*dG_dw, axis=0)
+        dE_du = 2*np.sum(G_b*dG_du, axis=0)
+        dE_dv = 2*np.sum(G_b*dG_dv, axis=0)
+
+        jac = np.hstack((dE_dw, dE_du, dE_dv))
+
+        return jac
+
+    def __compute_error_gradient_debug(self, p, x):
+        """Compute the gradient of the error function wrt network
+        parameters (debug version)."""
+
+        # Fetch the number of training points.
+        n = len(x)
+
+        # Unpack the network parameters (hsplit() returns views, so no copies made).
+        H = len(self.v)
+        (w, u, v) = np.hsplit(p, 3)
+
+        # Compute the forward pass through the network.
+        z = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                z[i, k] = w[k]*x[i] + u[k]
+
+        s = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s[i, k] = sigma.s(z[i, k])
+            
+        s1 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s1[i, k] = sigma.s1(s[i, k])
+
+        s2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s2[i, k] = sigma.s2(s[i, k])
+
+        s3 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                s3[i, k] = sigma.s3(s[i, k])
+
+        N = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                N[i] += v[k]*s[i, k]
+            
+        dN_dx = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                dN_dx[i] += v[k]*s1[i, k]*w[k]
+            
+        d2N_dx2 = np.zeros(n)
+        for i in range(n):
+            for k in range(H):
+                d2N_dx2[i] += v[k]*s2[i, k]*w[k]**2
+
+        dN_dw = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_dw[i, k] = v[k]*s1[i, k]*x[i]
+            
+        dN_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_du[i, k] = v[k]*s1[i, k]
+            
+        dN_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dN_dv[i, k] = s[i, k]
+            
+        d2N_dwdx = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d2N_dwdx[i, k] = v[k]*(s1[i, k] + s2[i, k]*w[k]*x[i])
+            
+        d2N_dudx = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d2N_dudx[i, k] = v[k]*s2[i, k]*w[k]
+            
+        d2N_dvdx = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d2N_dvdx[i, k] = s1[i, k]*w[k]
+
+        d3N_dwdx2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d3N_dwdx2[i, k] = v[k]*(2*s2[i, k]*w[k] + s3[i, k]*w[k]**2*x[i])
+            
+        d3N_dudx2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d3N_dudx2[i, k] = v[k]*s3[i, k]*w[k]**2
+            
+        d3N_dvdx2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d3N_dvdx2[i, k] = s2[i, k]*w[k]**2
+
+        Yt = np.zeros(n)
+        for i in range(n):
+            Yt[i] = self.__Ytf(x[i], N[i])
+
+        dYt_dx = np.zeros(n)
+        for i in range(n):
+            dYt_dx[i] = self.__dYt_dxf(x[i], N[i], dN_dx[i])
+
+        d2Yt_dx2 = np.zeros(n)
+        for i in range(n):
+            d2Yt_dx2[i] = self.__d2Yt_dx2f(x[i], N[i], dN_dx[i], d2N_dx2[i])
+            
+        dYt_dw = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dYt_dw[i, k] = x[i]*(1 - x[i])*dN_dw[i, k]
+            
+        dYt_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dYt_du[i, k] = x[i]*(1 - x[i])*dN_du[i, k]
+
+        dYt_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dYt_dv[i, k] = x[i]*(1 - x[i])*dN_dv[i, k]
+
+        d2Yt_dwdx = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d2Yt_dwdx[i, k] = x[i]*(1 - x[i])*d2N_dwdx[i, k] + (1 - 2*x[i])*dN_dw[i, k]
+            
+        d2Yt_dudx = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d2Yt_dudx[i, k] = x[i]*(1 - x[i])*d2N_dudx[i, k] + (1 - 2*x[i])*dN_du[i, k]
+
+        d2Yt_dvdx = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d2Yt_dvdx[i, k] = x[i]*(1 - x[i])*d2N_dvdx[i, k] + (1 - 2*x[i])*dN_dv[i, k]
+
+        d3Yt_dwdx2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d3Yt_dwdx2[i, k] = x[i]*(1 - x[i])*d3N_dwdx2[i, k] + 2*(1 - 2*x[i])*d2N_dwdx[i, k] - 2*dN_dw[i, k]
+
+        d3Yt_dudx2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d3Yt_dudx2[i, k] = x[i]*(1 - x[i])*d3N_dudx2[i, k] + 2*(1 - 2*x[i])*d2N_dudx[i, k] - 2*dN_du[i, k]
+
+        d3Yt_dvdx2 = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                d3Yt_dvdx2[i, k] = x[i]*(1 - x[i])*d3N_dvdx2[i, k] + 2*(1 - 2*x[i])*d2N_dvdx[i, k] - 2*dN_dv[i, k]
+
+        G = np.zeros(n)
+        for i in range(n):
+            G[i] = self.eq.Gf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+        dG_dYt = np.zeros(n)
+        for i in range(n):
+            dG_dYt[i] = self.eq.dG_dYf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+        dG_ddYtdx = np.zeros(n)
+        for i in range(n):
+            dG_ddYtdx[i] = self.eq.dG_ddYdxf(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+        dG_dd2Ytdx2 = np.zeros(n)
+        for i in range(n):
+            dG_dd2Ytdx2[i] = self.eq.dG_dd2Ydx2f(x[i], Yt[i], dYt_dx[i], d2Yt_dx2[i])
+
+        dG_dw = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dG_dw[i, k] = dG_dYt[i]*dYt_dw[i, k] + dG_ddYtdx[i]*d2Yt_dwdx[i, k] + dG_dd2Ytdx2[i]*d3Yt_dwdx2[i, k]
+            
+        dG_du = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dG_du[i, k] = dG_dYt[i]*dYt_du[i, k] + dG_ddYtdx[i]*d2Yt_dudx[i, k] + dG_dd2Ytdx2[i]*d3Yt_dudx2[i, k]
+
+        dG_dv = np.zeros((n, H))
+        for i in range(n):
+            for k in range(H):
+                dG_dv[i, k] = dG_dYt[i]*dYt_dv[i, k] + dG_ddYtdx[i]*d2Yt_dvdx[i, k] + dG_dd2Ytdx2[i]*d3Yt_dvdx2[i, k]
+
+        dE_dw = np.zeros(H)
+        for k in range(H):
+            for i in range(n):
+                dE_dw[k] += 2*G[i]*dG_dw[i, k]
+            
+        dE_du = np.zeros(H)
+        for k in range(H):
+            for i in range(n):
+                dE_du[k] += 2*G[i]*dG_du[i, k]
+
+        dE_dv = np.zeros(H)
+        for k in range(H):
+            for i in range(n):
+                dE_dv[k] += 2*G[i]*dG_dv[i, k]
+
+        jac = np.zeros(3*H)
+        for j in range(H):
+            jac[j] = dE_dw[j]
+        for j in range(H):
+            jac[H + j] = dE_du[j]
+        for j in range(H):
+            jac[2*H + j] = dE_dv[j]
+
+        return jac
+
+    def __print_progress(self, xk):
+        """Callback to print progress message from optimizer"""
+        print('nit =', self.nit)
+        self.nit += 1
+        print('xk =', xk)
+
+# -----------------------------------------------------------------------------
+
 
 if __name__ == '__main__':
+    pass
 
-    # Create training data.
-    xt = np.linspace(0, 1, 10)
-    yt = np.linspace(0, 1, 10)
-    x_train = np.array(list(zip(np.tile(xt, 10),np.repeat(yt, 10))))
-    n = len(x_train)
+    # Number of training points along each dimension.
+    nd_train = 10
+
+    # Training points along a single dimension.
+    d_train = np.linspace(0, 1, nd_train)
+    # print(d_train)
+
+    # Create the 1-, 2-, 3-, and 4-D training data.
+    n1 = nd_train
+    x1_train = np.zeros(n1)
+    for i in range(nd_train):
+        x1_train[i] = d_train[i]
+    # print('x1_train =', x1_train)
+
+    n2 = nd_train**2
+    x2_train = np.zeros((n2, 2))
+    for i in range(nd_train):
+        for ii in range(nd_train):
+            j = i*nd_train + ii
+            x2_train[j][0] = d_train[i]
+            x2_train[j][1] = d_train[ii]
+    # print('x2_train =', x2_train)
+
+    n3 = nd_train**3
+    x3_train = np.zeros((n3, 3))
+    for i in range(nd_train):
+        for ii in range(nd_train):
+            for iii in range(nd_train):
+                j = i*nd_train**2 + ii*nd_train + iii
+                x3_train[j][0] = d_train[i]
+                x3_train[j][1] = d_train[ii]
+                x3_train[j][2] = d_train[iii]
+    # print('x3_train =', x3_train)
+
+    n4 = nd_train**4
+    x4_train = np.zeros((n4, 4))
+    for i in range(nd_train):
+        for ii in range(nd_train):
+            for iii in range(nd_train):
+                for iiii in range(nd_train):
+                    j = i*nd_train**3 + ii*nd_train**2 + iii*nd_train + iiii
+                    x4_train[j][0] = d_train[i]
+                    x4_train[j][1] = d_train[ii]
+                    x4_train[j][2] = d_train[iii]
+                    x4_train[j][3] = d_train[iiii]
+    # print('x4_train =', x4_train)
+
+    # Options for training
+    training_opts = {}
+    training_opts['debug'] = True
+    training_opts['verbose'] = True
+    training_opts['maxepochs'] = 1000
 
     # Test each training algorithm on each equation.
-    for pde in ('pde02bvp',):
-        print('Examining %s.' % pde)
-        pde2bvp = PDE2BVP(pde)
+    for eq in ('eq.lagaris_05',):
+        print('Examining %s.' % eq)
+        pde2bvp = PDE2BVP(eq)
         print(pde2bvp)
-        m = len(pde2bvp.bcdf)
-        net = NNPDE2BVP(pde2bvp)
-        print(net)
-        Ya = np.zeros(n)
-        for i in range(n):
-            Ya[i] = net.Yaf(x_train[i])
-        dYa_dx = np.zeros((n, m))
-        for i in range(n):
-            for j in range(m):
-                dYa_dx[i,j] = net.delYaf[j](x_train[i])
-        d2Ya_dxdy = np.zeros((n, m, m))
-        for i in range(n):
-            for j in range(m):
-                for jj in range(m):
-                    d2Ya_dxdy[i, j, jj] = net.deldelYaf[j][jj](x_train[i])
-        print('The analytical solution is:')
-        print('Ya =', Ya)
-        print('The analytical gradient is:')
-        print('dYa_dx =', dYa_dx)
-        print('The analytical Hessian is:')
-        # print('d2Ya_dxdy =', d2Ya_dxdy)
-        print()
-        for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS',
-                         'Newton-CG', 'L-BFGS-B', 'TNC', 'SLSQP'):
+
+        # Determine the dimensionality of the problem.
+        m = len(pde2bvp.bcf)
+        print('Equation %s has %d independent variables.' % (eq, m))
+        assert m <= 4
+
+        # Select the appropriate training data.
+        x_train = [x1_train, x2_train, x3_train, x4_train][m - 1]
+        n = len(x_train)
+        # print(x_train.shape)
+
+        # (Optional) analytical solution and derivatives
+        if pde2bvp.Yaf:
+            Ya = np.zeros(n)
+            for i in range(n):
+                Ya[i] = pde2bvp.Yaf(x_train[i])
+        # print('The analytical solution at the training points is:')
+        # print(Ya)
+        if pde2bvp.delYaf:
+            delYa = np.zeros((n, m))
+            for i in range(n):
+                for j in range(m):
+                    delYa[i][j] = pde2bvp.delYaf[j](x_train[i])
+        # print('The analytical derivative at the training points is:')
+        # print(delYa)
+        if pde2bvp.deldelYaf:
+            deldelYa = np.zeros((n, m, m))
+            for i in range(n):
+                for j in range(m):
+                    for jj in range(m):
+                        deldelYa[i][j][jj] = pde2bvp.deldelYaf[j][jj](x_train[i])
+        # print('The analytical 2nd derivative at the training points is:')
+        # print(deldelYa)
+
+        # Create and train the network.
+        # for trainalg in ('delta', 'Nelder-Mead', 'Powell', 'CG', 'BFGS', 'Newton-CG'):
+        for trainalg in ('delta_debug',):
             print('Training using %s algorithm.' % trainalg)
-            np.random.seed(0)
+            net = NNPDE2BVP(pde2bvp)
+            print(net)
+            np.random.seed(0)  # Use same seed for reproducibility.
             try:
-                net.train(x_train, trainalg=trainalg)
-            except Exception as e:
-                print('Error using %s algorithm on %s!' % (trainalg, pde))
+                net.train(x_train, trainalg=trainalg, opts=training_opts)
+            except (OverflowError, ValueError) as e:
+                print('Error using %s algorithm on %s!' % (trainalg, eq))
                 print(e)
-                print()
                 continue
+            print(net.res)
+            print('The trained network is:')
+            print(net)
             Yt = net.run(x_train)
             dYt_dx = net.run_derivative(x_train)
-            # d2yt_dx2 = net.run_2nd_derivative(x_train)
-        #     print('The optimized network parameters are:')
-        #     print('w =', net.w)
-        #     print('u =', net.u)
-        #     print('v =', net.v)
+            d2Yt_dx2 = net.run_derivative2(x_train)
             print('The trained solution is:')
             print('Yt =', Yt)
             print('The trained derivative is:')
             print('dYt_dx =', dYt_dx)
-            print()
+            print('The trained 2nd derivative is:')
+            print('d2Yt_dx2 =', d2Yt_dx2)
+
+            # (Optional) Error in solution and derivative
+            if ode2bvp.Yaf:
+                print('The error in the trained solution is:')
+                print(Yt - Ya)
+            if ode2bvp.dYa_dxf:
+                print('The error in the trained derivative is:')
+                print(dYt_dx - dYa_dx)
+            if ode2bvp.d2Ya_dx2f:
+                print('The error in the trained 2nd derivative is:')
+                print(d2Yt_dx2 - d2Ya_dx2)
