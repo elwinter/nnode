@@ -1,0 +1,141 @@
+DOUBLE-CHECK ALL NUMPY STATEMENTS IN CODE.
+
+PACKAGE MY CODE PROPERLY!
+
+Use shape to get counts instead of len().
+
+Use zeros_like() to create same-size arrays.
+
+Use set_printoptions(threshold=sys.maxsize) to ensure entire arrays are printed.
+
+Use @ instead of dot().
+
++=, *=, etc. change in-place.
+
+Create specific random number generators, e.g. np.random.default_rng(1).
+
+np.fromfunction() for some array setup?
+
+Use ellipsis to signify all of a dimension.
+
+Use resize() to pack and unpack parameter vectors.
+
+Use row_stack()/column_stack() for packing/unpacking.
+
+Use newaxis to convert 1D arrays to column vectors.
+
+In general, for arrays with more than two dimensions, hstack stacks along their second axes, vstack stacks along their first axes, and concatenate allows for an optional arguments giving the number of the axis along which the concatenation should happen.
+
+Or views, to avoid unpacking?
+
+Use copy() to guarantee new objects, especially when slicing from large arrays.
+
+The first rule of broadcasting is that if all input arrays do not have the same number of dimensions, a “1” will be repeatedly prepended to the shapes of the smaller arrays until all the arrays have the same number of dimensions.
+
+The second rule of broadcasting ensures that arrays with a size of 1 along a particular dimension act as if they had the size of the array with the largest shape along that dimension. The value of the array element is assumed to be the same along that dimension for the “broadcast” array.
+
+Arrays of indices result in an array of the same shape.
+
+Use ix_() to assemble gridded training data, or to compute outer products?
+
+Use mamba for faster package management?
+
+Use scikit-geometry for network disgrams.
+
+Use embedded HTML to enhance notebooks.
+
+Move vectorized sigma functions to sigma.py.
+
+Voronoi diagams to show training point distribution.
+
+Use ... in place of pass, and for variable initialization.
+
+Use tuple assignment and zip to avoid loop indices.
+
+ravel() vs flatten()
+
+conda init --reverse to undo the shell changes made by conda init.
+
+Use miniconda, and always install pip, to make sure you don't use any system version of pip.
+
+Use conda search to find available versions of a package.
+
+poetry vs conda & pip? Or mamba?
+
+Make jupyter aware of conda environments? Or just install jupyter into every environment.
+
+Dask has nice jupyter lab extensions.
+
+--yes with conda commands to avoid prompts.
+
+Use Numba to speed up my code.
+
+--freeze-install to avoid changing installed versions
+
+conda --prefix can put environments elsewhere. Activate by using path.
+
+Create conda environments as env/ under each project directory. Git is auto-configured to ignore these directories.
+
+Use Keras for boilerplate.
+
+TensorFlow needs to be built to specific hardware (CPU vs GPU).
+
+Custom kernels can be created for nnotebooks.
+
+Need to learn YAML.
+
+Add my environment.yml to git.
+
+Multi-tabs in JupyterLab
+
+Leaarn JSON
+
+Exported environment files containing build IDs will fail on other platforms. The --no-builds option removes this, but does not always guarantee platform independence.
+
+Avoid this problem by manually creating and maintaining your environment files. Include just high-level requirements, and let dependencies by automatic.
+
+xgboost for improved gradient optimization
+
+conda --prune to remove unused dependencies. Safer to just rebuild?
+
+--force to overwrite existing environment directory.
+
+To make jupyter aware of conda environments, activate environment then launch jupyter.
+
+Or
+
+To expose existing environments, create a custom kernel with ipykernel.
+
+python -m ipykernel install --user --name xgboost-env --display-name "XGBoost"
+
+Puts it under:
+
+/home/jovyan/.local/share/jupyter/kernels/xgboost-env
+
+conda-forge first, unless you need MKL
+
+Use ipywidgets for network evaluation.
+
+Carousel or grid for sets of sliders
+
+Doom widget!
+
+sidecar for programmatic views
+
+autodiff. No - JAX!
+
+SunPy for data access
+
+So note that x[0,2] = x[0][2] though the second case is more inefficient as a new temporary array is created after the first index that is subsequently indexed by 2.
+
+Slices give views into the array. Indexed arrays generate copies.
+
+Broadcasting is more memory-efficient than a separate array.
+
+When operating on two arrays, NumPy compares their shapes element-wise. It starts with the trailing dimensions and works its way forward. Two dimensions are compatible when
+
+they are equal, or
+
+one of them is 1
+
+Broadcasting makes outer products convenient.
